@@ -24,6 +24,7 @@ public sealed class ApplicationDbContext(
     public DbSet<Reservation> Reservations => Set<Reservation>();
     public DbSet<Subscription> Subscriptions => Set<Subscription>();
     public DbSet<Report> Reports => Set<Report>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -40,6 +41,7 @@ public sealed class ApplicationDbContext(
         builder.ApplyConfiguration(new ReservationConfiguration());
         builder.ApplyConfiguration(new SubscriptionConfiguration());
         builder.ApplyConfiguration(new ReportConfiguration());
+        builder.ApplyConfiguration(new RefreshTokenConfiguration());
 
         // Global soft-delete filter
         builder.Entity<Pharmacy>().HasQueryFilter(e => !e.IsDeleted);
@@ -47,5 +49,6 @@ public sealed class ApplicationDbContext(
         builder.Entity<Reservation>().HasQueryFilter(e => !e.IsDeleted);
         builder.Entity<Subscription>().HasQueryFilter(e => !e.IsDeleted);
         builder.Entity<Report>().HasQueryFilter(e => !e.IsDeleted);
+        builder.Entity<RefreshToken>().HasQueryFilter(e => !e.IsDeleted);
     }
 }

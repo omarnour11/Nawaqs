@@ -6,6 +6,7 @@ using Nawakes.Application.Common.Interfaces;
 using Nawakes.Application.Reservations.Dtos;
 using Nawakes.Domain.Entities;
 using Nawakes.Domain.Enums;
+using System.Security.Cryptography;
 
 namespace Nawakes.Application.Reservations.Commands.CreateReservation;
 
@@ -16,8 +17,6 @@ namespace Nawakes.Application.Reservations.Commands.CreateReservation;
 ///   EF generates: UPDATE InventoryItems SET Status=Reserved
 ///                 WHERE Id=@id AND RowVersion=@original
 ///   If 0 rows affected (another request won the race) → DbUpdateConcurrencyException → 409.
-///
-/// This is safer and more scalable than UPDLOCK pessimistic locking.
 /// </summary>
 public sealed class CreateReservationCommandHandler(
     IApplicationDbContext context,
@@ -50,7 +49,7 @@ public sealed class CreateReservationCommandHandler(
         // 3. Mutate status — EF tracks the original RowVersion automatically
         item.Status = InventoryStatus.Reserved;
 
-        // 4. Create the reservation record
+        // 4. Create the reservation record with a unique pickup code
         var expiresAt = DateTime.UtcNow.AddHours(HoldDurationHours);
         var reservation = new Reservation
         {
@@ -58,7 +57,8 @@ public sealed class CreateReservationCommandHandler(
             InventoryItemId = item.Id,
             PharmacyId      = item.PharmacyId,
             Status          = ReservationStatus.Active,
-            ExpiresAt       = expiresAt
+            ExpiresAt       = expiresAt,
+            ReservationCode = GenerateCode()
         };
         context.Reservations.Add(reservation);
 
@@ -95,6 +95,15 @@ public sealed class CreateReservationCommandHandler(
             item.MedicationName,
             nameof(ReservationStatus.Active),
             expiresAt,
-            reservation.CreatedAt);
+            reservation.CreatedAt,
+            reservation.ReservationCode);
+    }
+
+    /// <summary>6 hex chars from a crypto-random source — 16.7M combinations, collision risk negligible at this scale.</summary>
+    private static string GenerateCode()
+    {
+        Span<byte> bytes = stackalloc byte[3];
+        RandomNumberGenerator.Fill(bytes);
+        return $"NWQ-{bytes[0]:X2}{bytes[1]:X2}{bytes[2]:X2}";
     }
 }

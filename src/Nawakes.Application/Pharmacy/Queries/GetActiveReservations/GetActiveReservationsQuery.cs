@@ -23,7 +23,6 @@ public sealed class GetActiveReservationsQueryHandler(
         GetActiveReservationsQuery request,
         CancellationToken cancellationToken)
     {
-        // Resolve pharmacy owned by the current user
         var pharmacy = await context.Pharmacies
             .AsNoTracking()
             .FirstOrDefaultAsync(p => p.OwnerId == currentUser.UserId, cancellationToken);
@@ -47,7 +46,8 @@ public sealed class GetActiveReservationsQueryHandler(
                 r.InventoryItem.MedicationName,
                 r.Status.ToString(),
                 r.ExpiresAt,
-                r.CreatedAt))
+                r.CreatedAt,
+                r.ReservationCode))
             .ToListAsync(cancellationToken);
 
         return reservations;

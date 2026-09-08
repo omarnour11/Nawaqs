@@ -9,6 +9,10 @@ public sealed class Reservation : BaseEntity
     public Guid InventoryItemId { get; set; }
     public Guid PharmacyId { get; set; }
     public ReservationStatus Status { get; set; } = ReservationStatus.Active;
+
+    /// <summary>Short human-readable pickup code shown to the patient (e.g. NWQ-4F2A9C).</summary>
+    public string ReservationCode { get; set; } = string.Empty;
+
     public DateTime ExpiresAt { get; set; }
 
     /// <summary>Hangfire job ID stored so it can be deleted on early completion/cancellation.</summary>

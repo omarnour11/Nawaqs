@@ -12,9 +12,12 @@ public sealed class GetPatientReservationsQueryHandler(
     ICurrentUserService currentUser)
     : IRequestHandler<GetPatientReservationsQuery, IReadOnlyList<ReservationDto>>
 {
-    public async Task<IReadOnlyList<ReservationDto>> Handle(GetPatientReservationsQuery request, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<ReservationDto>> Handle(
+        GetPatientReservationsQuery request,
+        CancellationToken cancellationToken)
     {
         var reservations = await context.Reservations
+            .AsNoTracking()
             .Include(r => r.InventoryItem)
             .ThenInclude(i => i.Pharmacy)
             .Where(r => r.UserId == currentUser.UserId)
@@ -29,7 +32,8 @@ public sealed class GetPatientReservationsQueryHandler(
             r.InventoryItem.MedicationName,
             r.Status.ToString(),
             r.ExpiresAt,
-            r.CreatedAt
+            r.CreatedAt,
+            r.ReservationCode
         )).ToList();
     }
 }

@@ -1,3 +1,5 @@
+using Nawakes.Application.Profile.Queries.GetProfile;
+
 namespace Nawakes.Application.Common.Interfaces;
 
 public interface IIdentityService
@@ -16,4 +18,15 @@ public interface IIdentityService
         CancellationToken cancellationToken = default);
 
     Task UpdateFcmTokenAsync(Guid userId, string fcmToken, CancellationToken cancellationToken = default);
+
+    Task<ProfileDto> GetProfileAsync(Guid userId, CancellationToken cancellationToken = default);
+
+    Task UpdateProfileAsync(
+        Guid userId,
+        string? fullName,
+        string? phone,
+        string? medicalHistoryNotes,
+        CancellationToken cancellationToken = default);
+
+    Task<(string Role, string Email)> GetRoleAndEmailAsync(Guid userId, CancellationToken cancellationToken = default);
 }

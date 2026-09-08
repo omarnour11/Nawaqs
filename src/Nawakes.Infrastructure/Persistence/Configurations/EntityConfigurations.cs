@@ -14,6 +14,9 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<ApplicationUser
             .HasConversion<string>()
             .HasMaxLength(20);
 
+        builder.Property(u => u.FullName).HasMaxLength(150);
+        builder.Property(u => u.PhoneNumber).HasMaxLength(20);
+        builder.Property(u => u.MedicalHistoryNotes).HasMaxLength(2000);
         builder.Property(u => u.FcmToken).HasMaxLength(500);
         builder.Property(u => u.HealthQuestionnaireJson).HasColumnType("nvarchar(max)");
         builder.Property(u => u.CreatedAt).HasColumnType("datetime2(7)");
@@ -96,6 +99,7 @@ public sealed class ReservationConfiguration : IEntityTypeConfiguration<Reservat
         builder.HasKey(r => r.Id);
         builder.Property(r => r.Status).HasConversion<byte>();
         builder.Property(r => r.HangfireJobId).HasMaxLength(100);
+        builder.Property(r => r.ReservationCode).HasMaxLength(16).IsRequired();
         builder.Property(r => r.ExpiresAt).HasColumnType("datetime2(7)");
         builder.Property(r => r.CompletedAt).HasColumnType("datetime2(7)");
         builder.Property(r => r.CancelledAt).HasColumnType("datetime2(7)");
@@ -126,6 +130,7 @@ public sealed class ReservationConfiguration : IEntityTypeConfiguration<Reservat
         builder.HasIndex(r => new { r.UserId, r.Status });
         builder.HasIndex(r => new { r.PharmacyId, r.Status });
         builder.HasIndex(r => r.ExpiresAt).HasFilter("[Status] = 0");
+        builder.HasIndex(r => r.ReservationCode).IsUnique().HasFilter("[ReservationCode] IS NOT NULL");
     }
 }
 
@@ -189,5 +194,28 @@ public sealed class ReportConfiguration : IEntityTypeConfiguration<Report>
 
         builder.HasIndex(r => new { r.PharmacyId, r.Status });
         builder.HasIndex(r => r.Status).HasFilter("[IsDeleted] = 0");
+    }
+}
+
+public sealed class RefreshTokenConfiguration : IEntityTypeConfiguration<RefreshToken>
+{
+    public void Configure(EntityTypeBuilder<RefreshToken> builder)
+    {
+        builder.HasKey(rt => rt.Id);
+        builder.Property(rt => rt.TokenHash).HasMaxLength(64).IsRequired();
+        builder.Property(rt => rt.DeviceInfo).HasMaxLength(300);
+        builder.Property(rt => rt.ExpiresAt).HasColumnType("datetime2(7)");
+        builder.Property(rt => rt.RevokedAt).HasColumnType("datetime2(7)");
+        builder.Property(rt => rt.CreatedAt).HasColumnType("datetime2(7)");
+        builder.Property(rt => rt.UpdatedAt).HasColumnType("datetime2(7)");
+        builder.Property(rt => rt.DeletedAt).HasColumnType("datetime2(7)");
+
+        builder.HasIndex(rt => rt.TokenHash).IsUnique();
+        builder.HasIndex(rt => new { rt.UserId, rt.ExpiresAt });
+
+        builder.HasOne<ApplicationUser>()
+            .WithMany()
+            .HasForeignKey(rt => rt.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

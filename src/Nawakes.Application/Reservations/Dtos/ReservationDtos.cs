@@ -1,5 +1,3 @@
-using Nawakes.Domain.Enums;
-
 namespace Nawakes.Application.Reservations.Dtos;
 
 public sealed record ReservationDto(
@@ -10,7 +8,8 @@ public sealed record ReservationDto(
     string MedicationName,
     string Status,
     DateTime ExpiresAt,
-    DateTime CreatedAt
+    DateTime CreatedAt,
+    string ReservationCode
 );
 
 public sealed record PharmacyReservationDto(
@@ -19,5 +18,6 @@ public sealed record PharmacyReservationDto(
     string MedicationName,
     string Status,
     DateTime ExpiresAt,
-    DateTime CreatedAt
+    DateTime CreatedAt,
+    string ReservationCode
 );

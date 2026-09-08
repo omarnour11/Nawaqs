@@ -1,6 +1,7 @@
 using MediatR;
 using Nawakes.Application.Common.Exceptions;
 using Nawakes.Application.Common.Interfaces;
+using Nawakes.Domain.Entities;
 using System.Text.Json;
 
 namespace Nawakes.Application.Auth.Commands.Register;
@@ -8,7 +9,8 @@ namespace Nawakes.Application.Auth.Commands.Register;
 public sealed class RegisterCommandHandler(
     IIdentityService identityService,
     IJwtTokenGenerator jwtGenerator,
-    IEncryptionService encryption)
+    IEncryptionService encryption,
+    IApplicationDbContext context)
     : IRequestHandler<RegisterCommand, AuthResult>
 {
     public async Task<AuthResult> Handle(RegisterCommand request, CancellationToken cancellationToken)
@@ -35,6 +37,15 @@ public sealed class RegisterCommandHandler(
         var userGuid = Guid.Parse(userId);
         var accessToken = jwtGenerator.GenerateAccessToken(userGuid, request.Email, "Patient");
         var (refreshToken, refreshExpiry) = jwtGenerator.GenerateRefreshToken();
+
+        context.RefreshTokens.Add(new Nawakes.Domain.Entities.RefreshToken
+        {
+            UserId = userGuid,
+            TokenHash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(
+                System.Text.Encoding.UTF8.GetBytes(refreshToken))),
+            ExpiresAt = refreshExpiry
+        });
+        await context.SaveChangesAsync(cancellationToken);
 
         return new AuthResult(
             AccessToken: accessToken,

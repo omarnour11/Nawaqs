@@ -1,6 +1,9 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Nawakes.Application.Common.Interfaces;
+using Nawakes.Application.Profile.Queries.GetProfile;
 using Nawakes.Domain.Enums;
+using Nawakes.Infrastructure.Persistence;
 
 namespace Nawakes.Infrastructure.Identity;
 
@@ -8,7 +11,9 @@ namespace Nawakes.Infrastructure.Identity;
 /// Wraps ASP.NET Core Identity's UserManager to implement IIdentityService.
 /// Keeps UserManager completely out of the Application layer.
 /// </summary>
-public sealed class IdentityService(UserManager<ApplicationUser> userManager) : IIdentityService
+public sealed class IdentityService(
+    UserManager<ApplicationUser> userManager,
+    ApplicationDbContext context) : IIdentityService
 {
     public async Task<(bool Success, string? UserId, string? Error)> RegisterAsync(
         string email,
@@ -26,12 +31,12 @@ public sealed class IdentityService(UserManager<ApplicationUser> userManager) : 
         {
             UserName = email,
             Email = email,
+            FullName = string.IsNullOrWhiteSpace(fullName) ? null : fullName.Trim(),
             FcmToken = fcmToken,
             HealthQuestionnaireJson = encryptedHealthJson,
             Role = UserRole.Patient
         };
 
-        // UserManager handles bcrypt hashing internally (cost factor set in DI registration)
         var result = await userManager.CreateAsync(user, password);
         if (!result.Succeeded)
         {
@@ -67,5 +72,50 @@ public sealed class IdentityService(UserManager<ApplicationUser> userManager) : 
 
         user.FcmToken = fcmToken;
         await userManager.UpdateAsync(user);
+    }
+
+    public async Task<ProfileDto> GetProfileAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        var user = await context.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken)
+            ?? throw new UnauthorizedAccessException("User not found.");
+
+        return new ProfileDto(
+            user.Id,
+            user.Email ?? string.Empty,
+            user.FullName,
+            user.PhoneNumber,
+            user.MedicalHistoryNotes,
+            user.CreatedAt);
+    }
+
+    public async Task UpdateProfileAsync(
+        Guid userId,
+        string? fullName,
+        string? phone,
+        string? medicalHistoryNotes,
+        CancellationToken cancellationToken = default)
+    {
+        var user = await userManager.FindByIdAsync(userId.ToString())
+            ?? throw new UnauthorizedAccessException("User not found.");
+
+        if (fullName is not null) user.FullName = fullName.Trim();
+        if (phone is not null) user.PhoneNumber = phone.Trim();
+        if (medicalHistoryNotes is not null) user.MedicalHistoryNotes = medicalHistoryNotes.Trim();
+
+        await userManager.UpdateAsync(user);
+    }
+
+    public async Task<(string Role, string Email)> GetRoleAndEmailAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        var user = await context.Users
+            .AsNoTracking()
+            .Where(u => u.Id == userId)
+            .Select(u => new { u.Role, u.Email })
+            .FirstOrDefaultAsync(cancellationToken)
+            ?? throw new UnauthorizedAccessException("User not found.");
+
+        return (user.Role.ToString(), user.Email ?? string.Empty);
     }
 }

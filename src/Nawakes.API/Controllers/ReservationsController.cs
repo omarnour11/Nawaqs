@@ -62,7 +62,7 @@ public sealed class ReservationsController(ISender mediator) : ControllerBase
     private static ReservationResponse ToResponse(ReservationDto dto) => new(
         dto.Id, dto.InventoryItemId, dto.PharmacyId,
         dto.PharmacyName, dto.MedicationName,
-        dto.Status, dto.ExpiresAt, dto.CreatedAt);
+        dto.Status, dto.ExpiresAt, dto.CreatedAt, dto.ReservationCode);
 }
 
 // ── API-layer DTOs ─────────────────────────────────────────────────────────────
@@ -77,4 +77,5 @@ public sealed record ReservationResponse(
     string MedicationName,
     string Status,
     DateTime ExpiresAt,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    string ReservationCode);

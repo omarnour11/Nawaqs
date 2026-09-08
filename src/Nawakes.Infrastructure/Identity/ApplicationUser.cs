@@ -10,6 +10,12 @@ namespace Nawakes.Infrastructure.Identity;
 /// </summary>
 public sealed class ApplicationUser : IdentityUser<Guid>
 {
+    /// <summary>Display name (first + last). Optional; defaults to the email prefix.</summary>
+    public string? FullName { get; set; }
+
+    /// <summary>Free-text notes pharmacists should know (allergies, conditions). Plain text by design — non-diagnostic.</summary>
+    public string? MedicalHistoryNotes { get; set; }
+
     public UserRole Role { get; set; } = UserRole.Patient;
 
     /// <summary>AES-256 encrypted JSON blob. Never logged or exposed directly.</summary>
