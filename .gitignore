@@ -1,0 +1,35 @@
+# ── .NET ──────────────────────────────────────────────
+bin/
+obj/
+*.user
+*.suo
+.vs/
+artifacts/
+TestResults/
+*.db
+*.mdf
+*.ldf
+
+# ── IDE / OS ──────────────────────────────────────────
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# ── Flutter / Dart ────────────────────────────────────
+**/dart_tool/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/generated_plugin_registrant.*
+**/build/
+**/.pub-cache/
+**/.pub/
+**/pubspec.lock
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# ── Misc ──────────────────────────────────────────────
+*.log
+logs/
+appsettings.*.json
+!appsettings.Development.json
