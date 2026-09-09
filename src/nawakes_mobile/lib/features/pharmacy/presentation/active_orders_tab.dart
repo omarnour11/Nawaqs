@@ -2,8 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:intl/intl.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
+import 'package:nawakes_mobile/features/auth/presentation/auth_controller.dart';
 import 'package:nawakes_mobile/features/pharmacy/presentation/pharmacy_dashboard_controller.dart';
 
 class ActiveOrdersTab extends HookConsumerWidget {
@@ -70,7 +70,7 @@ class _OrderCard extends HookWidget {
     final expiresAt = reservation.expiresAt.toUtc();
     final remaining = expiresAt.difference(now.value);
     final isExpired = remaining.isNegative;
-    final isPending = reservation.status == 'Pending';
+    final isActive = reservation.status == 'Active';
 
     String countdown() {
       if (isExpired) return 'Expired';
@@ -82,12 +82,14 @@ class _OrderCard extends HookWidget {
 
     Color statusColor() {
       switch (reservation.status) {
-        case 'Pending':
+        case 'Active':
           return AppColors.accent;
         case 'Completed':
           return AppColors.success;
         case 'Cancelled':
           return AppColors.danger;
+        case 'Expired':
+          return AppColors.textHint;
         default:
           return AppColors.textSecondary;
       }
@@ -137,7 +139,7 @@ class _OrderCard extends HookWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: statusColor().withOpacity(0.12),
+                    color: statusColor().withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -159,12 +161,12 @@ class _OrderCard extends HookWidget {
             // Info row
             Row(
               children: [
-                // Created at
+                // Pickup code
                 Expanded(
                   child: _InfoItem(
-                    icon: Icons.schedule_rounded,
-                    label: 'Created',
-                    value: DateFormat('MMM dd · hh:mm a').format(reservation.createdAt.toLocal()),
+                    icon: Icons.qr_code_rounded,
+                    label: 'Pickup code',
+                    value: reservation.reservationCode,
                   ),
                 ),
                 // Countdown
@@ -183,14 +185,52 @@ class _OrderCard extends HookWidget {
               ],
             ),
 
-            if (isPending) ...[
+            if (isActive) ...[
               const SizedBox(height: 16),
               Row(
                 children: [
-                  // Complete button
+                  // جاهز للاستلام
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: isCompleting.value
+                          ? null
+                          : () async {
+                              isCompleting.value = true;
+                              try {
+                                await ref
+                                    .read(pharmacyReservationsControllerProvider.notifier)
+                                    .markReady(reservation.id);
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                        content: Text('الحجز اتعلّم "جاهز للاستلام".')),
+                                  );
+                                }
+                              } catch (e) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(describeApiError(e))),
+                                  );
+                                }
+                              } finally {
+                                isCompleting.value = false;
+                              }
+                            },
+                      icon: const Icon(Icons.task_outlined, size: 17),
+                      label: const Text('جاهز'),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(0, 42),
+                        side: const BorderSide(color: AppColors.hairline),
+                        textStyle: const TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // اتسلم (Complete)
                   Expanded(
                     flex: 2,
-                    child: ElevatedButton.icon(
+                    child: FilledButton.icon(
                       onPressed: isCompleting.value
                           ? null
                           : () async {
@@ -201,27 +241,14 @@ class _OrderCard extends HookWidget {
                                     .completeReservation(reservation.id);
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: const Row(children: [
-                                        Icon(Icons.check_circle, color: Colors.white, size: 18),
-                                        SizedBox(width: 10),
-                                        Text('Order marked as completed!'),
-                                      ]),
-                                      backgroundColor: AppColors.success,
-                                      behavior: SnackBarBehavior.floating,
-                                      shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(12)),
-                                    ),
+                                    const SnackBar(
+                                        content: Text('الاستلام اتم بنجاح.')),
                                   );
                                 }
                               } catch (e) {
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('Error: $e'),
-                                      backgroundColor: AppColors.danger,
-                                      behavior: SnackBarBehavior.floating,
-                                    ),
+                                    SnackBar(content: Text(describeApiError(e))),
                                   );
                                 }
                               } finally {
@@ -230,57 +257,107 @@ class _OrderCard extends HookWidget {
                             },
                       icon: isCompleting.value
                           ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                            )
-                          : const Icon(Icons.check_circle_outline_rounded, size: 18),
-                      label: Text(isCompleting.value ? 'Completing…' : 'Mark Complete'),
-                      style: ElevatedButton.styleFrom(
+                              width: 15,
+                              height: 15,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white))
+                          : const Icon(Icons.check_rounded, size: 17),
+                      label: Text(isCompleting.value ? 'جارٍ…' : 'تم الاستلام'),
+                      style: FilledButton.styleFrom(
                         minimumSize: const Size(0, 42),
-                        textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  // Reject/info button
+                  const SizedBox(width: 8),
+                  // إلغاء
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: () {
-                        showDialog(
-                          context: context,
-                          builder: (_) => AlertDialog(
-                            title: const Text('Reservation Info'),
-                            content: Text(
-                              'Reservation ID: ${reservation.id}\n\n'
-                              'To cancel from the system, use the admin panel or API.',
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: const Text('Close'),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.info_outline_rounded, size: 18),
-                      label: const Text('Details'),
+                      onPressed: isCompleting.value
+                          ? null
+                          : () => _cancelDialog(context, ref, reservation.id),
+                      icon: const Icon(Icons.close_rounded, size: 17),
+                      label: const Text('إلغاء'),
                       style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.dangerText,
+                        side: const BorderSide(
+                            color: AppColors.dangerIcon, width: 1.2),
                         minimumSize: const Size(0, 42),
-                        foregroundColor: AppColors.textSecondary,
-                        side: const BorderSide(color: AppColors.border),
-                        textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                        textStyle: const TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w700),
                       ),
                     ),
                   ),
                 ],
+              ),
+            ]
+                        else if (reservation.status == 'Expired') ...[
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerRight,
+                child: Text(
+                  'Auto-expired — the item returned to In Stock automatically.',
+                  style: TextStyle(fontSize: 11.5, color: AppColors.textHint),
+                ),
               ),
             ],
           ],
         ),
       ),
     );
+  }
+}
+
+
+Future<void> _cancelDialog(
+    BuildContext context, WidgetRef ref, String reservationId) async {
+  final reasonCtrl = TextEditingController();
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (_) => AlertDialog(
+      title: const Text('إلغاء الحجز'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text('المخزون هيرجع متاح فورًا وهيتبلغ المريض.',
+              style: TextStyle(fontSize: 13)),
+          const SizedBox(height: 12),
+          TextField(
+            controller: reasonCtrl,
+            maxLines: 2,
+            decoration: const InputDecoration(
+              hintText: 'السبب (اختياري) — مثلاً: المريض ما ظهرش',
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('رجوع')),
+        FilledButton(
+            style: FilledButton.styleFrom(
+                backgroundColor: AppColors.dangerText),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('إلغاء الحجز')),
+      ],
+    ),
+  );
+  if (confirmed != true) return;
+  try {
+    await ref
+        .read(pharmacyReservationsControllerProvider.notifier)
+        .cancelReservation(reservationId, reasonCtrl.text.trim().isEmpty ? null : reasonCtrl.text.trim());
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('الحجز اتلغى والمخزون رجع متاح.')),
+      );
+    }
+  } catch (e) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(describeApiError(e))),
+      );
+    }
   }
 }
 

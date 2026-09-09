@@ -126,7 +126,7 @@ namespace Nawakes.Infrastructure.Persistence.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
-            modelBuilder.Entity("Nawakes.Domain.Entities.InventoryItem", b =>
+            modelBuilder.Entity("Nawakes.Domain.Entities.FavoritePharmacy", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -141,6 +141,43 @@ namespace Nawakes.Infrastructure.Persistence.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
+                    b.Property<Guid>("PharmacyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2(7)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PharmacyId");
+
+                    b.HasIndex("UserId", "PharmacyId")
+                        .IsUnique();
+
+                    b.ToTable("Favorites");
+                });
+
+            modelBuilder.Entity("Nawakes.Domain.Entities.InventoryItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2(7)");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2(7)");
+
+                    b.Property<DateTime?>("ExpiryDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
                     b.Property<string>("MedicationName")
                         .IsRequired()
                         .HasMaxLength(300)
@@ -151,11 +188,17 @@ namespace Nawakes.Infrastructure.Persistence.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("nvarchar(300)");
 
+                    b.Property<string>("PatientNote")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<Guid>("PharmacyId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal>("Price")
                         .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
@@ -180,6 +223,61 @@ namespace Nawakes.Infrastructure.Persistence.Migrations
                         .HasFilter("[IsDeleted] = 0");
 
                     b.ToTable("InventoryItems");
+                });
+
+            modelBuilder.Entity("Nawakes.Domain.Entities.PatientMedication", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2(7)");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2(7)");
+
+                    b.Property<string>("DoseSchedule")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Form")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("MedicationName")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Strength")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<decimal?>("UnitsPerDay")
+                        .HasColumnType("decimal(9,2)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2(7)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "IsActive");
+
+                    b.ToTable("PatientMedications");
                 });
 
             modelBuilder.Entity("Nawakes.Domain.Entities.Pharmacy", b =>
@@ -259,6 +357,47 @@ namespace Nawakes.Infrastructure.Persistence.Migrations
                         .HasFilter("[IsDeleted] = 0");
 
                     b.ToTable("Pharmacies");
+                });
+
+            modelBuilder.Entity("Nawakes.Domain.Entities.PharmacyRating", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Comment")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2(7)");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2(7)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("PharmacyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Score")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2(7)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PharmacyId");
+
+                    b.HasIndex("UserId", "PharmacyId")
+                        .IsUnique();
+
+                    b.ToTable("Ratings");
                 });
 
             modelBuilder.Entity("Nawakes.Domain.Entities.RefreshToken", b =>
@@ -439,6 +578,80 @@ namespace Nawakes.Infrastructure.Persistence.Migrations
                     b.ToTable("Reservations");
                 });
 
+            modelBuilder.Entity("Nawakes.Domain.Entities.ShortageRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ClaimedAt")
+                        .HasColumnType("datetime2(7)");
+
+                    b.Property<Guid?>("ClaimedByPharmacyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2(7)");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2(7)");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime2(7)");
+
+                    b.Property<Guid?>("FulfilledReservationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Point>("GeoPoint")
+                        .IsRequired()
+                        .HasColumnType("geography");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("MedicationName")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("MedicationNameNormalized")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("QuantityNeeded")
+                        .HasColumnType("int");
+
+                    b.Property<byte>("Status")
+                        .HasColumnType("tinyint");
+
+                    b.Property<string>("Strength")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2(7)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("MedicationNameNormalized", "Status")
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.HasIndex("Status", "ExpiresAt")
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.ToTable("ShortageRequests");
+                });
+
             modelBuilder.Entity("Nawakes.Domain.Entities.Subscription", b =>
                 {
                     b.Property<Guid>("Id")
@@ -493,6 +706,169 @@ namespace Nawakes.Infrastructure.Persistence.Migrations
                         .HasFilter("[IsDeleted] = 0");
 
                     b.ToTable("Subscriptions");
+                });
+
+            modelBuilder.Entity("Nawakes.Domain.Entities.SupportTicket", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("AssignedAdminId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte>("Category")
+                        .HasColumnType("tinyint");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2(7)");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2(7)");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid?>("PharmacyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("ReservationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Resolution")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<DateTime?>("ResolvedAt")
+                        .HasColumnType("datetime2(7)");
+
+                    b.Property<byte>("Status")
+                        .HasColumnType("tinyint");
+
+                    b.Property<string>("Subject")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2(7)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AssignedAdminId");
+
+                    b.HasIndex("PharmacyId");
+
+                    b.HasIndex("ReservationId");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("Status", "CreatedAt");
+
+                    b.ToTable("SupportTickets");
+                });
+
+            modelBuilder.Entity("Nawakes.Domain.Entities.TicketMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2(7)");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2(7)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("SenderId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("SenderRole")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<Guid>("TicketId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2(7)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SenderId");
+
+                    b.HasIndex("TicketId", "CreatedAt");
+
+                    b.ToTable("TicketMessages");
+                });
+
+            modelBuilder.Entity("Nawakes.Domain.Entities.UserNotification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2(7)");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2(7)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("ReadAt")
+                        .HasColumnType("datetime2(7)");
+
+                    b.Property<Guid?>("RelatedEntityId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<byte>("Type")
+                        .HasColumnType("tinyint");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2(7)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "CreatedAt");
+
+                    b.HasIndex("UserId", "IsRead");
+
+                    b.ToTable("Notifications");
                 });
 
             modelBuilder.Entity("Nawakes.Infrastructure.Identity.ApplicationRole", b =>
@@ -590,12 +966,9 @@ namespace Nawakes.Infrastructure.Persistence.Migrations
                     b.Property<string>("PasswordHash")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("Phone")
+                    b.Property<string>("PhoneNumber")
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
-
-                    b.Property<string>("PhoneNumber")
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("PhoneNumberConfirmed")
                         .HasColumnType("bit");
@@ -682,6 +1055,21 @@ namespace Nawakes.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Nawakes.Domain.Entities.FavoritePharmacy", b =>
+                {
+                    b.HasOne("Nawakes.Domain.Entities.Pharmacy", null)
+                        .WithMany()
+                        .HasForeignKey("PharmacyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Nawakes.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Nawakes.Domain.Entities.InventoryItem", b =>
                 {
                     b.HasOne("Nawakes.Domain.Entities.Pharmacy", "Pharmacy")
@@ -693,6 +1081,15 @@ namespace Nawakes.Infrastructure.Persistence.Migrations
                     b.Navigation("Pharmacy");
                 });
 
+            modelBuilder.Entity("Nawakes.Domain.Entities.PatientMedication", b =>
+                {
+                    b.HasOne("Nawakes.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Nawakes.Domain.Entities.Pharmacy", b =>
                 {
                     b.HasOne("Nawakes.Infrastructure.Identity.ApplicationUser", null)
@@ -700,6 +1097,23 @@ namespace Nawakes.Infrastructure.Persistence.Migrations
                         .HasForeignKey("OwnerId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Nawakes.Domain.Entities.PharmacyRating", b =>
+                {
+                    b.HasOne("Nawakes.Domain.Entities.Pharmacy", "Pharmacy")
+                        .WithMany()
+                        .HasForeignKey("PharmacyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Nawakes.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Pharmacy");
                 });
 
             modelBuilder.Entity("Nawakes.Domain.Entities.RefreshToken", b =>
@@ -758,7 +1172,64 @@ namespace Nawakes.Infrastructure.Persistence.Migrations
                     b.Navigation("Pharmacy");
                 });
 
+            modelBuilder.Entity("Nawakes.Domain.Entities.ShortageRequest", b =>
+                {
+                    b.HasOne("Nawakes.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Nawakes.Domain.Entities.Subscription", b =>
+                {
+                    b.HasOne("Nawakes.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Nawakes.Domain.Entities.SupportTicket", b =>
+                {
+                    b.HasOne("Nawakes.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("AssignedAdminId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Nawakes.Domain.Entities.Pharmacy", null)
+                        .WithMany()
+                        .HasForeignKey("PharmacyId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Nawakes.Domain.Entities.Reservation", null)
+                        .WithMany()
+                        .HasForeignKey("ReservationId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Nawakes.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Nawakes.Domain.Entities.TicketMessage", b =>
+                {
+                    b.HasOne("Nawakes.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("SenderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Nawakes.Domain.Entities.SupportTicket", null)
+                        .WithMany()
+                        .HasForeignKey("TicketId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Nawakes.Domain.Entities.UserNotification", b =>
                 {
                     b.HasOne("Nawakes.Infrastructure.Identity.ApplicationUser", null)
                         .WithMany()

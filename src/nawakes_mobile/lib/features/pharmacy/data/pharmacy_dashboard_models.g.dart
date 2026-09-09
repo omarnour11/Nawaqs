@@ -15,6 +15,7 @@ PharmacyReservationResponse _$PharmacyReservationResponseFromJson(
   status: json['status'] as String,
   expiresAt: DateTime.parse(json['expiresAt'] as String),
   createdAt: DateTime.parse(json['createdAt'] as String),
+  reservationCode: json['reservationCode'] as String? ?? '',
 );
 
 Map<String, dynamic> _$PharmacyReservationResponseToJson(
@@ -26,6 +27,7 @@ Map<String, dynamic> _$PharmacyReservationResponseToJson(
   'status': instance.status,
   'expiresAt': instance.expiresAt.toIso8601String(),
   'createdAt': instance.createdAt.toIso8601String(),
+  'reservationCode': instance.reservationCode,
 };
 
 PharmacyInventoryItemDto _$PharmacyInventoryItemDtoFromJson(
@@ -35,6 +37,8 @@ PharmacyInventoryItemDto _$PharmacyInventoryItemDtoFromJson(
   medicationName: json['medicationName'] as String,
   price: (json['price'] as num).toDouble(),
   status: json['status'] as String,
+  quantity: (json['quantity'] as num?)?.toInt() ?? 10,
+  patientNote: json['patientNote'] as String?,
   createdAt: DateTime.parse(json['createdAt'] as String),
   updatedAt: json['updatedAt'] == null
       ? null
@@ -48,6 +52,8 @@ Map<String, dynamic> _$PharmacyInventoryItemDtoToJson(
   'medicationName': instance.medicationName,
   'price': instance.price,
   'status': instance.status,
+  'quantity': instance.quantity,
+  'patientNote': instance.patientNote,
   'createdAt': instance.createdAt.toIso8601String(),
   'updatedAt': instance.updatedAt?.toIso8601String(),
 };
@@ -65,6 +71,8 @@ AddInventoryItemRequest _$AddInventoryItemRequestFromJson(
   medicationName: json['medicationName'] as String,
   price: (json['price'] as num).toDouble(),
   status: (json['status'] as num).toInt(),
+  quantity: (json['quantity'] as num?)?.toInt(),
+  patientNote: json['patientNote'] as String?,
 );
 
 Map<String, dynamic> _$AddInventoryItemRequestToJson(
@@ -73,4 +81,6 @@ Map<String, dynamic> _$AddInventoryItemRequestToJson(
   'medicationName': instance.medicationName,
   'price': instance.price,
   'status': instance.status,
+  'quantity': instance.quantity,
+  'patientNote': instance.patientNote,
 };

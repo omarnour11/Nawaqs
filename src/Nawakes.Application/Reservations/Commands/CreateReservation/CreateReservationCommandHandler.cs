@@ -76,10 +76,20 @@ public sealed class CreateReservationCommandHandler(
             throw new ConflictException("This item was just reserved. Please try again shortly.");
         }
 
-        // 6. Schedule Hangfire expiry job (after successful commit)
+        // 6. In-app notification (durable history; FCM push is handled by pharmacy flows)
+        context.Notifications.Add(new UserNotification
+        {
+            UserId = currentUser.UserId,
+            Type = NotificationType.ReservationCreated,
+            Title = "Reservation Confirmed",
+            Body = $"Your hold on {item.MedicationName} at {item.Pharmacy.Name} is active for 2 hours.",
+            RelatedEntityId = reservation.Id
+        });
+
+        // 7. Schedule Hangfire expiry job (after successful commit)
         var jobId = jobScheduler.ScheduleExpiryJob(reservation.Id, new DateTimeOffset(expiresAt, TimeSpan.Zero));
 
-        // 7. Store job ID for later deletion on cancel/complete
+        // 8. Store job ID for later deletion on cancel/complete
         reservation.HangfireJobId = jobId;
         await context.SaveChangesAsync(cancellationToken);
 
@@ -92,6 +102,7 @@ public sealed class CreateReservationCommandHandler(
             item.Id,
             item.PharmacyId,
             item.Pharmacy.Name,
+            item.Pharmacy.Phone,
             item.MedicationName,
             nameof(ReservationStatus.Active),
             expiresAt,

@@ -16,6 +16,16 @@ public sealed class InventoryItem : BaseEntity
     public string MedicationNameNormalized { get; set; } = string.Empty;
 
     public decimal Price { get; set; }
+
+    /// <summary>Units on hand. 0 = unavailable; 1–4 = limited; 5+ = available.</summary>
+    public int Quantity { get; set; } = 10;
+
+    /// <summary>Earliest expiry across the batch on the shelf (الصلاحية).</summary>
+    public DateTime? ExpiryDate { get; set; }
+
+    /// <summary>Free-text note for patients (e.g. "only 30-cap packs").</summary>
+    public string? PatientNote { get; set; }
+
     public InventoryStatus Status { get; set; } = InventoryStatus.InStock;
 
     /// <summary>Optimistic concurrency token — maps to SQL ROWVERSION.</summary>

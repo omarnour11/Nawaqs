@@ -3,11 +3,13 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Nawakes.Application.Search.Queries.SearchMedication;
+using Nawakes.Application.Search.Queries.SuggestMedications;
 
 namespace Nawakes.API.Controllers;
 
 /// <summary>
 /// GET /api/v1/search — geospatial medication search endpoint.
+/// GET /api/v1/search/suggest — medication name autocomplete.
 /// Requires Patient JWT. Rate limited to 30 req/min/IP.
 /// </summary>
 [ApiController]
@@ -39,4 +41,12 @@ public sealed class SearchController(ISender mediator) : ControllerBase
         var result = await mediator.Send(query, cancellationToken);
         return Ok(result);
     }
+
+    /// <summary>Autocomplete suggestions for medication names (min 2 chars).</summary>
+    [HttpGet("suggest")]
+    [EnableRateLimiting("search")]
+    [ProducesResponseType(typeof(IReadOnlyList<string>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyList<string>>> Suggest(
+        [FromQuery] string prefix, CancellationToken cancellationToken)
+        => Ok(await mediator.Send(new SuggestMedicationsQuery(prefix), cancellationToken));
 }

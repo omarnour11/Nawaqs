@@ -69,6 +69,8 @@ public sealed class PharmacySearchRepository(
                 MedicationName  = x.item.MedicationName,
                 Price           = x.item.Price,
                 Status          = x.item.Status.ToString(),
+                Quantity        = x.item.Quantity,
+                PatientNote     = x.item.PatientNote,
                 LastUpdatedAt   = x.item.UpdatedAt,
                 Latitude        = x.item.Pharmacy.GeoPoint != null ? x.item.Pharmacy.GeoPoint.Y : 0.0,
                 Longitude       = x.item.Pharmacy.GeoPoint != null ? x.item.Pharmacy.GeoPoint.X : 0.0,

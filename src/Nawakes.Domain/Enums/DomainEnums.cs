@@ -10,9 +10,10 @@ public enum InventoryStatus : byte
 public enum ReservationStatus : byte
 {
     Active = 0,
+    Ready = 3,
     Completed = 1,
     Expired = 2,
-    Cancelled = 3
+    Cancelled = 4
 }
 
 public enum VerificationStatus : byte
@@ -40,4 +41,42 @@ public enum UserRole
     Patient,
     PharmacyOwner,
     Admin
+}
+
+public enum NotificationType : byte
+{
+    ReservationCreated = 0,
+    ReservationCompleted = 1,
+    ReservationExpired = 2,
+    ReservationCancelled = 3,
+    MedicationAvailable = 4,
+    PharmacyApproved = 5,
+    PharmacyRejected = 6,
+    System = 7
+}
+
+public enum TicketStatus : byte
+{
+    Open = 0,
+    InProgress = 1,
+    Resolved = 2,
+    Closed = 3
+}
+
+public enum ShortageRequestStatus : byte
+{
+    Open = 0,
+    Claimed = 1,
+    Fulfilled = 2,
+    Expired = 3,
+    Cancelled = 4
+}
+
+public enum TicketCategory : byte
+{
+    ReservationIssue = 0,
+    InaccurateStock = 1,
+    PharmacyConduct = 2,
+    AccountIssue = 3,
+    Other = 4
 }

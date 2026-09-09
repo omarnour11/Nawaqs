@@ -14,6 +14,26 @@ class LoginRequest {
 }
 
 @JsonSerializable()
+class RegisterRequest {
+  final String email;
+  final String password;
+  final String fullName;
+  final List<String>? knownAllergies;
+  final List<String>? chronicIllnesses;
+
+  RegisterRequest({
+    required this.email,
+    required this.password,
+    required this.fullName,
+    this.knownAllergies,
+    this.chronicIllnesses,
+  });
+
+  factory RegisterRequest.fromJson(Map<String, dynamic> json) => _$RegisterRequestFromJson(json);
+  Map<String, dynamic> toJson() => _$RegisterRequestToJson(this);
+}
+
+@JsonSerializable()
 class AuthResponse {
   final String accessToken;
   final String refreshToken;
@@ -29,4 +49,15 @@ class AuthResponse {
 
   factory AuthResponse.fromJson(Map<String, dynamic> json) => _$AuthResponseFromJson(json);
   Map<String, dynamic> toJson() => _$AuthResponseToJson(this);
+}
+
+@JsonSerializable()
+class RefreshTokenRequest {
+  final String refreshToken;
+
+  RefreshTokenRequest({required this.refreshToken});
+
+  factory RefreshTokenRequest.fromJson(Map<String, dynamic> json) =>
+      _$RefreshTokenRequestFromJson(json);
+  Map<String, dynamic> toJson() => _$RefreshTokenRequestToJson(this);
 }

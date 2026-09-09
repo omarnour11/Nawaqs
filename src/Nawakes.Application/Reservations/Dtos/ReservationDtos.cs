@@ -5,6 +5,7 @@ public sealed record ReservationDto(
     Guid InventoryItemId,
     Guid PharmacyId,
     string PharmacyName,
+    string PharmacyPhone,
     string MedicationName,
     string Status,
     DateTime ExpiresAt,

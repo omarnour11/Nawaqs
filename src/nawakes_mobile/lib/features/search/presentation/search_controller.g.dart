@@ -34,7 +34,7 @@ final class SearchControllerProvider
   SearchController create() => SearchController();
 }
 
-String _$searchControllerHash() => r'992346e7c0099fa662628dc703fc400fe1f0a194';
+String _$searchControllerHash() => r'7c1230fb13141a7ced7a7283f1166b732cc3eab9';
 
 abstract class _$SearchController
     extends $AsyncNotifier<SearchMedicationResponse?> {

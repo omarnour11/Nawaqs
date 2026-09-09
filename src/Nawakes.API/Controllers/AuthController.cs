@@ -84,6 +84,41 @@ public sealed class AuthController(ISender mediator) : ControllerBase
         return NoContent();
     }
 
+    /// <summary>Request a password reset. Returns a reset token (dev flow — email in production).</summary>
+    [HttpPost("forgot-password")]
+    [EnableRateLimiting("auth")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> ForgotPassword(
+        [FromBody] ForgotPasswordRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await mediator.Send(
+            new Nawakes.Application.Auth.Commands.ForgotPassword.ForgotPasswordCommand(request.Email),
+            cancellationToken);
+        // In production, never return the token — email a link instead.
+        return Ok(new { sent = result.Sent, resetToken = result.ResetToken });
+    }
+
+    /// <summary>Complete the password reset with the token.</summary>
+    [HttpPost("reset-password")]
+    [EnableRateLimiting("auth")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ResetPassword(
+        [FromBody] ResetPasswordRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await mediator.Send(
+            new Nawakes.Application.Auth.Commands.ResetPassword.ResetPasswordCommand(
+                request.Email, request.ResetToken, request.NewPassword),
+            cancellationToken);
+
+        if (!result.Success)
+            return BadRequest(new { detail = result.Error });
+
+        return NoContent();
+    }
+
     private static AuthResponse ToResponse(AuthResult r) => new(
         r.AccessToken, r.AccessTokenExpiresAt,
         r.RefreshToken, r.RefreshTokenExpiresAt,
@@ -108,6 +143,10 @@ public sealed record LoginRequest(string Email, string Password);
 public sealed record RefreshTokenRequest(string RefreshToken);
 
 public sealed record LogoutRequest(string RefreshToken);
+
+public sealed record ForgotPasswordRequest(string Email);
+
+public sealed record ResetPasswordRequest(string Email, string ResetToken, string NewPassword);
 
 public sealed record AuthResponse(
     string AccessToken,

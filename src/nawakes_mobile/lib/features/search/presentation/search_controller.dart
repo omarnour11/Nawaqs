@@ -14,13 +14,13 @@ class SearchController extends _$SearchController {
 
   Future<void> search(
     String medication, {
-    double radius = 100.0,
+    double radius = 10.0,
     String sortBy = "Distance",
   }) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
-      // ── 1. Resolve GPS location ──────────────────────────────────────────
-      double lat = 30.0444; // Cairo fallback
+      // ── 1. Resolve GPS location (falls back to Cairo on failure) ─────────
+      double lat = 30.0444;
       double lng = 31.2357;
 
       try {
@@ -43,7 +43,7 @@ class SearchController extends _$SearchController {
           }
         }
       } catch (_) {
-        // Silently fall through to the Cairo coordinates fallback
+        // Silently fall back to Cairo coordinates
       }
 
       // ── 2. Call API ──────────────────────────────────────────────────────

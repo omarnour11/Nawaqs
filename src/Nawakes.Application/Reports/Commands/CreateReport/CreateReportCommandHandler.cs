@@ -25,9 +25,10 @@ public sealed class CreateReportCommandHandler(
 
         // Rate limiting: one report per pharmacy per medication per 24 hours
         var recentReportExists = await context.Reports
-            .AnyAsync(r => r.PharmacyId == pharmacy.Id 
-                        && r.UserId == currentUser.UserId 
-                        && r.MedicationName.ToLower() == normalizedName 
+            .AnyAsync(r => r.PharmacyId == pharmacy.Id
+                        && r.UserId == currentUser.UserId
+                        && r.MedicationName != null
+                        && r.MedicationName.ToLower() == normalizedName
                         && r.CreatedAt >= oneDayAgo, cancellationToken);
         if (recentReportExists)
             throw new ConflictException("You can only submit one report per medication per pharmacy every 24 hours.");

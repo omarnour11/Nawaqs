@@ -25,6 +25,13 @@ public sealed class ApplicationDbContext(
     public DbSet<Subscription> Subscriptions => Set<Subscription>();
     public DbSet<Report> Reports => Set<Report>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<UserNotification> Notifications => Set<UserNotification>();
+    public DbSet<PharmacyRating> Ratings => Set<PharmacyRating>();
+    public DbSet<FavoritePharmacy> Favorites => Set<FavoritePharmacy>();
+    public DbSet<SupportTicket> SupportTickets => Set<SupportTicket>();
+    public DbSet<PatientMedication> PatientMedications => Set<PatientMedication>();
+    public DbSet<ShortageRequest> ShortageRequests => Set<ShortageRequest>();
+    public DbSet<TicketMessage> TicketMessages => Set<TicketMessage>();
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -42,6 +49,13 @@ public sealed class ApplicationDbContext(
         builder.ApplyConfiguration(new SubscriptionConfiguration());
         builder.ApplyConfiguration(new ReportConfiguration());
         builder.ApplyConfiguration(new RefreshTokenConfiguration());
+        builder.ApplyConfiguration(new UserNotificationConfiguration());
+        builder.ApplyConfiguration(new PharmacyRatingConfiguration());
+        builder.ApplyConfiguration(new FavoritePharmacyConfiguration());
+        builder.ApplyConfiguration(new SupportTicketConfiguration());
+        builder.ApplyConfiguration(new PatientMedicationConfiguration());
+        builder.ApplyConfiguration(new ShortageRequestConfiguration());
+        builder.ApplyConfiguration(new TicketMessageConfiguration());
 
         // Global soft-delete filter
         builder.Entity<Pharmacy>().HasQueryFilter(e => !e.IsDeleted);
@@ -50,5 +64,12 @@ public sealed class ApplicationDbContext(
         builder.Entity<Subscription>().HasQueryFilter(e => !e.IsDeleted);
         builder.Entity<Report>().HasQueryFilter(e => !e.IsDeleted);
         builder.Entity<RefreshToken>().HasQueryFilter(e => !e.IsDeleted);
+        builder.Entity<UserNotification>().HasQueryFilter(e => !e.IsDeleted);
+        builder.Entity<PharmacyRating>().HasQueryFilter(e => !e.IsDeleted);
+        builder.Entity<FavoritePharmacy>().HasQueryFilter(e => !e.IsDeleted);
+        builder.Entity<SupportTicket>().HasQueryFilter(e => !e.IsDeleted);
+        builder.Entity<PatientMedication>().HasQueryFilter(e => !e.IsDeleted);
+        builder.Entity<ShortageRequest>().HasQueryFilter(e => !e.IsDeleted);
+        builder.Entity<TicketMessage>().HasQueryFilter(e => !e.IsDeleted);
     }
 }

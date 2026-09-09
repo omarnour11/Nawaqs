@@ -10,6 +10,7 @@ class PharmacyReservationResponse {
   final String status;
   final DateTime expiresAt;
   final DateTime createdAt;
+  final String reservationCode;
 
   PharmacyReservationResponse({
     required this.id,
@@ -18,6 +19,7 @@ class PharmacyReservationResponse {
     required this.status,
     required this.expiresAt,
     required this.createdAt,
+    this.reservationCode = '',
   });
 
   factory PharmacyReservationResponse.fromJson(Map<String, dynamic> json) => _$PharmacyReservationResponseFromJson(json);
@@ -30,6 +32,8 @@ class PharmacyInventoryItemDto {
   final String medicationName;
   final double price;
   final String status;
+  final int quantity;
+  final String? patientNote;
   final DateTime createdAt;
   final DateTime? updatedAt;
 
@@ -38,6 +42,8 @@ class PharmacyInventoryItemDto {
     required this.medicationName,
     required this.price,
     required this.status,
+    this.quantity = 10,
+    this.patientNote,
     required this.createdAt,
     this.updatedAt,
   });
@@ -60,12 +66,16 @@ class ToggleStatusRequest {
 class AddInventoryItemRequest {
   final String medicationName;
   final double price;
-  final int status; // 0 = InStock, 1 = OutOfStock
+  final int status;
+  final int? quantity;
+  final String? patientNote;
 
   AddInventoryItemRequest({
     required this.medicationName,
     required this.price,
     required this.status,
+    this.quantity,
+    this.patientNote,
   });
 
   factory AddInventoryItemRequest.fromJson(Map<String, dynamic> json) => _$AddInventoryItemRequestFromJson(json);

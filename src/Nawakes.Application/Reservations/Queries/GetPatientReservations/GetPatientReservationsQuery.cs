@@ -29,6 +29,7 @@ public sealed class GetPatientReservationsQueryHandler(
             r.InventoryItemId,
             r.InventoryItem.PharmacyId,
             r.InventoryItem.Pharmacy.Name,
+            r.InventoryItem.Pharmacy.Phone,
             r.InventoryItem.MedicationName,
             r.Status.ToString(),
             r.ExpiresAt,

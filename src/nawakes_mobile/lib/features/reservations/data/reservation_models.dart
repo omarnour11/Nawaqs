@@ -19,6 +19,7 @@ class ReservationResponse {
   final String inventoryItemId;
   final String pharmacyId;
   final String pharmacyName;
+  final String pharmacyPhone;
   final String medicationName;
   final String status;
   final DateTime expiresAt;
@@ -30,6 +31,7 @@ class ReservationResponse {
     required this.inventoryItemId,
     required this.pharmacyId,
     required this.pharmacyName,
+    this.pharmacyPhone = '',
     required this.medicationName,
     required this.status,
     required this.expiresAt,

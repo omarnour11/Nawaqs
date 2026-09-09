@@ -29,4 +29,10 @@ public interface IIdentityService
         CancellationToken cancellationToken = default);
 
     Task<(string Role, string Email)> GetRoleAndEmailAsync(Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>Generates a password-reset token (returns null if the account doesn't exist).</summary>
+    Task<string?> GeneratePasswordResetTokenAsync(string email, CancellationToken cancellationToken = default);
+
+    /// <summary>Resets the password using the token. Returns an error message on failure.</summary>
+    Task<string?> ResetPasswordAsync(string email, string resetToken, string newPassword, CancellationToken cancellationToken = default);
 }

@@ -33,3 +33,7 @@ Thumbs.db
 logs/
 appsettings.*.json
 !appsettings.Development.json
+
+# Session artifacts
+screenshots/
+.freebuff/

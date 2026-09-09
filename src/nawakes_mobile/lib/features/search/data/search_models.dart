@@ -14,6 +14,8 @@ class PharmacySearchResultDto {
   final String medicationName;
   final double price;
   final String status;
+  final int quantity;
+  final String? patientNote;
   final DateTime lastUpdatedAt;
   final double latitude;
   final double longitude;
@@ -29,6 +31,8 @@ class PharmacySearchResultDto {
     required this.medicationName,
     required this.price,
     required this.status,
+    required this.quantity,
+    this.patientNote,
     required this.lastUpdatedAt,
     required this.latitude,
     required this.longitude,

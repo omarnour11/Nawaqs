@@ -1,116 +1,106 @@
+import 'dart:async';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
-import 'package:nawakes_mobile/features/search/presentation/search_controller.dart' as sc;
+import 'package:nawakes_mobile/core/network/api_client.dart' show apiClientProvider;
+import 'package:nawakes_mobile/core/ui/widgets.dart';
 import 'package:nawakes_mobile/features/auth/presentation/auth_controller.dart';
+import 'package:nawakes_mobile/features/search/presentation/search_controller.dart' as sc;
 import 'package:nawakes_mobile/features/search/data/search_models.dart';
+import 'package:nawakes_mobile/features/search/presentation/all_results_screen.dart';
+import 'package:nawakes_mobile/features/search/presentation/shortage_sos_card.dart';
+import 'package:nawakes_mobile/features/search/presentation/pharmacy_details_screen.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-// ─── Map Style JSON ──────────────────────────────────────────────────────────
+// ─── Light clinical map style ────────────────────────────────────────────────
 const _kMapStyle = '''
 [
-  {"featureType":"all","elementType":"geometry","stylers":[{"color":"#f5f5f5"}]},
-  {"featureType":"all","elementType":"labels.icon","stylers":[{"visibility":"off"}]},
-  {"featureType":"all","elementType":"labels.text.fill","stylers":[{"color":"#64748b"}]},
-  {"featureType":"all","elementType":"labels.text.stroke","stylers":[{"color":"#ffffff"}]},
-  {"featureType":"administrative","elementType":"geometry","stylers":[{"visibility":"off"}]},
-  {"featureType":"administrative.country","elementType":"labels.text.fill","stylers":[{"color":"#0f172a"}]},
-  {"featureType":"administrative.locality","elementType":"labels.text.fill","stylers":[{"color":"#0f172a"}]},
   {"featureType":"poi","stylers":[{"visibility":"off"}]},
-  {"featureType":"poi.medical","stylers":[{"visibility":"simplified"}]},
-  {"featureType":"poi.medical","elementType":"labels.icon","stylers":[{"color":"#0f766e"},{"visibility":"on"}]},
-  {"featureType":"road","elementType":"geometry","stylers":[{"color":"#ffffff"}]},
-  {"featureType":"road.arterial","elementType":"geometry","stylers":[{"color":"#e2e8f0"}]},
-  {"featureType":"road.highway","elementType":"geometry","stylers":[{"color":"#cbd5e1"}]},
-  {"featureType":"road.highway","elementType":"geometry.stroke","stylers":[{"color":"#94a3b8"}]},
-  {"featureType":"road.local","elementType":"labels.text.fill","stylers":[{"color":"#94a3b8"}]},
   {"featureType":"transit","stylers":[{"visibility":"off"}]},
-  {"featureType":"water","elementType":"geometry","stylers":[{"color":"#bfdbfe"}]},
-  {"featureType":"water","elementType":"labels.text.fill","stylers":[{"color":"#60a5fa"}]}
+  {"featureType":"landscape","elementType":"geometry","stylers":[{"color":"#eef0ee"}]},
+  {"featureType":"water","elementType":"geometry","stylers":[{"color":"#cfe6f5"}]},
+  {"featureType":"road","elementType":"geometry","stylers":[{"color":"#ffffff"}]},
+  {"featureType":"road.arterial","elementType":"geometry","stylers":[{"color":"#f6f2e8"}]},
+  {"featureType":"road.highway","elementType":"geometry","stylers":[{"color":"#f3eedd"}]},
+  {"featureType":"road","elementType":"labels.text.fill","stylers":[{"color":"#8a94a0"}]},
+  {"featureType":"administrative.locality","elementType":"labels.text.fill","stylers":[{"color":"#4b5563"}]}
 ]
 ''';
 
+// ─── Numbered map pins (badge = live unit count, color = availability) ───────
+final Map<String, BitmapDescriptor> _pinCache = {};
 
-// ─── Custom Canvas Marker Builder ────────────────────────────────────────────
-Future<BitmapDescriptor> _buildCanvasMarker({
-  required Color pinColor,
-  required Color crossColor,
-  int size = 96,
-}) async {
+Future<BitmapDescriptor> _buildCountPin({required int count, required bool inStock}) async {
+  final key = '$count|$inStock';
+  if (_pinCache.containsKey(key)) return _pinCache[key]!;
+
   final recorder = ui.PictureRecorder();
   final canvas = Canvas(recorder);
-  final w = size.toDouble();
+  const w = 44.0, h = 56.0;
 
-  // Pin body paint
-  final bodyPaint = Paint()..color = pinColor;
-  final strokePaint = Paint()
-    ..color = Colors.white
-    ..style = PaintingStyle.stroke
-    ..strokeWidth = w * 0.05;
+  final pinColor = inStock ? AppColors.successIcon : AppColors.warningIcon;
 
-  // Shadow
-  final shadowPaint = Paint()
-    ..color = Colors.black.withOpacity(0.18)
-    ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
+  // soft shadow under the tip
+  canvas.drawCircle(
+      const Offset(w / 2, h - 5), 5,
+      Paint()
+        ..color = Colors.black.withValues(alpha: 0.20)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3));
 
-  final pinPath = _buildPinPath(w);
+  // teardrop pin
+  final path = Path()
+    ..addOval(const Rect.fromLTWH(2, 2, w - 4, w - 4))
+    ..moveTo(w * 0.28, w * 0.70)
+    ..quadraticBezierTo(w / 2, h, w / 2, h)
+    ..quadraticBezierTo(w / 2, h, w * 0.72, w * 0.70)
+    ..close();
+  canvas.drawPath(path, Paint()..color = pinColor);
+  canvas.drawPath(
+      path,
+      Paint()
+        ..color = Colors.white
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.5);
 
-  // Draw shadow slightly offset
-  canvas.save();
-  canvas.translate(w * 0.04, w * 0.05);
-  canvas.drawPath(pinPath, shadowPaint);
-  canvas.restore();
-
-  // Draw pin body
-  canvas.drawPath(pinPath, bodyPaint);
-  // White stroke border
-  canvas.drawPath(pinPath, strokePaint);
-
-  // Draw white cross inside circle
-  final cx = w / 2;
-  final cy = w * 0.36;
-  final arm = w * 0.13;
-  final thick = w * 0.075;
-  final crossPaint = Paint()
-    ..color = crossColor
-    ..strokeCap = StrokeCap.round
-    ..strokeWidth = thick
-    ..style = PaintingStyle.stroke;
-  canvas.drawLine(Offset(cx, cy - arm), Offset(cx, cy + arm), crossPaint);
-  canvas.drawLine(Offset(cx - arm, cy), Offset(cx + arm, cy), crossPaint);
+  final tp = TextPainter(
+    text: TextSpan(
+        text: '$count',
+        style: const TextStyle(
+            fontSize: 17, fontWeight: FontWeight.w800, color: Colors.white)),
+    textDirection: TextDirection.ltr,
+  )..layout();
+  tp.paint(canvas, Offset((w - tp.width) / 2, (w - tp.height) / 2 + 1));
 
   final picture = recorder.endRecording();
-  final img = await picture.toImage(size, (size * 1.3).round());
+  final img = await picture.toImage(w.toInt(), h.toInt());
   final bytes = await img.toByteData(format: ui.ImageByteFormat.png);
-  return BitmapDescriptor.bytes(bytes!.buffer.asUint8List());
+  final descriptor = BitmapDescriptor.bytes(bytes!.buffer.asUint8List());
+  _pinCache[key] = descriptor;
+  return descriptor;
 }
 
-Path _buildPinPath(double w) {
-  final path = Path();
-  final r = w * 0.38; // circle radius
-  final cx = w / 2;
-  final cy = w * 0.36;
-  // Circle on top
-  path.addOval(Rect.fromCircle(center: Offset(cx, cy), radius: r));
-  // Teardrop tip pointing down
-  path.moveTo(cx - w * 0.1, cy + r * 0.7);
-  path.quadraticBezierTo(cx, w * 1.15, cx, w * 1.15);
-  path.quadraticBezierTo(cx, w * 1.15, cx + w * 0.1, cy + r * 0.7);
-  path.close();
-  return path;
+String _formatDistance(double km) {
+  if (km <= 0) return 'قريب جدًا';
+  if (km < 1) return '${(km * 1000).round()} متر';
+  return '${km.toStringAsFixed(1)} كم';
 }
 
-// ─── Distance Formatter ─────────────────────────────────────────────────────
-String _formatDistance(double distanceKm) {
-  if (distanceKm <= 0.0) return 'Nearby';
-  if (distanceKm < 1.0) {
-    final meters = (distanceKm * 1000).round();
-    return '$meters m away';
-  }
-  return '${distanceKm.toStringAsFixed(1)} km away';
+String _timeAgo(DateTime utc) {
+  final diff = DateTime.now().toUtc().difference(utc);
+  if (diff.inMinutes < 1) return 'الآن';
+  if (diff.inMinutes < 60) return 'تحديث من ${diff.inMinutes} دقايق';
+  return 'تحديث من ${diff.inHours} ساعة';
+}
+
+/// Availability chip from quantity: 0/unavailable → danger, 1–4 → limited, 5+ → available.
+(ChipTone, String) availabilityOf(PharmacySearchResultDto r) {
+  if (r.status != 'InStock') return (ChipTone.danger, 'غير متاح');
+  final q = r.quantity;
+  if (q <= 4) return (ChipTone.warning, 'محدود · $q وحدة');
+  return (ChipTone.success, 'متاح');
 }
 
 // ─── Main Screen ─────────────────────────────────────────────────────────────
@@ -119,528 +109,514 @@ class SearchScreen extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final searchController = useTextEditingController();
+    final searchCtrl = useTextEditingController();
+    final focusNode = useFocusNode();
     final searchState = ref.watch(sc.searchControllerProvider);
-    final isLocating = useState(false);
     final hasSearched = useState(false);
+    final radius = useState<double>(10.0);
+    final suggestions = useState<List<String>>([]);
 
-    // Map controller & markers
     final mapController = useState<GoogleMapController?>(null);
-    final inStockMarker = useState<BitmapDescriptor?>(null);
-    final outOfStockMarker = useState<BitmapDescriptor?>(null);
+    final markers = useState<Set<Marker>>({});
 
-    // Build canvas markers once
+    // Debounced autocomplete
     useEffect(() {
-      _buildCanvasMarker(pinColor: const Color(0xFF0F766E), crossColor: Colors.white)
-          .then((b) => inStockMarker.value = b);
-      _buildCanvasMarker(pinColor: const Color(0xFFDC2626), crossColor: Colors.white)
-          .then((b) => outOfStockMarker.value = b);
-      return null;
+      Timer? debounce;
+      void onChanged(String text) {
+        debounce?.cancel();
+        if (text.trim().length < 2) {
+          suggestions.value = [];
+          return;
+        }
+        debounce = Timer(const Duration(milliseconds: 350), () async {
+          try {
+            final result =
+                await ref.read(apiClientProvider).suggestMedications(text.trim());
+            suggestions.value = result;
+          } catch (_) {
+            suggestions.value = [];
+          }
+        });
+      }
+
+      searchCtrl.addListener(() => onChanged(searchCtrl.text));
+      return () => debounce?.cancel();
     }, const []);
 
     Future<void> doSearch(String query) async {
       if (query.trim().length < 2) return;
-      isLocating.value = true;
+      focusNode.unfocus();
+      suggestions.value = [];
       hasSearched.value = true;
-      // GPS resolution is now handled inside SearchController.search()
-      ref.read(sc.searchControllerProvider.notifier).search(query.trim()).then((_) {
-        isLocating.value = false;
-      }).catchError((e) {
-        isLocating.value = false;
+      try {
+        await ref.read(sc.searchControllerProvider.notifier)
+            .search(query.trim(), radius: radius.value);
+      } catch (e) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Search error: $e'),
-              backgroundColor: AppColors.danger,
-              behavior: SnackBarBehavior.floating,
-            ),
+            SnackBar(content: Text(describeApiError(e))),
           );
         }
-      });
+      }
     }
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        title: const Text('Find Medications'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.bookmarks_rounded),
-            tooltip: 'My Reservations',
-            onPressed: () => context.push('/my-reservations'),
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout_rounded),
-            tooltip: 'Logout',
-            onPressed: () async {
-              await ref.read(authControllerProvider.notifier).logout();
-              if (context.mounted) context.go('/login');
-            },
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // ── Search bar ──────────────────────────────────────────────────
-          Container(
-            color: AppColors.primary,
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+    // Build numbered pins when results arrive + fit camera
+    ref.listen<AsyncValue<SearchMedicationResponse?>>(
+      sc.searchControllerProvider,
+      (prev, next) {
+        final data = next.value;
+        if (!next.hasValue || data == null || data.results.isEmpty) {
+          markers.value = {};
+          return;
+        }
+
+        Future.wait(data.results.map((r) => _buildCountPin(
+              count: r.status == 'InStock'
+                  ? (r.quantity > 0 ? r.quantity : 1)
+                  : 0,
+              inStock: r.status == 'InStock',
+            ))).then((icons) {
+          final newMarkers = <Marker>{};
+          for (var i = 0; i < data.results.length; i++) {
+            final item = data.results[i];
+            newMarkers.add(Marker(
+              markerId: MarkerId(item.inventoryItemId),
+              position: LatLng(item.latitude, item.longitude),
+              icon: icons[i],
+              anchor: const Offset(0.5, 1.0),
+              onTap: () => context.push('/pharmacy-details',
+                  extra: PharmacyDetailsArgs(item: item)),
+            ));
+          }
+          markers.value = newMarkers;
+
+          if (data.results.length > 1) {
+            final lats = data.results.map((r) => r.latitude);
+            final lngs = data.results.map((r) => r.longitude);
+            mapController.value?.animateCamera(CameraUpdate.newLatLngBounds(
+              LatLngBounds(
+                southwest: LatLng(lats.reduce((a, b) => a < b ? a : b),
+                    lngs.reduce((a, b) => a < b ? a : b)),
+                northeast: LatLng(lats.reduce((a, b) => a > b ? a : b),
+                    lngs.reduce((a, b) => a > b ? a : b)),
               ),
-              child: TextField(
-                controller: searchController,
-                textInputAction: TextInputAction.search,
-                onSubmitted: doSearch,
-                decoration: InputDecoration(
-                  hintText: 'Search medication e.g., Panadol, Amoxicillin',
-                  hintStyle: const TextStyle(fontSize: 14, color: AppColors.textHint),
-                  prefixIcon: isLocating.value
-                      ? const Padding(
-                          padding: EdgeInsets.all(14),
-                          child: SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
-                          ),
-                        )
-                      : const Icon(Icons.search_rounded, color: AppColors.primary),
-                  suffixIcon: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (searchController.text.isNotEmpty)
-                        IconButton(
-                          icon: const Icon(Icons.clear_rounded, color: AppColors.textHint),
-                          onPressed: () {
-                            searchController.clear();
-                            hasSearched.value = false;
-                          },
-                        ),
-                      Padding(
-                        padding: const EdgeInsets.only(right: 4),
-                        child: IconButton(
-                          icon: const Icon(Icons.my_location_rounded, color: AppColors.primary),
-                          tooltip: 'Detect My Location & Search',
-                          onPressed: () => doSearch(searchController.text),
-                        ),
-                      ),
-                    ],
-                  ),
-                  border: InputBorder.none,
-                  enabledBorder: InputBorder.none,
-                  focusedBorder: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                ),
-              ),
-            ),
-          ),
-
-          // ── Results area ────────────────────────────────────────────────
-          Expanded(
-            child: searchState.when(
-              data: (data) {
-                if (!hasSearched.value || data == null) return _IdleState();
-                if (data.results.isEmpty) return _NoResults(query: searchController.text);
-
-                final inIcon = inStockMarker.value ?? BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen);
-                final outIcon = outOfStockMarker.value ?? BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed);
-
-                final markers = data.results.map((item) => Marker(
-                      markerId: MarkerId(item.pharmacyId),
-                      position: LatLng(item.latitude, item.longitude),
-                      icon: item.status == 'InStock' ? inIcon : outIcon,
-                      onTap: () => _showPharmacySheet(context, item),
-                    )).toSet();
-
-                final mapWidget = _BrandedMap(
-                  markers: markers,
-                  initialTarget: LatLng(data.results.first.latitude, data.results.first.longitude),
-                  onControllerReady: (c) => mapController.value = c,
-                );
-
-                final listWidget = RefreshIndicator(
-                  color: AppColors.primary,
-                  onRefresh: () async => doSearch(searchController.text),
-                  child: ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                    itemCount: data.results.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 10),
-                    itemBuilder: (context, i) => _PharmacyResultCard(item: data.results[i]),
-                  ),
-                );
-
-                return LayoutBuilder(
-                  builder: (context, constraints) {
-                    if (constraints.maxWidth > 800) {
-                      return Row(
-                        children: [
-                          Expanded(flex: 4, child: listWidget),
-                          Expanded(flex: 6, child: mapWidget),
-                        ],
-                      );
-                    }
-                    return Column(
-                      children: [
-                        SizedBox(height: 350, width: double.infinity, child: mapWidget),
-                        Expanded(child: listWidget),
-                      ],
-                    );
-                  },
-                );
-              },
-              loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
-              error: (e, _) => Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.error_outline_rounded, color: AppColors.danger, size: 52),
-                      const SizedBox(height: 16),
-                      Text('Search failed', style: Theme.of(context).textTheme.titleMedium),
-                      const SizedBox(height: 8),
-                      Text(e.toString(),
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-                      const SizedBox(height: 24),
-                      ElevatedButton(
-                        onPressed: () => doSearch(searchController.text),
-                        child: const Text('Retry'),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ── In-app modal bottom sheet (no external map links) ──────────────────────
-  void _showPharmacySheet(BuildContext context, PharmacySearchResultDto item) {
-    final inStock = item.status == 'InStock';
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (_) => _PharmacyBottomSheet(item: item),
-    );
-  }
-}
-
-// ─── Branded Google Map Widget ────────────────────────────────────────────────
-class _BrandedMap extends StatelessWidget {
-  final Set<Marker> markers;
-  final LatLng initialTarget;
-  final void Function(GoogleMapController) onControllerReady;
-
-  const _BrandedMap({
-    required this.markers,
-    required this.initialTarget,
-    required this.onControllerReady,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GoogleMap(
-      initialCameraPosition: CameraPosition(target: initialTarget, zoom: 14.0),
-      markers: markers,
-      // ── Fully In-App: disable external toolbar ──
-      mapToolbarEnabled: false,
-      // ── Navigation controls ──
-      zoomControlsEnabled: true,
-      zoomGesturesEnabled: true,
-      scrollGesturesEnabled: true,
-      rotateGesturesEnabled: true,
-      tiltGesturesEnabled: true,
-      // ── Location layer ──
-      myLocationEnabled: true,
-      myLocationButtonEnabled: true,
-      // ── Apply branded style on map creation ──
-      onMapCreated: (controller) {
-        controller.setMapStyle(_kMapStyle);
-        onControllerReady(controller);
+              60,
+            ));
+          } else {
+            final r = data.results.first;
+            mapController.value?.animateCamera(
+              CameraUpdate.newLatLngZoom(LatLng(r.latitude, r.longitude), 14),
+            );
+          }
+        });
       },
     );
-  }
-}
 
-// ─── Pharmacy Modal Bottom Sheet ─────────────────────────────────────────────
-class _PharmacyBottomSheet extends StatelessWidget {
-  final PharmacySearchResultDto item;
-  const _PharmacyBottomSheet({required this.item});
+    final results = searchState.value?.results;
 
-  @override
-  Widget build(BuildContext context) {
-    final inStock = item.status == 'InStock';
-    return Container(
-      margin: const EdgeInsets.fromLTRB(12, 0, 12, 28),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.14),
-            blurRadius: 24,
-            offset: const Offset(0, -4),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Drag handle
-          Padding(
-            padding: const EdgeInsets.only(top: 12, bottom: 8),
-            child: Container(
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.border,
-                borderRadius: BorderRadius.circular(2),
-              ),
+    return Scaffold(
+      backgroundColor: AppColors.page,
+      body: SafeArea(
+        bottom: false,
+        child: ListView(
+          padding: const EdgeInsets.only(bottom: 16),
+          children: [
+            NawaqsTopBar(
+              eyebrow: 'نواقص',
+              title: 'إيجاد دواء',
+              onBell: () => context.push('/notifications'),
             ),
-          ),
+            const ScreenSubtitle('توفر الصيدليات المباشر حوالينك'),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // ── Search pill with blue round action ───────────────────
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.card,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: AppColors.hairline),
+                    ),
+                    padding: const EdgeInsetsDirectional.only(start: 4, end: 5),
+                    child: Row(
+                      children: [
+                        const Padding(
+                          padding: EdgeInsets.all(10),
+                          child: Icon(Icons.search_rounded,
+                              size: 19, color: AppColors.textMuted),
+                        ),
+                        Expanded(
+                          child: TextField(
+                            controller: searchCtrl,
+                            focusNode: focusNode,
+                            textInputAction: TextInputAction.search,
+                            onSubmitted: doSearch,
+                            style: const TextStyle(fontSize: 13.5),
+                            decoration: const InputDecoration(
+                              hintText: 'ابحث عن دواء… مثلاً بانادول',
+                              border: InputBorder.none,
+                              enabledBorder: InputBorder.none,
+                              focusedBorder: InputBorder.none,
+                              filled: false,
+                              contentPadding: EdgeInsets.symmetric(vertical: 12),
+                            ),
+                          ),
+                        ),
+                        if (searchCtrl.text.isNotEmpty)
+                          GestureDetector(
+                            onTap: () {
+                              searchCtrl.clear();
+                              hasSearched.value = false;
+                              suggestions.value = [];
+                              markers.value = {};
+                            },
+                            child: const Padding(
+                              padding: EdgeInsets.all(6),
+                              child: Icon(Icons.close_rounded,
+                                  size: 16, color: AppColors.textMuted),
+                            ),
+                          ),
+                        const SizedBox(width: 6),
+                        Material(
+                          color: AppColors.accentBlue,
+                          shape: const CircleBorder(),
+                          child: InkWell(
+                            customBorder: const CircleBorder(),
+                            onTap: () => doSearch(searchCtrl.text),
+                            child: const SizedBox(
+                              width: 36,
+                              height: 36,
+                              child: Icon(Icons.north_rounded,
+                                  color: Colors.white, size: 18),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
 
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header row
-                Row(
-                  children: [
+                  // Suggestions
+                  if (suggestions.value.isNotEmpty)
                     Container(
-                      width: 52,
-                      height: 52,
+                      margin: const EdgeInsets.only(top: 6),
                       decoration: BoxDecoration(
-                        color: inStock ? AppColors.successSurface : AppColors.dangerSurface,
-                        borderRadius: BorderRadius.circular(14),
+                        color: AppColors.card,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.hairline),
                       ),
-                      child: Icon(
-                        Icons.local_pharmacy_rounded,
-                        color: inStock ? AppColors.success : AppColors.danger,
-                        size: 28,
+                      child: Column(
+                        children: suggestions.value
+                            .map((s) => ListTile(
+                                  dense: true,
+                                  visualDensity: VisualDensity.compact,
+                                  leading: const Icon(Icons.medication_rounded,
+                                      size: 17, color: AppColors.accentBlue),
+                                  title: Text(s,
+                                      style: const TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600)),
+                                  onTap: () {
+                                    searchCtrl.text = s;
+                                    suggestions.value = [];
+                                    doSearch(s);
+                                  },
+                                ))
+                            .toList(),
                       ),
                     ),
-                    const SizedBox(width: 14),
-                    Expanded(
+
+                  const SizedBox(height: 10),
+
+                  // ── Map card ───────────────────────────────────────────────
+                  Container(
+                    height: 210,
+                    clipBehavior: Clip.antiAlias,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppColors.hairline),
+                    ),
+                    child: GoogleMap(
+                      style: _kMapStyle,
+                      initialCameraPosition: const CameraPosition(
+                        target: LatLng(30.0444, 31.2357),
+                        zoom: 12,
+                      ),
+                      markers: markers.value,
+                      mapToolbarEnabled: false,
+                      zoomControlsEnabled: false,
+                      buildingsEnabled: false,
+                      myLocationEnabled: true,
+                      myLocationButtonEnabled: false,
+                      onMapCreated: (c) => mapController.value = c,
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // ── Results card ───────────────────────────────────────────
+                  if (!hasSearched.value)
+                    _IdleCard(
+                      onSample: () {
+                        searchCtrl.text = 'Panadol';
+                        doSearch('Panadol');
+                      },
+                    )
+                  else
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: AppColors.card,
+                        borderRadius: BorderRadius.circular(AppRadius.lg),
+                        border: Border.all(color: AppColors.hairline),
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            item.pharmacyName,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 17,
-                              color: AppColors.textPrimary,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 4),
                           Row(
                             children: [
-                              const Icon(Icons.star_rounded, size: 14, color: AppColors.accent),
-                              const SizedBox(width: 3),
-                              Text(
-                                item.trustScore.toStringAsFixed(1),
-                                style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
-                              ),
-                              const SizedBox(width: 12),
-                              const Icon(Icons.location_on_outlined, size: 14, color: AppColors.textSecondary),
-                              const SizedBox(width: 3),
-                              Text(
-                                _formatDistance(item.distanceKm),
-                                style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                              const Expanded(child: SectionLabel('التوفر القريب')),
+                              _FilterButton(
+                                onTap: () {
+                                  final order = [5.0, 10.0, 20.0];
+                                  radius.value = order[
+                                      (order.indexOf(radius.value) + 1) % order.length];
+                                  if (hasSearched.value) doSearch(searchCtrl.text);
+                                },
+                                label: '${radius.value.round()} كم',
                               ),
                             ],
                           ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 20),
-                const Divider(color: AppColors.border, height: 1),
-                const SizedBox(height: 16),
-
-                // Status + price row
-                Row(
-                  children: [
-                    // Status badge
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: inStock ? AppColors.successSurface : AppColors.dangerSurface,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            inStock ? Icons.check_circle_rounded : Icons.cancel_rounded,
-                            size: 14,
-                            color: inStock ? AppColors.success : AppColors.danger,
-                          ),
-                          const SizedBox(width: 5),
+                          const SizedBox(height: 8),
                           Text(
-                            inStock ? 'In Stock' : 'Out of Stock',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                              color: inStock ? AppColors.success : AppColors.danger,
-                            ),
+                            searchState.isLoading
+                                ? 'جارٍ البحث…'
+                                : (results == null || results.isEmpty)
+                                    ? 'مفيش نتايج'
+                                    : '${results.length} صيدلية موجودة',
+                            style: const TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.w800),
                           ),
+                          const SizedBox(height: 10),
+                          if (searchState.isLoading)
+                            ...List.generate(
+                                2,
+                                (_) => const Padding(
+                                      padding: EdgeInsets.only(bottom: 8),
+                                      child: SizedBox(
+                                          height: 58, child: _SkeletonRow()),
+                                    ))
+                          else if (results == null || results.isEmpty) ...[
+                            const Text(
+                              'جرب اسم دواء تاني أو وسّع نطاق البحث.',
+                              style: TextStyle(
+                                  fontSize: 12.5,
+                                  color: AppColors.textSecondary,
+                                  height: 1.5),
+                            ),
+                            const SizedBox(height: 10),
+                            ShortageSosCard(medicationName: searchCtrl.text.trim()),
+                          ]
+                          else
+                            ...results.take(6).map(
+                                  (r) => Padding(
+                                    padding: const EdgeInsets.only(bottom: 9),
+                                    child: _PharmacyRow(item: r),
+                                  ),
+                                ),
                         ],
                       ),
                     ),
-                    const Spacer(),
-                    // Price
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        const Text('Price', style: TextStyle(fontSize: 11, color: AppColors.textHint)),
-                        Text(
-                          'EGP ${item.price.toStringAsFixed(2)}',
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
 
-                const SizedBox(height: 20),
+                  const SizedBox(height: 10),
 
-                // Reserve button — navigates in-app
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: inStock
-                        ? () {
-                            Navigator.of(context).pop();
-                            context.push('/pharmacy-details', extra: item);
-                          }
-                        : null,
-                    icon: const Icon(Icons.bookmark_add_rounded, size: 18),
-                    label: Text(inStock ? 'Reserve Medication' : 'Unavailable'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      disabledBackgroundColor: AppColors.border,
-                      disabledForegroundColor: AppColors.textHint,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-                    ),
+                  // ── Toggle pills ───────────────────────────────────────────
+                  Row(
+                    children: [
+                      const _TogglePill(label: 'قريب', active: true),
+                      const SizedBox(width: 8),
+                      _TogglePill(
+                        label: 'كل النتايج',
+                        active: false,
+                        onTap: results == null || results.isEmpty
+                            ? null
+                            : () => context.push('/all-results',
+                                extra: AllResultsArgs(
+                                  results: results,
+                                  medicationName: searchCtrl.text.trim(),
+                                )),
+                      ),
+                    ],
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
 
-// ─── Pharmacy List Card ───────────────────────────────────────────────────────
-class _PharmacyResultCard extends StatelessWidget {
-  final PharmacySearchResultDto item;
-  const _PharmacyResultCard({required this.item});
+// ─── Skeleton row ─────────────────────────────────────────────────────────────
+class _SkeletonRow extends StatelessWidget {
+  const _SkeletonRow();
 
   @override
   Widget build(BuildContext context) {
-    final inStock = item.status == 'InStock';
-    return Card(
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F2F4),
+        borderRadius: BorderRadius.circular(12),
+      ),
+    );
+  }
+}
+
+// ─── Filter button ────────────────────────────────────────────────────────────
+class _FilterButton extends StatelessWidget {
+  final VoidCallback onTap;
+  final String? label;
+  const _FilterButton({required this.onTap, this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: AppColors.hairline),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.filter_list_rounded, size: 14, color: AppColors.textSecondary),
+            const SizedBox(width: 5),
+            Text(label ?? 'فلترة',
+                style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textSecondary)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Toggle pill ──────────────────────────────────────────────────────────────
+class _TogglePill extends StatelessWidget {
+  final String label;
+  final bool active;
+  final VoidCallback? onTap;
+
+  const _TogglePill({required this.label, required this.active, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        decoration: BoxDecoration(
+          color: active ? AppColors.accentBlueBg : const Color(0xFFF1F2F4),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Text(label,
+            style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: active ? AppColors.accentBlue : AppColors.textSecondary)),
+      ),
+    );
+  }
+}
+
+// ─── Pharmacy queue row (list-row component from spec) ───────────────────────
+class _PharmacyRow extends StatelessWidget {
+  final PharmacySearchResultDto item;
+  const _PharmacyRow({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    final (tone, label) = availabilityOf(item);
+    final (bg, fg) = switch (tone) {
+      ChipTone.success => (AppColors.successBg, AppColors.successIcon),
+      ChipTone.warning => (AppColors.warningBg, AppColors.warningIcon),
+      ChipTone.danger => (AppColors.dangerBg, AppColors.dangerIcon),
+      ChipTone.neutral => (AppColors.accentBlueBg, AppColors.accentBlue),
+    };
+
+    return Material(
+      color: AppColors.fieldBg,
+      borderRadius: BorderRadius.circular(12),
       child: InkWell(
-        onTap: () => context.push('/pharmacy-details', extra: item),
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => context.push('/pharmacy-details',
+            extra: PharmacyDetailsArgs(item: item)),
+        child: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.hairline),
+          ),
           child: Row(
             children: [
-              Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: inStock ? AppColors.successSurface : AppColors.dangerSurface,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  Icons.local_pharmacy_rounded,
-                  color: inStock ? AppColors.success : AppColors.danger,
-                  size: 26,
-                ),
-              ),
-              const SizedBox(width: 14),
+              IconTile(Icons.storefront_outlined, bg: bg, color: fg),
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(item.pharmacyName,
-                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-                    const SizedBox(height: 4),
+                        style: const TextStyle(
+                            fontSize: 14, fontWeight: FontWeight.w700),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis),
+                    const SizedBox(height: 2),
+                    Text(
+                        '${item.addressLine} · ${_timeAgo(item.lastUpdatedAt)}',
+                        style: const TextStyle(
+                            fontSize: 12, color: AppColors.textSecondary),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis),
+                    const SizedBox(height: 5),
                     Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.location_on_outlined, size: 13, color: AppColors.textSecondary),
-                        const SizedBox(width: 3),
-                        Text(_formatDistance(item.distanceKm),
-                            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                        const SizedBox(width: 10),
-                        const Icon(Icons.star_rounded, size: 13, color: AppColors.accent),
-                        const SizedBox(width: 3),
-                        Text(item.trustScore.toStringAsFixed(1),
-                            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: inStock ? AppColors.successSurface : AppColors.dangerSurface,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            inStock ? '✓ In Stock' : '✕ Out of Stock',
+                        Container(width: 6, height: 6, decoration: BoxDecoration(color: fg, shape: BoxShape.circle)),
+                        const SizedBox(width: 5),
+                        Text(label,
                             style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: inStock ? AppColors.success : AppColors.danger,
-                            ),
-                          ),
-                        ),
-                        const Spacer(),
-                        Text(
-                          'EGP ${item.price.toStringAsFixed(2)}',
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w800, fontSize: 15, color: AppColors.primary),
-                        ),
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w700,
+                                color: fg)),
                       ],
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
-              const Icon(Icons.chevron_right_rounded, color: AppColors.textHint),
+              const SizedBox(width: 6),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(_formatDistance(item.distanceKm),
+                      style: const TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary)),
+                  const SizedBox(height: 4),
+                  Text('EGP ${item.price.toStringAsFixed(0)}',
+                      style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.accentBlue)),
+                ],
+              ),
             ],
           ),
         ),
@@ -649,81 +625,44 @@ class _PharmacyResultCard extends StatelessWidget {
   }
 }
 
-// ─── Idle State ───────────────────────────────────────────────────────────────
-class _IdleState extends StatelessWidget {
+// ─── Idle card ────────────────────────────────────────────────────────────────
+class _IdleCard extends StatelessWidget {
+  final VoidCallback onSample;
+  const _IdleCard({required this.onSample});
+
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(32),
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: AppColors.hairline),
+      ),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 100,
-            height: 100,
-            decoration: const BoxDecoration(color: AppColors.primarySurface, shape: BoxShape.circle),
-            child: const Icon(Icons.search_rounded, color: AppColors.primary, size: 48),
-          ),
-          const SizedBox(height: 24),
-          Text('Find Your Medication',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: AppColors.textPrimary)),
-          const SizedBox(height: 12),
+          const SectionLabel('التوفر القريب'),
+          const SizedBox(height: 6),
+          const Text('ابحث عن دواء وشوف مين متوفر دلوقتي',
+              style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 6),
           const Text(
-            "Search for any medication and we'll show you the nearest pharmacies with real-time stock availability.",
-            textAlign: TextAlign.center,
-            style: TextStyle(color: AppColors.textSecondary, height: 1.6, fontSize: 14),
+            'اكتب اسم الدواء، شوف أقرب صيدلية عندها مخزون حقيقي، واحجز تصريح استلام مدته ساعتين.',
+            style: TextStyle(
+                fontSize: 12.5, color: AppColors.textSecondary, height: 1.55),
           ),
-          const SizedBox(height: 24),
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: AppColors.accentLight,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.accent.withOpacity(0.3)),
-            ),
-            child: const Row(
-              children: [
-                Icon(Icons.my_location_rounded, color: AppColors.accentDark, size: 18),
-                SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Tap the location icon to detect your GPS position and search nearby.',
-                    style: TextStyle(fontSize: 13, color: AppColors.accentDark, height: 1.4),
-                  ),
-                ),
-              ],
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+            onPressed: onSample,
+            icon: const Icon(Icons.search_rounded, size: 16),
+            label: const Text('جرب: Panadol'),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size(0, 38),
+              side: const BorderSide(color: AppColors.hairline),
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-// ─── No Results ───────────────────────────────────────────────────────────────
-class _NoResults extends StatelessWidget {
-  final String query;
-  const _NoResults({required this.query});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.search_off_rounded, size: 72, color: AppColors.textHint),
-            const SizedBox(height: 16),
-            Text('No results for "$query"', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
-            const Text(
-              'No nearby pharmacies have this medication in stock. Try a different name or expand your search radius.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.textSecondary, height: 1.5),
-            ),
-          ],
-        ),
       ),
     );
   }

@@ -13,6 +13,8 @@ public sealed record PharmacySearchResultDto
     public string MedicationName { get; init; } = string.Empty;
     public decimal Price { get; init; }
     public string Status { get; init; } = string.Empty;
+    public int Quantity { get; init; }
+    public string? PatientNote { get; init; }
     public DateTime LastUpdatedAt { get; init; }
     public double Latitude { get; init; }
     public double Longitude { get; init; }

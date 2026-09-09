@@ -19,6 +19,20 @@ class PharmacyReservationsController extends _$PharmacyReservationsController {
     // Also invalidate inventory since complete changes status to OutOfStock
     ref.invalidate(pharmacyInventoryControllerProvider);
   }
+
+  Future<void> markReady(String id) async {
+    final client = ref.read(apiClientProvider);
+    await client.markReservationReady(id);
+    ref.invalidateSelf();
+  }
+
+  Future<void> cancelReservation(String id, String? reason) async {
+    final client = ref.read(apiClientProvider);
+    await client.cancelReservationByPharmacy(
+        id, CancelByPharmacyRequest(reason: reason));
+    ref.invalidateSelf();
+    ref.invalidate(pharmacyInventoryControllerProvider);
+  }
 }
 
 @riverpod
@@ -41,13 +55,17 @@ class PharmacyInventoryController extends _$PharmacyInventoryController {
     ref.invalidateSelf();
   }
 
-  Future<void> addItem(String name, double price) async {
+  Future<void> addItem(String name, double price,
+      {int? quantity, String? note}) async {
     final client = ref.read(apiClientProvider);
+    final qty = quantity ?? 10;
     await client.addInventoryItem(
       AddInventoryItemRequest(
         medicationName: name,
         price: price,
-        status: 0, // InStock by default
+        status: qty == 0 ? 1 : 0, // 0=InStock, 1=OutOfStock
+        quantity: qty,
+        patientNote: note,
       ),
     );
     ref.invalidateSelf();

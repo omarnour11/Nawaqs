@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Nawakes.Application.Common.Exceptions;
 using Nawakes.Application.Common.Interfaces;
 using Nawakes.Application.Reservations.Dtos;
+using Nawakes.Domain.Entities;
 using Nawakes.Domain.Enums;
 
 namespace Nawakes.Application.Pharmacy.Commands.CompleteReservation;
@@ -42,6 +43,15 @@ public sealed class CompleteReservationCommandHandler(
         reservation.Status = ReservationStatus.Completed;
         reservation.CompletedAt = DateTime.UtcNow;
         reservation.InventoryItem.Status = InventoryStatus.OutOfStock;
+
+        context.Notifications.Add(new UserNotification
+        {
+            UserId = reservation.UserId,
+            Type = NotificationType.ReservationCompleted,
+            Title = "Pickup Complete ✓",
+            Body = $"Your reservation for {reservation.InventoryItem.MedicationName} at {reservation.Pharmacy.Name} has been picked up. Rate your experience!",
+            RelatedEntityId = reservation.Id
+        });
 
         await context.SaveChangesAsync(cancellationToken);
 

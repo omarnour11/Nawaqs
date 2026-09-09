@@ -15,6 +15,13 @@ public interface IApplicationDbContext
     DbSet<Subscription> Subscriptions { get; }
     DbSet<Report> Reports { get; }
     DbSet<RefreshToken> RefreshTokens { get; }
+    DbSet<UserNotification> Notifications { get; }
+    DbSet<PharmacyRating> Ratings { get; }
+    DbSet<FavoritePharmacy> Favorites { get; }
+    DbSet<SupportTicket> SupportTickets { get; }
+    DbSet<PatientMedication> PatientMedications { get; }
+    DbSet<ShortageRequest> ShortageRequests { get; }
+    DbSet<TicketMessage> TicketMessages { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

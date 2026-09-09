@@ -55,6 +55,16 @@ public sealed class ReservationExpiryJob(
             reservation.Status = ReservationStatus.Expired;
             reservation.InventoryItem.Status = InventoryStatus.InStock;
 
+            // Durable in-app record (FCM push below is best-effort)
+            context.Notifications.Add(new Nawakes.Domain.Entities.UserNotification
+            {
+                UserId = reservation.UserId,
+                Type = Nawakes.Domain.Enums.NotificationType.ReservationExpired,
+                Title = "Reservation Expired",
+                Body = $"Your hold on {reservation.InventoryItem.MedicationName} has expired. The item is back in stock.",
+                RelatedEntityId = reservation.Id
+            });
+
             await context.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
 

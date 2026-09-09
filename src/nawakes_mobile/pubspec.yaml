@@ -7,6 +7,10 @@ environment:
   sdk: ^3.11.4
 
 dependencies:
+  flutter_localizations:
+    sdk: flutter
+  qr_flutter: ^4.1.0
+  mobile_scanner: ^5.2.3
   dio: ^5.9.2
   flutter:
     sdk: flutter
@@ -36,5 +40,9 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  fonts:
+    - family: Cairo
+      fonts:
+        - asset: assets/fonts/Cairo-Variable.ttf
   assets:
     - assets/icons/

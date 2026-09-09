@@ -3,10 +3,15 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
+import 'package:nawakes_mobile/core/network/api_client.dart';
+import 'package:nawakes_mobile/core/ui/widgets.dart';
 import 'package:nawakes_mobile/features/auth/presentation/auth_controller.dart';
 import 'package:nawakes_mobile/features/profile/data/profile_models.dart';
 import 'package:nawakes_mobile/features/profile/presentation/profile_controller.dart';
+import 'package:nawakes_mobile/features/profile/presentation/medications_section.dart';
+import 'package:nawakes_mobile/features/favorites/data/favorite_models.dart';
 
+/// الحساب — profile + medical record (chronic conditions, allergies, notes).
 class ProfileScreen extends HookConsumerWidget {
   const ProfileScreen({super.key});
 
@@ -15,60 +20,34 @@ class ProfileScreen extends HookConsumerWidget {
     final profileState = ref.watch(profileControllerProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('My Profile'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded),
-          onPressed: () => context.pop(),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout_rounded),
-            tooltip: 'Logout',
-            onPressed: () async {
-              final confirmed = await _confirmLogout(context);
-              if (confirmed && context.mounted) {
-                await ref.read(authControllerProvider.notifier).logout();
-                if (context.mounted) context.go('/login');
-              }
-            },
+      backgroundColor: AppColors.page,
+      body: SafeArea(
+        bottom: false,
+        child: profileState.when(
+          loading: () => const Center(
+              child: CircularProgressIndicator(color: AppColors.accentBlue)),
+          error: (e, _) => Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('تعذر تحميل الحساب',
+                    style: TextStyle(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 12),
+                ElevatedButton(
+                  onPressed: () => ref.invalidate(profileControllerProvider),
+                  child: const Text('إعادة المحاولة'),
+                ),
+              ],
+            ),
           ),
-        ],
-      ),
-      body: profileState.when(
-        loading: () => const _ProfileShimmer(),
-        error: (e, _) => _ErrorView(
-          message: e.toString(),
-          onRetry: () => ref.invalidate(profileControllerProvider),
+          data: (profile) => RefreshIndicator(
+            color: AppColors.accentBlue,
+            onRefresh: () async => ref.invalidate(profileControllerProvider),
+            child: _ProfileBody(profile: profile),
+          ),
         ),
-        data: (profile) => _ProfileBody(profile: profile),
       ),
     );
-  }
-
-  Future<bool> _confirmLogout(BuildContext context) async {
-    return await showDialog<bool>(
-          context: context,
-          builder: (_) => AlertDialog(
-            title: const Text('Sign out?'),
-            content: const Text('You will be returned to the login screen.'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel'),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context, true),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.danger,
-                ),
-                child: const Text('Sign Out'),
-              ),
-            ],
-          ),
-        ) ??
-        false;
   }
 }
 
@@ -78,689 +57,477 @@ class _ProfileBody extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isEditing = useState(false);
-    final isSaving = useState(false);
+    final editing = useState(false);
+    final saving = useState(false);
     final nameCtrl = useTextEditingController(text: profile.fullName ?? '');
     final phoneCtrl = useTextEditingController(text: profile.phone ?? '');
-    final notesCtrl = useTextEditingController(
-      text: profile.medicalHistoryNotes ?? '',
-    );
-    final formKey = useMemoized(GlobalKey<FormState>.new);
+    final notesCtrl =
+        useTextEditingController(text: profile.medicalHistoryNotes ?? '');
 
-    void resetFields() {
-      nameCtrl.text = profile.fullName ?? '';
-      phoneCtrl.text = profile.phone ?? '';
-      notesCtrl.text = profile.medicalHistoryNotes ?? '';
-    }
+    // Structured health lists (parsed from the encrypted questionnaire stored
+    // at registration; profile notes act as the editable source).
+    final conditions = useState<List<String>>(
+        _parseList(profile.medicalHistoryNotes, 'أمراض:'));
+    final allergies =
+        useState<List<String>>(_parseList(profile.medicalHistoryNotes, 'حساسية:'));
+
+    final newConditionCtrl = useTextEditingController();
+    final newAllergyCtrl = useTextEditingController();
 
     Future<void> save() async {
-      if (!formKey.currentState!.validate()) return;
-      isSaving.value = true;
+      saving.value = true;
       try {
-        await ref
-            .read(profileControllerProvider.notifier)
-            .updateProfile(
-              fullName: nameCtrl.text.trim().isEmpty
-                  ? null
-                  : nameCtrl.text.trim(),
-              phone: phoneCtrl.text.trim().isEmpty
-                  ? null
-                  : phoneCtrl.text.trim(),
-              medicalHistoryNotes: notesCtrl.text.trim().isEmpty
-                  ? null
-                  : notesCtrl.text.trim(),
+        // Compose notes = structured lists + free text
+        final buf = StringBuffer();
+        if (conditions.value.isNotEmpty) buf.writeln('أمراض: ${conditions.value.join('، ')}');
+        if (allergies.value.isNotEmpty) buf.writeln('حساسية: ${allergies.value.join('، ')}');
+        if (notesCtrl.text.trim().isNotEmpty) buf.write(notesCtrl.text.trim());
+
+        await ref.read(profileControllerProvider.notifier).updateProfile(
+              fullName: nameCtrl.text.trim().isEmpty ? null : nameCtrl.text.trim(),
+              phone: phoneCtrl.text.trim().isEmpty ? null : phoneCtrl.text.trim(),
+              medicalHistoryNotes: buf.toString().trim(),
             );
-        isEditing.value = false;
+        editing.value = false;
+        // Re-parse from the saved notes so chips reflect exactly what's stored
+        conditions.value = _parseList(profile.medicalHistoryNotes, 'أمراض:');
+        allergies.value = _parseList(profile.medicalHistoryNotes, 'حساسية:');
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Row(
-                children: [
-                  Icon(
-                    Icons.check_circle_rounded,
-                    color: Colors.white,
-                    size: 18,
-                  ),
-                  SizedBox(width: 10),
-                  Text('Profile updated!'),
-                ],
-              ),
-              backgroundColor: AppColors.success,
-              behavior: SnackBarBehavior.floating,
-            ),
+            const SnackBar(content: Text('التغييرات اتحفظت.')),
           );
         }
       } catch (e) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Save failed: $e'),
-              backgroundColor: AppColors.danger,
-              behavior: SnackBarBehavior.floating,
-            ),
+            SnackBar(content: Text(describeApiError(e))),
           );
         }
       } finally {
-        isSaving.value = false;
+        saving.value = false;
       }
     }
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 36),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 700),
-          child: Form(
-            key: formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _ProfileHeader(
-                  email: profile.email,
-                  fullName: profile.fullName,
-                  isEditing: isEditing.value,
-                  onEdit: () => isEditing.value = true,
-                ),
-                const SizedBox(height: 66),
-                _ProfileCard(
-                  title: 'Account',
-                  icon: Icons.verified_user_outlined,
-                  children: [
-                    _ReadOnlyTile(
-                      icon: Icons.email_outlined,
-                      label: 'Email address',
-                      value: profile.email,
-                    ),
-                    const SizedBox(height: 12),
-                    _ReadOnlyTile(
-                      icon: Icons.calendar_today_outlined,
-                      label: 'Member since',
-                      value: _formatDate(profile.createdAt),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                _ProfileCard(
-                  title: 'Personal',
-                  icon: Icons.person_outline_rounded,
-                  children: [
-                    _ProfileField(
-                      controller: nameCtrl,
-                      label: 'Full name',
-                      icon: Icons.badge_outlined,
-                      hint: 'e.g. Omar Nour',
-                      enabled: isEditing.value,
-                      maxLength: 150,
-                      validator: (v) => null,
-                    ),
-                    const SizedBox(height: 14),
-                    _ProfileField(
-                      controller: phoneCtrl,
-                      label: 'Phone number',
-                      icon: Icons.phone_outlined,
-                      hint: 'e.g. 01012345678',
-                      enabled: isEditing.value,
-                      keyboardType: TextInputType.phone,
-                      maxLength: 20,
-                      validator: (v) {
-                        if (v != null && v.isNotEmpty && v.length < 7) {
-                          return 'Enter a valid phone number';
-                        }
-                        return null;
-                      },
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                _ProfileCard(
-                  title: 'Medical Notes',
-                  icon: Icons.medical_information_outlined,
-                  subtitle:
-                      'Optional details pharmacists should know before preparing your order.',
-                  children: [
-                    _ProfileField(
-                      controller: notesCtrl,
-                      label: 'Notes',
-                      icon: Icons.notes_rounded,
-                      hint: 'e.g. Allergic to penicillin, diabetic...',
-                      enabled: isEditing.value,
-                      maxLines: 4,
-                      maxLength: 2000,
-                      validator: (v) => null,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                _ProfileActions(
-                  isEditing: isEditing.value,
-                  isSaving: isSaving.value,
-                  onEdit: () => isEditing.value = true,
-                  onCancel: () {
-                    isEditing.value = false;
-                    resetFields();
-                  },
-                  onSave: save,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  String _formatDate(DateTime dt) {
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    return '${months[dt.month - 1]} ${dt.day}, ${dt.year}';
-  }
-}
-
-class _ProfileHeader extends StatelessWidget {
-  final String email;
-  final String? fullName;
-  final bool isEditing;
-  final VoidCallback onEdit;
-
-  const _ProfileHeader({
-    required this.email,
-    required this.fullName,
-    required this.isEditing,
-    required this.onEdit,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final displayName = fullName?.trim().isNotEmpty == true
-        ? fullName!.trim()
-        : 'Patient';
-    final initial = displayName.substring(0, 1).toUpperCase();
-
-    return Stack(
-      clipBehavior: Clip.none,
-      alignment: Alignment.bottomCenter,
+    return ListView(
+      padding: const EdgeInsets.only(bottom: 24),
       children: [
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.fromLTRB(24, 24, 24, 70),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(28),
-            gradient: const LinearGradient(
-              colors: [
-                AppColors.primaryDark,
-                AppColors.primary,
-                AppColors.primaryLight,
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+        NawaqsTopBar(
+          eyebrow: 'نواقص / الحساب',
+          title: 'الملف الطبي',
+          showBell: true,
+          onBell: () => context.push('/notifications'),
+          extraActions: [
+            TextButton(
+              onPressed: () => editing.value = !editing.value,
+              child: Text(editing.value ? 'إلغاء' : 'تعديل'),
             ),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.primary.withValues(alpha: 0.22),
-                blurRadius: 28,
-                offset: const Offset(0, 18),
-              ),
-            ],
-          ),
-          child: Column(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 7,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.16),
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.20),
-                  ),
-                ),
-                child: const Text(
-                  'Patient account',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 14),
-              Text(
-                displayName,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                email,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.82),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
+          ],
         ),
-        Positioned(
-          bottom: -48,
-          child: Stack(
-            clipBehavior: Clip.none,
+        const ScreenSubtitle('حافظ على تحديثه عشان الصيدلي يقدر يخدمك بأمان'),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // ── Identity card ───────────────────────────────────────────
               Container(
-                width: 104,
-                height: 104,
-                padding: const EdgeInsets.all(5),
+                padding: const EdgeInsets.all(15),
                 decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white,
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primaryDark.withValues(alpha: 0.22),
-                      blurRadius: 24,
-                      offset: const Offset(0, 12),
+                  color: AppColors.card,
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  border: Border.all(color: AppColors.hairline),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 42,
+                      height: 42,
+                      decoration: const BoxDecoration(
+                        color: AppColors.accentBlueBg,
+                        shape: BoxShape.circle,
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        (profile.fullName?.isNotEmpty == true)
+                            ? profile.fullName!.trim().substring(0, 1)
+                            : 'م',
+                        style: const TextStyle(
+                            color: AppColors.accentBlue,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 14),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: editing.value
+                          ? TextField(
+                              controller: nameCtrl,
+                              decoration: const InputDecoration(
+                                hintText: 'الاسم بالكامل',
+                              ),
+                            )
+                          : Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(profile.fullName ?? 'مستخدم نواقص',
+                                    style: const TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w800)),
+                                const SizedBox(height: 2),
+                                Text(profile.email,
+                                    style: const TextStyle(
+                                        fontSize: 12.5,
+                                        color: AppColors.textSecondary)),
+                              ],
+                            ),
                     ),
                   ],
                 ),
-                child: Container(
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      colors: [AppColors.primary, AppColors.primaryLight],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                  ),
-                  child: Center(
-                    child: Text(
-                      initial,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 40,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                ),
               ),
-              Positioned(
-                right: -2,
-                bottom: 4,
-                child: Tooltip(
-                  message: isEditing ? 'Editing enabled' : 'Edit profile',
-                  child: Material(
-                    color: isEditing ? AppColors.primaryDark : Colors.white,
-                    shape: const CircleBorder(),
-                    elevation: 6,
-                    shadowColor: AppColors.primaryDark.withValues(alpha: 0.25),
-                    child: InkWell(
-                      customBorder: const CircleBorder(),
-                      onTap: isEditing ? null : onEdit,
-                      child: SizedBox(
-                        width: 38,
-                        height: 38,
-                        child: Icon(
-                          isEditing ? Icons.check_rounded : Icons.edit_rounded,
-                          color: isEditing ? Colors.white : AppColors.primary,
-                          size: 19,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
+              const SizedBox(height: 12),
+
+              // ── Chronic conditions ──────────────────────────────────────
+              _ChipsCard(
+                sectionLabel: 'الأمراض المزمنة',
+                chips: conditions.value
+                    .map((c) => _removableChip(c, ChipTone.danger,
+                        () => conditions.value = [...conditions.value]..remove(c),
+                        enabled: editing.value))
+                    .toList(),
+                onAdd: editing.value
+                    ? () => _addDialog(context, 'أمراض مزمنة', newConditionCtrl,
+                        (v) => conditions.value = [...conditions.value, v])
+                    : null,
+                emptyText: 'مفيش أمراض مزمنة مسجلة',
               ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
+              const SizedBox(height: 12),
 
-class _ProfileCard extends StatelessWidget {
-  final String title;
-  final IconData icon;
-  final String? subtitle;
-  final List<Widget> children;
+              // ── Allergies ───────────────────────────────────────────────
+              _ChipsCard(
+                sectionLabel: 'الحساسية',
+                chips: allergies.value
+                    .map((a) => _removableChip(a, ChipTone.warning,
+                        () => allergies.value = [...allergies.value]..remove(a),
+                        enabled: editing.value))
+                    .toList(),
+                onAdd: editing.value
+                    ? () => _addDialog(
+                        context, 'حساسية', newAllergyCtrl,
+                        (v) => allergies.value = [...allergies.value, v])
+                    : null,
+                emptyText: 'مفيش حساسية مسجلة',
+              ),
+              const SizedBox(height: 12),
 
-  const _ProfileCard({
-    required this.title,
-    required this.icon,
-    required this.children,
-    this.subtitle,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border.withValues(alpha: 0.65)),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF0F172A).withValues(alpha: 0.06),
-            blurRadius: 22,
-            offset: const Offset(0, 12),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
+              // ── Account details ─────────────────────────────────────────
               Container(
-                width: 38,
-                height: 38,
+                padding: const EdgeInsets.all(15),
                 decoration: BoxDecoration(
-                  color: AppColors.primarySurface.withValues(alpha: 0.72),
-                  borderRadius: BorderRadius.circular(12),
+                  color: AppColors.card,
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  border: Border.all(color: AppColors.hairline),
                 ),
-                child: Icon(icon, color: AppColors.primary, size: 20),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
+                    const SectionLabel('بيانات التواصل'),
+                    const SizedBox(height: 10),
+                    if (editing.value) ...[
+                      TextField(
+                        controller: phoneCtrl,
+                        keyboardType: TextInputType.phone,
+                        decoration:
+                            const InputDecoration(hintText: 'رقم الموبايل'),
                       ),
-                    ),
-                    if (subtitle != null) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        subtitle!,
-                        style: const TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 12,
-                          height: 1.35,
-                        ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: notesCtrl,
+                        maxLines: 3,
+                        decoration: const InputDecoration(
+                            hintText: 'ملاحظات طبية إضافية'),
                       ),
+                    ] else ...[
+                      InfoCell(label: 'الموبايل', value: profile.phone ?? '—'),
+                      const SizedBox(height: 8),
+                      InfoCell(label: 'ملاحظات طبية', value: profile.medicalHistoryNotes ?? '—'),
                     ],
                   ],
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 18),
-          ...children,
-        ],
-      ),
-    );
-  }
-}
+              const SizedBox(height: 12),
 
-class _ReadOnlyTile extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
+              // ── Current medications (الأدوية الحالية) ───────────────────
+              const MyMedicationsSection(),
+              const SizedBox(height: 12),
 
-  const _ReadOnlyTile({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceVariant.withValues(alpha: 0.72),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border.withValues(alpha: 0.7)),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 19, color: AppColors.primary),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textHint,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  value,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ProfileField extends StatelessWidget {
-  final TextEditingController controller;
-  final String label;
-  final IconData icon;
-  final String hint;
-  final bool enabled;
-  final int maxLines;
-  final int? maxLength;
-  final TextInputType keyboardType;
-  final String? Function(String?)? validator;
-
-  const _ProfileField({
-    required this.controller,
-    required this.label,
-    required this.icon,
-    required this.hint,
-    required this.enabled,
-    this.maxLines = 1,
-    this.maxLength,
-    this.keyboardType = TextInputType.text,
-    this.validator,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final fillColor = enabled ? AppColors.background : AppColors.surfaceVariant;
-
-    return TextFormField(
-      controller: controller,
-      enabled: enabled,
-      maxLines: maxLines,
-      maxLength: maxLength,
-      keyboardType: keyboardType,
-      validator: validator,
-      style: TextStyle(
-        color: enabled ? AppColors.textPrimary : AppColors.textSecondary,
-        fontWeight: FontWeight.w600,
-      ),
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        prefixIcon: Icon(
-          icon,
-          size: 20,
-          color: enabled ? AppColors.primary : AppColors.textHint,
-        ),
-        filled: true,
-        fillColor: fillColor,
-        counterText: '',
-        floatingLabelStyle: const TextStyle(
-          color: AppColors.primary,
-          fontWeight: FontWeight.w700,
-        ),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 16,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide.none,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide.none,
-        ),
-        disabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide.none,
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppColors.primary, width: 1.4),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppColors.danger, width: 1.2),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppColors.danger, width: 1.4),
-        ),
-      ),
-    );
-  }
-}
-
-class _ProfileActions extends StatelessWidget {
-  final bool isEditing;
-  final bool isSaving;
-  final VoidCallback onEdit;
-  final VoidCallback onCancel;
-  final VoidCallback onSave;
-
-  const _ProfileActions({
-    required this.isEditing,
-    required this.isSaving,
-    required this.onEdit,
-    required this.onCancel,
-    required this.onSave,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (!isEditing) {
-      return const SizedBox.shrink();
-    }
-
-    return Row(
-      children: [
-        Expanded(
-          child: OutlinedButton(
-            onPressed: isSaving ? null : onCancel,
-            style: OutlinedButton.styleFrom(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(999),
+              // ── Quick links ─────────────────────────────────────────────
+              _LinkCard(
+                icon: Icons.favorite_border_rounded,
+                label: 'الصيدليات المفضلة',
+                onTap: () => _showFavorites(context, ref),
               ),
-            ),
-            child: const Text('Cancel'),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: FilledButton.icon(
-            onPressed: isSaving ? null : onSave,
-            icon: isSaving
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
+              const SizedBox(height: 8),
+              _LinkCard(
+                icon: Icons.notifications_none_rounded,
+                label: 'الإشعارات',
+                onTap: () => context.push('/notifications'),
+              ),
+              const SizedBox(height: 8),
+              _LinkCard(
+                icon: Icons.notifications_active_outlined,
+                label: 'تنبيهات التوفر',
+                onTap: () => context.push('/alerts'),
+              ),
+              const SizedBox(height: 16),
+
+              if (editing.value)
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: saving.value ? null : save,
+                    style: FilledButton.styleFrom(
+                      backgroundColor:
+                          AppColors.brand900, // dark teal "save changes" per mockup
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(13)),
                     ),
-                  )
-                : const Icon(Icons.save_rounded, size: 18),
-            label: Text(isSaving ? 'Saving...' : 'Save changes'),
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(999),
-              ),
-            ),
+                    child: saving.value
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.white))
+                        : const Text('حفظ التغييرات'),
+                  ),
+                )
+              else
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    await ref.read(authControllerProvider.notifier).logout();
+                    if (context.mounted) context.go('/login');
+                  },
+                  icon: const Icon(Icons.logout_rounded, size: 18),
+                  label: const Text('تسجيل الخروج'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.dangerText,
+                    side: const BorderSide(color: AppColors.dangerBg, width: 1.2),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(13)),
+                  ),
+                ),
+            ],
           ),
         ),
       ],
     );
   }
+
+  static List<String> _parseList(String? notes, String key) {
+    if (notes == null) return [];
+    for (final line in notes.split('\n')) {
+      if (line.trim().startsWith(key)) {
+        return line
+            .substring(key.length)
+            .split('،')
+            .map((e) => e.trim())
+            .where((e) => e.isNotEmpty)
+            .toList();
+      }
+    }
+    return [];
+  }
+
+  void _addDialog(BuildContext context, String title, TextEditingController ctrl,
+      ValueChanged<String> onAdd) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) => AlertDialog(
+        title: Row(
+          children: [
+            Expanded(child: Text('إضافة $title')),
+            IconButton(
+              icon: const Icon(Icons.close_rounded, size: 20),
+              onPressed: () => Navigator.pop(dialogContext),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: ctrl,
+              autofocus: true,
+              textInputAction: TextInputAction.done,
+              onSubmitted: (v) {
+                if (v.trim().isNotEmpty) {
+                  onAdd(v.trim());
+                  Navigator.pop(dialogContext);
+                }
+              },
+              decoration: const InputDecoration(hintText: 'اكتب الاسم'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+              onPressed: () {
+                ctrl.clear();
+                Navigator.pop(dialogContext);
+              },
+              child: const Text('إلغاء')),
+          FilledButton(
+            onPressed: () {
+              if (ctrl.text.trim().isNotEmpty) {
+                onAdd(ctrl.text.trim());
+                ctrl.clear();
+              }
+              Navigator.pop(dialogContext);
+            },
+            child: const Text('إضافة'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showFavorites(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.55,
+        maxChildSize: 0.9,
+        minChildSize: 0.4,
+        expand: false,
+        builder: (_, controller) => _FavoritesSheet(scrollController: controller),
+      ),
+    );
+  }
 }
 
-class _ProfileShimmer extends StatelessWidget {
-  const _ProfileShimmer();
+Widget _removableChip(String label, ChipTone tone, VoidCallback onRemove,
+    {required bool enabled}) {
+  final (bg, fg) = switch (tone) {
+    ChipTone.danger => (AppColors.dangerBg, AppColors.dangerText),
+    ChipTone.warning => (AppColors.warningBg, AppColors.warningText),
+    ChipTone.success => (AppColors.successBg, AppColors.successText),
+    ChipTone.neutral => (AppColors.accentBlueBg, AppColors.accentBlue),
+  };
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+    decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(999)),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(label,
+            style: TextStyle(
+                fontSize: 12, fontWeight: FontWeight.w700, color: fg)),
+        if (enabled) ...[
+          const SizedBox(width: 6),
+          GestureDetector(
+            onTap: onRemove,
+            child: Icon(Icons.close_rounded, size: 14, color: fg),
+          ),
+        ],
+      ],
+    ),
+  );
+}
+
+class _ChipsCard extends StatelessWidget {
+  final String sectionLabel;
+  final List<Widget> chips;
+  final VoidCallback? onAdd;
+  final String emptyText;
+
+  const _ChipsCard({
+    required this.sectionLabel,
+    required this.chips,
+    this.onAdd,
+    required this.emptyText,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 36),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 700),
-          child: Column(
-            children: [
-              Container(
-                height: 218,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(28),
-                  color: AppColors.primarySurface,
-                ),
-              ),
-              const SizedBox(height: 66),
-              ...List.generate(
-                3,
-                (i) => Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: Container(
-                    height: i == 2 ? 182 : 152,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(
-                            0xFF0F172A,
-                          ).withValues(alpha: 0.05),
-                          blurRadius: 20,
-                          offset: const Offset(0, 10),
-                        ),
-                      ],
+    return Container(
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: AppColors.hairline),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SectionLabel(sectionLabel),
+          const SizedBox(height: 10),
+          if (chips.isEmpty && onAdd == null)
+            Text(emptyText,
+                style: const TextStyle(
+                    fontSize: 12.5, color: AppColors.textSecondary))
+          else
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                ...chips,
+                if (onAdd != null)
+                  GestureDetector(
+                    onTap: onAdd,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 11, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppColors.accentBlueBg,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: const Text('+ إضافة',
+                          style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.accentBlue)),
                     ),
                   ),
-                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LinkCard extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+  final IconData icon;
+  const _LinkCard({required this.label, required this.onTap, required this.icon});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.card,
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            border: Border.all(color: AppColors.hairline),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, size: 19, color: AppColors.textSecondary),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(label,
+                    style: const TextStyle(
+                        fontSize: 13.5, fontWeight: FontWeight.w700)),
               ),
+              const Icon(Icons.chevron_left_rounded,
+                  size: 18, color: AppColors.textMuted),
             ],
           ),
         ),
@@ -769,50 +536,76 @@ class _ProfileShimmer extends StatelessWidget {
   }
 }
 
-class _ErrorView extends StatelessWidget {
-  final String message;
-  final VoidCallback onRetry;
-  const _ErrorView({required this.message, required this.onRetry});
+class _FavoritesSheet extends HookConsumerWidget {
+  final ScrollController scrollController;
+  const _FavoritesSheet({required this.scrollController});
 
   @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 420),
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(
-                Icons.error_outline_rounded,
-                size: 56,
-                color: AppColors.danger,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Could not load profile',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                message,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 13,
-                ),
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton.icon(
-                onPressed: onRetry,
-                icon: const Icon(Icons.refresh_rounded),
-                label: const Text('Retry'),
-              ),
-            ],
-          ),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final favoritesFuture =
+        useMemoized(() => ref.read(apiClientProvider).getMyFavorites(), const []);
+    final snapshot = useFuture(favoritesFuture);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Padding(
+          padding: EdgeInsets.fromLTRB(20, 4, 20, 12),
+          child: Text('الصيدليات المفضلة',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
         ),
-      ),
+        if (snapshot.connectionState == ConnectionState.waiting)
+          const Expanded(
+              child: Center(
+                  child: CircularProgressIndicator(color: AppColors.accentBlue)))
+        else if (snapshot.hasError || (snapshot.data ?? []).isEmpty)
+          const Expanded(
+            child: Center(
+              child: Text('مفيش صيدليات مفضلة — دوس على القلب في تفاصيل الصيدلية.',
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5)),
+            ),
+          )
+        else
+          Expanded(
+            child: ListView.builder(
+              controller: scrollController,
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+              itemCount: snapshot.data!.length,
+              itemBuilder: (context, i) {
+                final FavoritePharmacyDto f = snapshot.data![i];
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.fieldBg,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.hairline),
+                  ),
+                  child: Row(
+                    children: [
+                      const IconTile(Icons.storefront_outlined,
+                          bg: AppColors.accentBlueBg, color: AppColors.accentBlue),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(f.name,
+                                style: const TextStyle(
+                                    fontSize: 13.5, fontWeight: FontWeight.w700)),
+                            Text(f.city,
+                                style: const TextStyle(
+                                    fontSize: 12, color: AppColors.textSecondary)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+      ],
     );
   }
 }

@@ -107,6 +107,25 @@ public sealed class IdentityService(
         await userManager.UpdateAsync(user);
     }
 
+    public async Task<string?> GeneratePasswordResetTokenAsync(
+        string email, CancellationToken cancellationToken = default)
+    {
+        var user = await userManager.FindByEmailAsync(email);
+        return user is null ? null : await userManager.GeneratePasswordResetTokenAsync(user);
+    }
+
+    public async Task<string?> ResetPasswordAsync(
+        string email, string resetToken, string newPassword, CancellationToken cancellationToken = default)
+    {
+        var user = await userManager.FindByEmailAsync(email);
+        if (user is null) return "الحساب غير موجود.";
+
+        var result = await userManager.ResetPasswordAsync(user, resetToken, newPassword);
+        return result.Succeeded
+            ? null
+            : string.Join("; ", result.Errors.Select(e => e.Description));
+    }
+
     public async Task<(string Role, string Email)> GetRoleAndEmailAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         var user = await context.Users

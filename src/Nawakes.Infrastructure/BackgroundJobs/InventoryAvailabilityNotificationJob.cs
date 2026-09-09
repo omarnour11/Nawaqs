@@ -59,6 +59,16 @@ public sealed class InventoryAvailabilityNotificationJob(
         int sentCount = 0;
         foreach (var sub in subscriptions)
         {
+            // Durable in-app record for every matched subscriber
+            context.Notifications.Add(new Nawakes.Domain.Entities.UserNotification
+            {
+                UserId = sub.UserId,
+                Type = Nawakes.Domain.Enums.NotificationType.MedicationAvailable,
+                Title = "Medication Available!",
+                Body = $"{item.MedicationName} is now in stock at {item.Pharmacy.Name}.",
+                RelatedEntityId = item.Id
+            });
+
             if (tokenMap.TryGetValue(sub.UserId, out var fcmToken))
             {
                 var title = "Medication Available!";

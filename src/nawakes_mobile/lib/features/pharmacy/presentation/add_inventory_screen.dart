@@ -142,7 +142,7 @@ class AddInventoryScreen extends HookConsumerWidget {
                 decoration: BoxDecoration(
                   color: AppColors.accentLight,
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppColors.accent.withOpacity(0.4)),
+                  border: Border.all(color: AppColors.accent.withValues(alpha: 0.4)),
                 ),
                 child: const Row(
                   children: [

@@ -74,6 +74,7 @@ public static class DependencyInjection
 
         // ── Identity Services ───────────────────────────────────────────
         services.AddScoped<IIdentityService, IdentityService>();
+        services.AddScoped<IUserDirectory, UserDirectory>();
         services.AddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();
 
         // ── Security ────────────────────────────────────────────────────

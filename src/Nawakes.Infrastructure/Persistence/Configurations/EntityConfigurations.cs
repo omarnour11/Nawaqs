@@ -219,3 +219,192 @@ public sealed class RefreshTokenConfiguration : IEntityTypeConfiguration<Refresh
             .OnDelete(DeleteBehavior.Cascade);
     }
 }
+
+public sealed class UserNotificationConfiguration : IEntityTypeConfiguration<UserNotification>
+{
+    public void Configure(EntityTypeBuilder<UserNotification> builder)
+    {
+        builder.HasKey(n => n.Id);
+        builder.Property(n => n.Title).HasMaxLength(150).IsRequired();
+        builder.Property(n => n.Body).HasMaxLength(500).IsRequired();
+        builder.Property(n => n.Type).HasConversion<byte>();
+        builder.Property(n => n.ReadAt).HasColumnType("datetime2(7)");
+        builder.Property(n => n.CreatedAt).HasColumnType("datetime2(7)");
+        builder.Property(n => n.UpdatedAt).HasColumnType("datetime2(7)");
+        builder.Property(n => n.DeletedAt).HasColumnType("datetime2(7)");
+
+        builder.HasOne<ApplicationUser>()
+            .WithMany()
+            .HasForeignKey(n => n.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasIndex(n => new { n.UserId, n.IsRead });
+        builder.HasIndex(n => new { n.UserId, n.CreatedAt });
+    }
+}
+
+public sealed class PharmacyRatingConfiguration : IEntityTypeConfiguration<PharmacyRating>
+{
+    public void Configure(EntityTypeBuilder<PharmacyRating> builder)
+    {
+        builder.HasKey(r => r.Id);
+        builder.Property(r => r.Comment).HasMaxLength(1000);
+        builder.Property(r => r.CreatedAt).HasColumnType("datetime2(7)");
+        builder.Property(r => r.UpdatedAt).HasColumnType("datetime2(7)");
+        builder.Property(r => r.DeletedAt).HasColumnType("datetime2(7)");
+
+        builder.HasOne<ApplicationUser>()
+            .WithMany()
+            .HasForeignKey(r => r.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasOne(r => r.Pharmacy)
+            .WithMany()
+            .HasForeignKey(r => r.PharmacyId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // One rating per patient per pharmacy (upsert semantics)
+        builder.HasIndex(r => new { r.UserId, r.PharmacyId }).IsUnique();
+        builder.HasIndex(r => r.PharmacyId);
+    }
+}
+
+public sealed class FavoritePharmacyConfiguration : IEntityTypeConfiguration<FavoritePharmacy>
+{
+    public void Configure(EntityTypeBuilder<FavoritePharmacy> builder)
+    {
+        builder.HasKey(f => f.Id);
+        builder.Property(f => f.CreatedAt).HasColumnType("datetime2(7)");
+        builder.Property(f => f.UpdatedAt).HasColumnType("datetime2(7)");
+        builder.Property(f => f.DeletedAt).HasColumnType("datetime2(7)");
+
+        builder.HasOne<ApplicationUser>()
+            .WithMany()
+            .HasForeignKey(f => f.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasOne<Pharmacy>()
+            .WithMany()
+            .HasForeignKey(f => f.PharmacyId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasIndex(f => new { f.UserId, f.PharmacyId }).IsUnique();
+    }
+}
+
+public sealed class SupportTicketConfiguration : IEntityTypeConfiguration<SupportTicket>
+{
+    public void Configure(EntityTypeBuilder<SupportTicket> builder)
+    {
+        builder.HasKey(t => t.Id);
+        builder.Property(t => t.Subject).HasMaxLength(200).IsRequired();
+        builder.Property(t => t.Description).HasMaxLength(2000).IsRequired();
+        builder.Property(t => t.Status).HasConversion<byte>();
+        builder.Property(t => t.Resolution).HasMaxLength(2000);
+        builder.Property(t => t.ResolvedAt).HasColumnType("datetime2(7)");
+        builder.Property(t => t.CreatedAt).HasColumnType("datetime2(7)");
+        builder.Property(t => t.UpdatedAt).HasColumnType("datetime2(7)");
+        builder.Property(t => t.DeletedAt).HasColumnType("datetime2(7)");
+
+        builder.HasOne<ApplicationUser>()
+            .WithMany()
+            .HasForeignKey(t => t.UserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne<ApplicationUser>()
+            .WithMany()
+            .HasForeignKey(t => t.AssignedAdminId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasOne<Domain.Entities.Reservation>()
+            .WithMany()
+            .HasForeignKey(t => t.ReservationId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasOne<Domain.Entities.Pharmacy>()
+            .WithMany()
+            .HasForeignKey(t => t.PharmacyId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasIndex(t => new { t.Status, t.CreatedAt });
+    }
+}
+
+
+public sealed class PatientMedicationConfiguration : IEntityTypeConfiguration<PatientMedication>
+{
+    public void Configure(EntityTypeBuilder<PatientMedication> builder)
+    {
+        builder.HasKey(m => m.Id);
+        builder.Property(m => m.MedicationName).HasMaxLength(300).IsRequired();
+        builder.Property(m => m.Strength).HasMaxLength(100);
+        builder.Property(m => m.Form).HasMaxLength(100);
+        builder.Property(m => m.DoseSchedule).HasMaxLength(200);
+        builder.Property(m => m.Notes).HasMaxLength(500);
+        builder.Property(m => m.UnitsPerDay).HasColumnType("decimal(9,2)");
+        builder.Property(m => m.CreatedAt).HasColumnType("datetime2(7)");
+        builder.Property(m => m.UpdatedAt).HasColumnType("datetime2(7)");
+        builder.Property(m => m.DeletedAt).HasColumnType("datetime2(7)");
+
+        builder.HasOne<ApplicationUser>()
+            .WithMany()
+            .HasForeignKey(m => m.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasIndex(m => new { m.UserId, m.IsActive });
+    }
+}
+
+public sealed class ShortageRequestConfiguration : IEntityTypeConfiguration<ShortageRequest>
+{
+    public void Configure(EntityTypeBuilder<ShortageRequest> builder)
+    {
+        builder.HasKey(r => r.Id);
+        builder.Property(r => r.MedicationName).HasMaxLength(300).IsRequired();
+        builder.Property(r => r.MedicationNameNormalized).HasMaxLength(300).IsRequired();
+        builder.Property(r => r.Strength).HasMaxLength(100);
+        builder.Property(r => r.Notes).HasMaxLength(500);
+        builder.Property(r => r.Status).HasConversion<byte>();
+        builder.Property(r => r.GeoPoint).HasColumnType("geography").IsRequired();
+        builder.Property(r => r.ExpiresAt).HasColumnType("datetime2(7)");
+        builder.Property(r => r.ClaimedAt).HasColumnType("datetime2(7)");
+        builder.Property(r => r.CreatedAt).HasColumnType("datetime2(7)");
+        builder.Property(r => r.UpdatedAt).HasColumnType("datetime2(7)");
+        builder.Property(r => r.DeletedAt).HasColumnType("datetime2(7)");
+
+        builder.HasOne<ApplicationUser>()
+            .WithMany()
+            .HasForeignKey(r => r.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasIndex(r => new { r.Status, r.ExpiresAt }).HasFilter("[IsDeleted] = 0");
+        builder.HasIndex(r => new { r.MedicationNameNormalized, r.Status }).HasFilter("[IsDeleted] = 0");
+        builder.HasIndex(r => r.UserId);
+    }
+}
+
+
+public sealed class TicketMessageConfiguration : IEntityTypeConfiguration<TicketMessage>
+{
+    public void Configure(EntityTypeBuilder<TicketMessage> builder)
+    {
+        builder.HasKey(m => m.Id);
+        builder.Property(m => m.SenderRole).HasMaxLength(30).IsRequired();
+        builder.Property(m => m.Body).HasMaxLength(2000).IsRequired();
+        builder.Property(m => m.CreatedAt).HasColumnType("datetime2(7)");
+        builder.Property(m => m.UpdatedAt).HasColumnType("datetime2(7)");
+        builder.Property(m => m.DeletedAt).HasColumnType("datetime2(7)");
+
+        builder.HasOne<Domain.Entities.SupportTicket>()
+            .WithMany()
+            .HasForeignKey(m => m.TicketId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasOne<ApplicationUser>()
+            .WithMany()
+            .HasForeignKey(m => m.SenderId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasIndex(m => new { m.TicketId, m.CreatedAt });
+    }
+}

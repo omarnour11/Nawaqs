@@ -1,5 +1,4 @@
 import 'package:geolocator/geolocator.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'location_service.g.dart';
@@ -28,7 +27,7 @@ class LocationService {
     } 
 
     return await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
+      locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
     );
   }
 }
