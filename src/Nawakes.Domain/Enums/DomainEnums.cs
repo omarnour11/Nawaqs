@@ -4,7 +4,8 @@ public enum InventoryStatus : byte
 {
     InStock = 0,
     OutOfStock = 1,
-    Reserved = 2
+    Reserved = 2,
+    Unconfirmed = 3
 }
 
 public enum ReservationStatus : byte

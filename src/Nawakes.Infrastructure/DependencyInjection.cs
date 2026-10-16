@@ -30,7 +30,7 @@ public static class DependencyInjection
                 sql =>
                 {
                     sql.UseNetTopologySuite();
-                    sql.EnableRetryOnFailure(maxRetryCount: 3, maxRetryDelay: TimeSpan.FromSeconds(5), errorNumbersToAdd: null);
+                    sql.EnableRetryOnFailure(maxRetryCount: 5, maxRetryDelay: TimeSpan.FromSeconds(10), errorNumbersToAdd: null);
                     sql.CommandTimeout(30);
                 });
             options.AddInterceptors(sp.GetRequiredService<AuditableEntityInterceptor>());
@@ -85,6 +85,7 @@ public static class DependencyInjection
 
         // ── Background Jobs ─────────────────────────────────────────────
         services.AddScoped<ReservationExpiryJob>();
+        services.AddScoped<StaleInventoryDecayJob>();
         services.AddScoped<IReservationJobScheduler, HangfireReservationJobScheduler>();
         services.AddScoped<IInventoryJobScheduler, HangfireInventoryJobScheduler>();
         services.AddScoped<ITrustScoreJobScheduler, HangfireTrustScoreJobScheduler>();

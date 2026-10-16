@@ -6,6 +6,7 @@ import 'package:nawakes_mobile/core/ui/widgets.dart';
 import 'package:nawakes_mobile/core/network/api_client.dart';
 import 'package:nawakes_mobile/core/network/api_response_models.dart' show SetAvailabilityRequest;
 import 'package:nawakes_mobile/features/pharmacy/presentation/pharmacy_dashboard_controller.dart';
+import 'package:nawakes_mobile/features/pharmacy/presentation/quick_barcode_scanner_sheet.dart';
 import 'package:nawakes_mobile/features/auth/presentation/auth_controller.dart';
 import 'package:intl/intl.dart' show DateFormat;
 
@@ -176,6 +177,32 @@ class InventoryTab extends HookConsumerWidget {
                           ],
                         ),
                       ),
+                      // Quick Barcode Scanner button
+                      GestureDetector(
+                        onTap: () => QuickBarcodeScannerSheet.show(context),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: AppColors.accentBlueBg,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.qr_code_scanner_rounded,
+                                  size: 15, color: AppColors.accentBlue),
+                              SizedBox(width: 4),
+                              Text('مسح سريع',
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.accentBlue)),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
                       // Add medication button
                       GestureDetector(
                         onTap: () => showModalBottomSheet(

@@ -46,7 +46,9 @@ public sealed class PharmacySearchRepository(
             .Include(item => item.Pharmacy)
             .Where(item =>
                 item.MedicationNameNormalized.Contains(medicationNameNormalized) &&
+                item.Status == InventoryStatus.InStock &&
                 item.Pharmacy != null &&
+                item.Pharmacy.VerificationStatus == VerificationStatus.Approved &&
                 item.Pharmacy.GeoPoint != null)
             .Select(item => new
             {
@@ -56,6 +58,7 @@ public sealed class PharmacySearchRepository(
                     ? item.Pharmacy.GeoPoint.Distance(userLocation) / 1000.0
                     : double.MaxValue
             })
+            .Where(x => x.DistanceKm <= radiusKm)
             .OrderBy(x => x.DistanceKm)
             .Select(x => new PharmacySearchResultDto
             {
