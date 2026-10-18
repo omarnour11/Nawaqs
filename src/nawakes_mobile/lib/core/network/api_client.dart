@@ -53,6 +53,17 @@ abstract class ApiClient {
   @GET("/search/suggest")
   Future<List<String>> suggestMedications(@Query("prefix") String prefix);
 
+  @POST("/search/parse-multimodal")
+  Future<ParsedMedicationResponse> parseMultimodal(@Body() ParseMultimodalBody body);
+
+  @GET("/search/equivalents")
+  Future<MedicationEquivalentsResponse> getMedicationEquivalents(
+    @Query("medicationName") String medicationName,
+    @Query("lat") double lat,
+    @Query("lng") double lng,
+    @Query("radiusKm") double radiusKm,
+  );
+
   // ── Reservations (patient) ─────────────────────────────────────────────
   @POST("/reservations")
   Future<ReservationResponse> createReservation(@Body() CreateReservationRequest body);

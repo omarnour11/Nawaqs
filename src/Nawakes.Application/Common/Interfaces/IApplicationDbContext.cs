@@ -22,6 +22,7 @@ public interface IApplicationDbContext
     DbSet<PatientMedication> PatientMedications { get; }
     DbSet<ShortageRequest> ShortageRequests { get; }
     DbSet<TicketMessage> TicketMessages { get; }
+    DbSet<EgyptianDrugRegistry> EgyptianDrugRegistry { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

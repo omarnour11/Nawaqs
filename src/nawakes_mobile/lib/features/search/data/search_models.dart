@@ -59,3 +59,72 @@ class SearchMedicationResponse {
   factory SearchMedicationResponse.fromJson(Map<String, dynamic> json) => _$SearchMedicationResponseFromJson(json);
   Map<String, dynamic> toJson() => _$SearchMedicationResponseToJson(this);
 }
+
+@JsonSerializable()
+class EquivalentPharmacyResultDto {
+  final String equivalentTradeName;
+  final String? manufacturer;
+  final double officialPriceEGP;
+  final double priceSavingPercent;
+  final String pharmacyId;
+  final String pharmacyName;
+  final double distanceKm;
+  final String inventoryItemId;
+  final double priceAtPharmacy;
+
+  EquivalentPharmacyResultDto({
+    required this.equivalentTradeName,
+    this.manufacturer,
+    required this.officialPriceEGP,
+    required this.priceSavingPercent,
+    required this.pharmacyId,
+    required this.pharmacyName,
+    required this.distanceKm,
+    required this.inventoryItemId,
+    required this.priceAtPharmacy,
+  });
+
+  factory EquivalentPharmacyResultDto.fromJson(Map<String, dynamic> json) =>
+      _$EquivalentPharmacyResultDtoFromJson(json);
+  Map<String, dynamic> toJson() => _$EquivalentPharmacyResultDtoToJson(this);
+}
+
+@JsonSerializable()
+class OriginalMedicationInfoDto {
+  final String tradeName;
+  final String? activeIngredient;
+  final String? strength;
+  final String? dosageForm;
+  final double? officialPriceEGP;
+  final bool isAvailableNearby;
+
+  OriginalMedicationInfoDto({
+    required this.tradeName,
+    this.activeIngredient,
+    this.strength,
+    this.dosageForm,
+    this.officialPriceEGP,
+    required this.isAvailableNearby,
+  });
+
+  factory OriginalMedicationInfoDto.fromJson(Map<String, dynamic> json) =>
+      _$OriginalMedicationInfoDtoFromJson(json);
+  Map<String, dynamic> toJson() => _$OriginalMedicationInfoDtoToJson(this);
+}
+
+@JsonSerializable()
+class MedicationEquivalentsResponse {
+  final OriginalMedicationInfoDto? original;
+  final List<EquivalentPharmacyResultDto> availableEquivalents;
+  final String legalDisclaimer;
+
+  MedicationEquivalentsResponse({
+    this.original,
+    required this.availableEquivalents,
+    required this.legalDisclaimer,
+  });
+
+  factory MedicationEquivalentsResponse.fromJson(Map<String, dynamic> json) =>
+      _$MedicationEquivalentsResponseFromJson(json);
+  Map<String, dynamic> toJson() => _$MedicationEquivalentsResponseToJson(this);
+}

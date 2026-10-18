@@ -53,7 +53,9 @@ public enum NotificationType : byte
     MedicationAvailable = 4,
     PharmacyApproved = 5,
     PharmacyRejected = 6,
-    System = 7
+    System = 7,
+    AvailabilityOfferSent = 8,
+    OfferExpired = 9
 }
 
 public enum TicketStatus : byte
@@ -80,4 +82,14 @@ public enum TicketCategory : byte
     PharmacyConduct = 2,
     AccountIssue = 3,
     Other = 4
+}
+
+public enum QueueStatus : byte
+{
+    Waiting = 0,
+    Offered = 1,
+    Claimed = 2,
+    Skipped = 3,
+    Fulfilled = 4,
+    Cancelled = 5
 }

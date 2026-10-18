@@ -4,6 +4,7 @@ using Nawakes.Domain.Entities;
 using Nawakes.Domain.Enums;
 using Nawakes.Infrastructure.Identity;
 using Nawakes.Infrastructure.Persistence;
+using Nawakes.Infrastructure.Persistence.Seed;
 using NetTopologySuite.Geometries;
 
 namespace Nawakes.API.Extensions;
@@ -57,6 +58,10 @@ public static class DatabaseSeeder
             await SeedPharmacyAsync(context, userManager, "admin@nawaqs.com",
                 "Nawaqs Central Pharmacy", "100 El Zamalek Corniche", "Cairo", "01555555555",
                 30.0555, 31.2200, ownerIsAdmin: true);
+
+            // 5. Seed the EDA master drug catalog (idempotent)
+            var drugSeeder = services.GetRequiredService<EdaDrugSeeder>();
+            await drugSeeder.SeedAsync();
         }
         catch (Exception ex)
         {

@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Nawakes.Application.Subscriptions.Commands.ClaimOffer;
 using Nawakes.Application.Subscriptions.Commands.CreateSubscription;
 using Nawakes.Application.Subscriptions.Commands.DeleteSubscription;
 using Nawakes.Application.Subscriptions.Queries.GetMySubscriptions;
@@ -46,6 +47,23 @@ public class SubscriptionsController(IMediator mediator) : ControllerBase
     {
         var dtos = await mediator.Send(new GetMySubscriptionsQuery(), cancellationToken);
         return Ok(dtos.Select(ToResponse).ToList());
+    }
+
+    /// <summary>
+    /// Claims an active 15-minute queue offer and converts it into a 2-hour
+    /// reservation with a pickup code and QR pass.
+    /// </summary>
+    /// <response code="200">Returns the created reservation</response>
+    /// <response code="404">If the subscription doesn't exist or belongs to another user</response>
+    /// <response code="409">If the offer was already claimed or expired</response>
+    [HttpPost("{id}/claim-offer")]
+    [ProducesResponseType(typeof(Nawakes.Application.Reservations.Dtos.ReservationDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> ClaimOffer(Guid id, CancellationToken cancellationToken)
+    {
+        var reservation = await mediator.Send(new ClaimQueueOfferCommand(id), cancellationToken);
+        return Ok(reservation);
     }
 
     /// <summary>Deactivates a subscription.</summary>

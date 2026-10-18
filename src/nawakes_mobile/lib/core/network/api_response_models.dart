@@ -68,3 +68,57 @@ class ClaimShortageResponse {
       _$ClaimShortageResponseFromJson(json);
   Map<String, dynamic> toJson() => _$ClaimShortageResponseToJson(this);
 }
+
+@JsonSerializable()
+class ParseMultimodalBody {
+  final String rawText;
+  final String? inputType;
+
+  ParseMultimodalBody({required this.rawText, this.inputType});
+
+  factory ParseMultimodalBody.fromJson(Map<String, dynamic> json) =>
+      _$ParseMultimodalBodyFromJson(json);
+  Map<String, dynamic> toJson() => _$ParseMultimodalBodyToJson(this);
+}
+
+@JsonSerializable()
+class ParsedMedicationResponse {
+  final String resolvedName;
+  final String? strength;
+  final String? dosageForm;
+  final double confidence;
+  final bool requiresDisambiguation;
+  final List<ParsedCandidate> candidates;
+
+  ParsedMedicationResponse({
+    required this.resolvedName,
+    this.strength,
+    this.dosageForm,
+    required this.confidence,
+    required this.requiresDisambiguation,
+    required this.candidates,
+  });
+
+  factory ParsedMedicationResponse.fromJson(Map<String, dynamic> json) =>
+      _$ParsedMedicationResponseFromJson(json);
+  Map<String, dynamic> toJson() => _$ParsedMedicationResponseToJson(this);
+}
+
+@JsonSerializable()
+class ParsedCandidate {
+  final String tradeName;
+  final String? strength;
+  final String? dosageForm;
+  final double confidence;
+
+  ParsedCandidate({
+    required this.tradeName,
+    this.strength,
+    this.dosageForm,
+    required this.confidence,
+  });
+
+  factory ParsedCandidate.fromJson(Map<String, dynamic> json) =>
+      _$ParsedCandidateFromJson(json);
+  Map<String, dynamic> toJson() => _$ParsedCandidateToJson(this);
+}

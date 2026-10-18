@@ -7,9 +7,11 @@ using Nawakes.Infrastructure.BackgroundJobs;
 using Nawakes.Infrastructure.Caching;
 using Nawakes.Infrastructure.Identity;
 using Nawakes.Infrastructure.Notifications;
+using Nawakes.Infrastructure.NLP;
 using Nawakes.Infrastructure.Persistence;
 using Nawakes.Infrastructure.Persistence.Interceptors;
 using Nawakes.Infrastructure.Persistence.Repositories;
+using Nawakes.Infrastructure.Persistence.Seed;
 using Nawakes.Infrastructure.Security;
 
 namespace Nawakes.Infrastructure;
@@ -80,15 +82,23 @@ public static class DependencyInjection
         // ── Security ────────────────────────────────────────────────────
         services.AddSingleton<IEncryptionService, AesEncryptionService>();
 
+        // ── NLP / Dialect Normalization ──────────────────────────────
+        services.AddScoped<IEgyptianDialectNormalizer, EgyptianDialectNormalizerService>();
+
         // ── Notifications ───────────────────────────────────────────────
         services.AddScoped<INotificationService, FcmNotificationService>();
 
         // ── Background Jobs ─────────────────────────────────────────────
-        services.AddScoped<ReservationExpiryJob>();
+        services.AddScoped<InventoryAvailabilityNotificationJob>();
+        services.AddScoped<OfferWindowExpiryJob>();
         services.AddScoped<StaleInventoryDecayJob>();
         services.AddScoped<IReservationJobScheduler, HangfireReservationJobScheduler>();
         services.AddScoped<IInventoryJobScheduler, HangfireInventoryJobScheduler>();
         services.AddScoped<ITrustScoreJobScheduler, HangfireTrustScoreJobScheduler>();
+        services.AddScoped<IOfferWindowScheduler, HangfireOfferWindowScheduler>();
+
+        // ── Catalog Seeding ──────────────────────────────────────────
+        services.AddScoped<EdaDrugSeeder>();
 
         return services;
     }

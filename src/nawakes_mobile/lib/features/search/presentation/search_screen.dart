@@ -12,6 +12,9 @@ import 'package:nawakes_mobile/features/search/data/search_models.dart';
 import 'package:nawakes_mobile/features/search/presentation/all_results_screen.dart';
 import 'package:nawakes_mobile/features/search/presentation/shortage_sos_card.dart';
 import 'package:nawakes_mobile/features/search/presentation/pharmacy_details_screen.dart';
+import 'package:nawakes_mobile/core/services/voice_search_service.dart';
+import 'package:nawakes_mobile/features/search/presentation/camera_scan_sheet.dart';
+import 'package:nawakes_mobile/features/search/presentation/medication_equivalents_card.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
@@ -115,6 +118,8 @@ class SearchScreen extends HookConsumerWidget {
     final hasSearched = useState(false);
     final radius = useState<double>(10.0);
     final suggestions = useState<List<String>>([]);
+    final isListening = useState(false);
+    final voice = useMemoized(VoiceSearchService.new, const []);
 
     final mapController = useState<GoogleMapController?>(null);
     final markers = useState<Set<Marker>>({});
@@ -278,6 +283,58 @@ class SearchScreen extends HookConsumerWidget {
                                   size: 16, color: AppColors.textMuted),
                             ),
                           ),
+                        // Microphone (Egyptian dialect voice search)
+                        GestureDetector(
+                          onTap: () async {
+                            if (isListening.value) {
+                              await voice.stop();
+                              isListening.value = false;
+                              return;
+                            }
+                            final ok = await voice.initialize();
+                            if (!ok) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('ميكروفون الجهاز غير متاح')),
+                                );
+                              }
+                              return;
+                            }
+                            isListening.value = true;
+                            await voice.startListening(
+                              onResult: (text) {
+                                searchCtrl.text = text;
+                              },
+                              onDone: () => isListening.value = false,
+                            );
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.all(6),
+                            child: isListening.value
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(strokeWidth: 2))
+                                : const Icon(Icons.mic_rounded,
+                                    size: 18, color: AppColors.accentBlue),
+                          ),
+                        ),
+                        // Camera scan (on-device OCR)
+                        GestureDetector(
+                          onTap: () => CameraScanSheet.show(
+                            context,
+                            onScanned: (result) {
+                              if (result.lines.isEmpty) return;
+                              searchCtrl.text = result.lines.first;
+                              doSearch(result.lines.first);
+                            },
+                          ),
+                          child: const Padding(
+                            padding: EdgeInsets.all(6),
+                            child: Icon(Icons.photo_camera_rounded,
+                                size: 17, color: AppColors.textMuted),
+                          ),
+                        ),
                         const SizedBox(width: 6),
                         Material(
                           color: AppColors.accentBlue,
@@ -417,6 +474,8 @@ class SearchScreen extends HookConsumerWidget {
                             ),
                             const SizedBox(height: 10),
                             ShortageSosCard(medicationName: searchCtrl.text.trim()),
+                            const SizedBox(height: 10),
+                            _EquivalentsLoader(medicationName: searchCtrl.text.trim()),
                           ]
                           else
                             ...results.take(6).map(
@@ -658,12 +717,38 @@ class _IdleCard extends StatelessWidget {
             icon: const Icon(Icons.search_rounded, size: 16),
             label: const Text('جرب: Panadol'),
             style: OutlinedButton.styleFrom(
-              minimumSize: const Size(0, 38),
+              minimumSize: const Size(0, 80),
               side: const BorderSide(color: AppColors.hairline),
             ),
           ),
         ],
       ),
     );
+  }
+}
+
+// ─── Equivalents loader (Phase 4) ────────────────────────────────────────────
+class _EquivalentsLoader extends HookConsumerWidget {
+  final String medicationName;
+  const _EquivalentsLoader({required this.medicationName});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final future = useMemoized(
+      () => ref.read(apiClientProvider).getMedicationEquivalents(
+            medicationName,
+            30.0444, // Cairo default; refined by geolocator where available
+            31.2357,
+            5,
+          ),
+      [medicationName],
+    );
+    final snapshot = useFuture(future);
+
+    if (snapshot.hasError || !snapshot.hasData) return const SizedBox.shrink();
+    final response = snapshot.data!;
+    if (response.availableEquivalents.isEmpty) return const SizedBox.shrink();
+
+    return MedicationEquivalentsCard(response: response);
   }
 }

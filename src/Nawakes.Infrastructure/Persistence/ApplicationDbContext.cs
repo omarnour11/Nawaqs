@@ -32,6 +32,7 @@ public sealed class ApplicationDbContext(
     public DbSet<PatientMedication> PatientMedications => Set<PatientMedication>();
     public DbSet<ShortageRequest> ShortageRequests => Set<ShortageRequest>();
     public DbSet<TicketMessage> TicketMessages => Set<TicketMessage>();
+    public DbSet<EgyptianDrugRegistry> EgyptianDrugRegistry => Set<EgyptianDrugRegistry>();
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -56,6 +57,7 @@ public sealed class ApplicationDbContext(
         builder.ApplyConfiguration(new PatientMedicationConfiguration());
         builder.ApplyConfiguration(new ShortageRequestConfiguration());
         builder.ApplyConfiguration(new TicketMessageConfiguration());
+        builder.ApplyConfiguration(new EgyptianDrugRegistryConfiguration());
 
         // Global soft-delete filter
         builder.Entity<Pharmacy>().HasQueryFilter(e => !e.IsDeleted);
