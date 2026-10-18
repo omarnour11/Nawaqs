@@ -26,4 +26,17 @@ public sealed class UserDirectory(ApplicationDbContext context) : IUserDirectory
             .Where(u => userIds.Contains(u.Id))
             .Select(u => new { u.Id, Contact = u.PhoneNumber ?? u.Email ?? string.Empty })
             .ToDictionaryAsync(u => u.Id, u => u.Contact, cancellationToken);
+
+    public async Task<Guid?> FindUserIdByPhoneAsync(
+        string phoneNumber, CancellationToken cancellationToken = default)
+    {
+        var normalized = phoneNumber.Trim();
+        if (normalized.Length == 0) return null;
+
+        return await context.Users
+            .AsNoTracking()
+            .Where(u => !u.IsDeleted && u.PhoneNumber == normalized)
+            .Select(u => (Guid?)u.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
 }

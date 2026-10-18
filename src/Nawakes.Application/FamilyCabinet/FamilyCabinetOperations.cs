@@ -66,7 +66,7 @@ public sealed class AddFamilyMedicationCommandHandler(IApplicationDbContext cont
 {
     public async Task<Guid> Handle(AddFamilyMedicationCommand request, CancellationToken cancellationToken)
     {
-        await EnsureCabinetAccessAsync(context, currentUser.UserId, request.FamilyProfileId, cancellationToken);
+        await CabinetAccess.EnsureCabinetAccessAsync(context, currentUser.UserId, request.FamilyProfileId, cancellationToken);
 
         var med = new Domain.Entities.FamilyMedication
         {
@@ -98,8 +98,7 @@ public sealed class RefillFamilyMedicationCommandValidator : AbstractValidator<R
 
 public sealed class RefillFamilyMedicationCommandHandler(
     IApplicationDbContext context,
-    ICurrentUserService currentUser,
-    INotificationService notifications)
+    ICurrentUserService currentUser)
     : IRequestHandler<RefillFamilyMedicationCommand, Guid>
 {
     public async Task<Guid> Handle(RefillFamilyMedicationCommand request, CancellationToken cancellationToken)
@@ -109,7 +108,7 @@ public sealed class RefillFamilyMedicationCommandHandler(
             .FirstOrDefaultAsync(m => m.Id == request.MedicationId, cancellationToken)
             ?? throw new NotFoundException(nameof(Domain.Entities.FamilyMedication), request.MedicationId);
 
-        await EnsureCabinetAccessAsync(context, currentUser.UserId, med.FamilyProfileId, cancellationToken);
+        await CabinetAccess.EnsureCabinetAccessAsync(context, currentUser.UserId, med.FamilyProfileId, cancellationToken);
 
         med.StripsCount += request.StripsAdded;
         med.LastRefillDate = DateTime.UtcNow;
@@ -128,7 +127,7 @@ public sealed class RefillFamilyMedicationCommandHandler(
             context.Notifications.Add(new Nawakes.Domain.Entities.UserNotification
             {
                 UserId = userId,
-                Type = Nawakes.Domain.Enums.NotificationType.System,
+                Type = Nawakes.Domain.Enums.NotificationType.FamilyMedicationRefilled,
                 Title = "شراء جديد لدواء العيلة",
                 Body = $"تم شراء {request.StripsAdded} شريط جديد لدواء {med.MedicationName} ({med.FamilyProfile.Nickname}).",
                 RelatedEntityId = med.Id
@@ -141,31 +140,157 @@ public sealed class RefillFamilyMedicationCommandHandler(
 }
 
 // ── InviteCaregiver ────────────────────────────────────────────────────
-public sealed record InviteCaregiverCommand(Guid FamilyProfileId, string? InvitedPhoneNumber) : IRequest<Guid>;
+public sealed record InviteCaregiverCommand(Guid FamilyProfileId, string InvitedPhoneNumber) : IRequest<Guid>;
 
-public sealed class InviteCaregiverCommandHandler(IApplicationDbContext context, ICurrentUserService currentUser)
+public sealed class InviteCaregiverCommandValidator : AbstractValidator<InviteCaregiverCommand>
+{
+    public InviteCaregiverCommandValidator()
+    {
+        RuleFor(x => x.InvitedPhoneNumber).NotEmpty().MaximumLength(20);
+    }
+}
+
+public sealed class InviteCaregiverCommandHandler(
+    IApplicationDbContext context,
+    ICurrentUserService currentUser,
+    IUserDirectory users)
     : IRequestHandler<InviteCaregiverCommand, Guid>
 {
     public async Task<Guid> Handle(InviteCaregiverCommand request, CancellationToken cancellationToken)
     {
+        // Only the owner may invite caregivers; an accepted caregiver cannot
+        // widen access to someone else's cabinet.
         var profile = await context.FamilyProfiles
             .FirstOrDefaultAsync(p => p.Id == request.FamilyProfileId &&
                                       p.OwnerUserId == currentUser.UserId, cancellationToken)
             ?? throw new NotFoundException(nameof(Domain.Entities.FamilyProfile), request.FamilyProfileId);
 
-        // Self-invite placeholder: the invited phone registers later and accepts;
-        // until then the link stays pending and only the owner sees the cabinet.
+        var phone = request.InvitedPhoneNumber.Trim();
+
+        // The invite must target a real account: the link is only useful once
+        // there is a user who can accept it.
+        var inviteeId = await users.FindUserIdByPhoneAsync(phone, cancellationToken)
+            ?? throw new NotFoundException("User", phone);
+
+        if (inviteeId == profile.OwnerUserId)
+            throw new ConflictException("You cannot invite yourself as a caregiver.");
+
+        var existing = await context.FamilyCaregiverLinks
+            .FirstOrDefaultAsync(l => l.FamilyProfileId == profile.Id &&
+                                      l.CaregiverUserId == inviteeId, cancellationToken);
+
+        if (existing is not null)
+        {
+            if (existing.IsAccepted)
+                throw new ConflictException("This caregiver is already linked to the cabinet.");
+
+            // Pending invite: re-sending only refreshes the phone number.
+            existing.InvitedPhoneNumber = phone;
+            await context.SaveChangesAsync(cancellationToken);
+            return existing.Id;
+        }
+
         var link = new Domain.Entities.FamilyCaregiverLink
         {
             FamilyProfileId = profile.Id,
-            CaregiverUserId = currentUser.UserId,
-            InvitedPhoneNumber = request.InvitedPhoneNumber,
+            CaregiverUserId = inviteeId,
+            InvitedPhoneNumber = phone,
             IsAccepted = false
         };
         context.FamilyCaregiverLinks.Add(link);
+
+        context.Notifications.Add(new Domain.Entities.UserNotification
+        {
+            UserId = inviteeId,
+            Type = Domain.Enums.NotificationType.CaregiverInviteReceived,
+            Title = "دعوة لمتابعة دولاب دوا العيلة",
+            Body = $"تمت دعوتك لمتابعة دولاب دوا {profile.Nickname}. افتح التطبيق لقبول الدعوة.",
+            RelatedEntityId = profile.Id
+        });
+
         await context.SaveChangesAsync(cancellationToken);
         return link.Id;
     }
+}
+
+// ── AcceptCaregiverInvite ──────────────────────────────────────────────
+public sealed record AcceptCaregiverInviteCommand(Guid LinkId) : IRequest<Guid>;
+
+public sealed class AcceptCaregiverInviteCommandHandler(
+    IApplicationDbContext context,
+    ICurrentUserService currentUser)
+    : IRequestHandler<AcceptCaregiverInviteCommand, Guid>
+{
+    public async Task<Guid> Handle(AcceptCaregiverInviteCommand request, CancellationToken cancellationToken)
+    {
+        // The invited user is the only one who can accept their own link.
+        var link = await context.FamilyCaregiverLinks
+            .FirstOrDefaultAsync(l => l.Id == request.LinkId &&
+                                      l.CaregiverUserId == currentUser.UserId, cancellationToken)
+            ?? throw new NotFoundException(nameof(Domain.Entities.FamilyCaregiverLink), request.LinkId);
+
+        if (link.IsAccepted)
+            throw new ConflictException("This invitation was already accepted.");
+
+        var profile = await context.FamilyProfiles
+            .FirstOrDefaultAsync(p => p.Id == link.FamilyProfileId, cancellationToken)
+            ?? throw new NotFoundException(nameof(Domain.Entities.FamilyProfile), link.FamilyProfileId);
+
+        link.IsAccepted = true;
+
+        context.Notifications.Add(new Domain.Entities.UserNotification
+        {
+            UserId = profile.OwnerUserId,
+            Type = Domain.Enums.NotificationType.CaregiverInviteAccepted,
+            Title = "تم قبول دعوة الرعاية",
+            Body = $"شخص جديد انضم لمتابعة دولاب دوا {profile.Nickname}.",
+            RelatedEntityId = profile.Id
+        });
+
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // A concurrent accept won the race. FamilyCaregiverLink.RowVersion
+            // rejects the stale write so the owner is notified only once.
+            throw new ConflictException("This invitation was already accepted.");
+        }
+
+        return profile.Id;
+    }
+}
+
+// ── GetPendingCaregiverInvites ─────────────────────────────────────────
+public sealed record GetPendingCaregiverInvitesQuery : IRequest<IReadOnlyList<PendingCaregiverInviteDto>>;
+
+public sealed record PendingCaregiverInviteDto(
+    Guid LinkId,
+    Guid FamilyProfileId,
+    string FamilyProfileNickname,
+    DateTime InvitedAt);
+
+public sealed class GetPendingCaregiverInvitesQueryHandler(
+    IApplicationDbContext context,
+    ICurrentUserService currentUser)
+    : IRequestHandler<GetPendingCaregiverInvitesQuery, IReadOnlyList<PendingCaregiverInviteDto>>
+{
+    public async Task<IReadOnlyList<PendingCaregiverInviteDto>> Handle(
+        GetPendingCaregiverInvitesQuery request, CancellationToken cancellationToken)
+        => await context.FamilyCaregiverLinks
+            .Where(l => l.CaregiverUserId == currentUser.UserId && !l.IsAccepted)
+            .Join(
+                context.FamilyProfiles.Where(p => p.IsActive),
+                l => l.FamilyProfileId,
+                p => p.Id,
+                (l, p) => new PendingCaregiverInviteDto(
+                    l.Id,
+                    l.FamilyProfileId,
+                    p.Nickname,
+                    l.CreatedAt))
+            .OrderByDescending(i => i.InvitedAt)
+            .ToListAsync(cancellationToken);
 }
 
 // ── GetFamilyCabinet ───────────────────────────────────────────────────
