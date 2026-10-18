@@ -114,7 +114,7 @@ class ReservationOfferSheet extends HookConsumerWidget {
           ),
           const SizedBox(height: 6),
           const Text(
-            'لدlh updateTime دقيقة لتأكيد الحجز قبل مرور الدور للي بعده',
+            'عندك 15 دقيقة لتأكيد الحجز قبل مرور الدور للي بعده',
             style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
           ),
           const SizedBox(height: 24),

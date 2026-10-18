@@ -10,18 +10,29 @@ import 'package:nawakes_mobile/core/network/api_client.dart';
 import 'package:nawakes_mobile/core/ui/widgets.dart';
 import 'package:nawakes_mobile/features/auth/presentation/auth_controller.dart';
 import 'package:nawakes_mobile/features/reservations/data/reservation_models.dart';
+import 'package:nawakes_mobile/features/reservations/data/offline_reservation_pass_store.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart' show DateFormat;
 
 part 'passes_screen.g.dart';
 
+final offlinePassStore = OfflineReservationPassStore();
+
 /// التصاريح tab — list of reservations; opening one shows the full pass.
+/// Falls back to cached passes when the network fails so the pickup code
+/// stays reachable in basements with no reception.
 @riverpod
 class PassesController extends _$PassesController {
   @override
   FutureOr<List<ReservationResponse>> build() async {
-    return ref.read(apiClientProvider).getMyReservations();
+    try {
+      final reservations = await ref.read(apiClientProvider).getMyReservations();
+      await offlinePassStore.saveActive(reservations);
+      return reservations;
+    } catch (_) {
+      return offlinePassStore.loadActive();
+    }
   }
 
   Future<void> cancel(String id) async {

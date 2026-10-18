@@ -91,6 +91,7 @@ public static class DependencyInjection
         // ── Background Jobs ─────────────────────────────────────────────
         services.AddScoped<InventoryAvailabilityNotificationJob>();
         services.AddScoped<OfferWindowExpiryJob>();
+        services.AddScoped<CheckCabinetDepletionJob>();
         services.AddScoped<StaleInventoryDecayJob>();
         services.AddScoped<IReservationJobScheduler, HangfireReservationJobScheduler>();
         services.AddScoped<IInventoryJobScheduler, HangfireInventoryJobScheduler>();

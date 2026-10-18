@@ -217,6 +217,12 @@ RecurringJob.AddOrUpdate<StaleInventoryDecayJob>(
     job => job.DecayStaleInventoryAsync(CancellationToken.None),
     Cron.Daily(2));
 
+// Family cabinet depletion check — daily 8:00 AM Cairo time (06:00 UTC)
+RecurringJob.AddOrUpdate<CheckCabinetDepletionJob>(
+    "check-cabinet-depletion",
+    job => job.RunAsync(CancellationToken.None),
+    "0 6 * * *");
+
 app.MapControllers();
 
 // Health check endpoints (Slice 1.3)

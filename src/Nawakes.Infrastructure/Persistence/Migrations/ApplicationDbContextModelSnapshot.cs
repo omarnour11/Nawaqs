@@ -1243,6 +1243,199 @@ namespace Nawakes.Infrastructure.Persistence.Migrations
                     b.Navigation("Reservations");
                 });
 
+            modelBuilder.Entity("Nawakes.Domain.Entities.FamilyProfile", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2(7)");
+
+                    b.Property<double>("HomeLatitude")
+                        .HasColumnType("float");
+
+                    b.Property<double>("HomeLongitude")
+                        .HasColumnType("float");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasDefaultValue(true)
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Nickname")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<Guid>("OwnerUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2(7)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2(7)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OwnerUserId")
+                        .HasDatabaseName("IX_FamilyProfiles_OwnerUserId")
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.ToTable("FamilyProfiles");
+                });
+
+            modelBuilder.Entity("Nawakes.Domain.Entities.FamilyMedication", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("AlertThresholdDays")
+                        .ValueGeneratedOnAdd()
+                        .HasDefaultValue(7)
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2(7)");
+
+                    b.Property<decimal>("DailyDoseUnits")
+                        .HasColumnType("decimal(9,2)");
+
+                    b.Property<Guid>("FamilyProfileId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasDefaultValue(true)
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("LastRefillDate")
+                        .HasColumnType("datetime2(7)");
+
+                    b.Property<string>("MedicationName")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<int>("StripsCount")
+                        .ValueGeneratedOnAdd()
+                        .HasDefaultValue(0)
+                        .HasColumnType("int");
+
+                    b.Property<string>("Strength")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2(7)");
+
+                    b.Property<int>("UnitsPerStrip")
+                        .ValueGeneratedOnAdd()
+                        .HasDefaultValue(0)
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2(7)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FamilyProfileId", "IsActive")
+                        .HasDatabaseName("IX_FamilyMedications_FamilyProfileId_IsActive")
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.ToTable("FamilyMedications");
+                });
+
+            modelBuilder.Entity("Nawakes.Domain.Entities.FamilyCaregiverLink", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CaregiverUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2(7)");
+
+                    b.Property<Guid>("FamilyProfileId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsAccepted")
+                        .ValueGeneratedOnAdd()
+                        .HasDefaultValue(false)
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("InvitedPhoneNumber")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2(7)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2(7)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CaregiverUserId");
+
+                    b.HasIndex("FamilyProfileId", "CaregiverUserId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_FamilyCaregiverLinks_FamilyProfileId_CaregiverUserId");
+
+                    b.ToTable("FamilyCaregiverLinks");
+                });
+
+            modelBuilder.Entity("Nawakes.Domain.Entities.FamilyProfile", b =>
+                {
+                    b.HasOne("Nawakes.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Nawakes.Domain.Entities.FamilyMedication", b =>
+                {
+                    b.HasOne("Nawakes.Domain.Entities.FamilyProfile", null)
+                        .WithMany()
+                        .HasForeignKey("FamilyProfileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Nawakes.Domain.Entities.FamilyCaregiverLink", b =>
+                {
+                    b.HasOne("Nawakes.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("CaregiverUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Nawakes.Domain.Entities.FamilyProfile", null)
+                        .WithMany()
+                        .HasForeignKey("FamilyProfileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Nawakes.Domain.Entities.InventoryItem", b =>
+                {
+                    b.Navigation("Reservations");
+                });
+
             modelBuilder.Entity("Nawakes.Domain.Entities.Pharmacy", b =>
                 {
                     b.Navigation("InventoryItems");

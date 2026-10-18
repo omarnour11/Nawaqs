@@ -7,6 +7,7 @@ using Nawakes.Application.Admin.Commands.ReviewReport;
 using Nawakes.Application.Admin.Queries.GetDashboardStats;
 using Nawakes.Application.Admin.Queries.GetPendingPharmacies;
 using Nawakes.Application.Admin.Queries.GetReports;
+using Nawakes.Application.Admin.Queries.GetShortageDemand;
 using Nawakes.Application.Common.Interfaces;
 using System.ComponentModel.DataAnnotations;
 
@@ -69,4 +70,11 @@ public sealed class AdminController(ISender mediator, ICurrentUserService curren
         await mediator.Send(new ReviewReportCommand(id, request.Confirm, currentUser.UserId), cancellationToken);
         return NoContent();
     }
+
+    /// <summary>Shortage demand heatmap: waiting subscribers grouped by medication and city.</summary>
+    [HttpGet("shortage-demand")]
+    [ProducesResponseType(typeof(ShortageDemandResponse), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ShortageDemandResponse>> GetShortageDemand(
+        CancellationToken cancellationToken)
+        => Ok(await mediator.Send(new GetShortageDemandReportQuery(), cancellationToken));
 }

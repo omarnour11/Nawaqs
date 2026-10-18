@@ -33,6 +33,9 @@ public sealed class ApplicationDbContext(
     public DbSet<ShortageRequest> ShortageRequests => Set<ShortageRequest>();
     public DbSet<TicketMessage> TicketMessages => Set<TicketMessage>();
     public DbSet<EgyptianDrugRegistry> EgyptianDrugRegistry => Set<EgyptianDrugRegistry>();
+    public DbSet<FamilyProfile> FamilyProfiles => Set<FamilyProfile>();
+    public DbSet<FamilyMedication> FamilyMedications => Set<FamilyMedication>();
+    public DbSet<FamilyCaregiverLink> FamilyCaregiverLinks => Set<FamilyCaregiverLink>();
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -58,6 +61,7 @@ public sealed class ApplicationDbContext(
         builder.ApplyConfiguration(new ShortageRequestConfiguration());
         builder.ApplyConfiguration(new TicketMessageConfiguration());
         builder.ApplyConfiguration(new EgyptianDrugRegistryConfiguration());
+        builder.ApplyConfiguration(new FamilyCabinetConfigurations());
 
         // Global soft-delete filter
         builder.Entity<Pharmacy>().HasQueryFilter(e => !e.IsDeleted);
@@ -73,5 +77,8 @@ public sealed class ApplicationDbContext(
         builder.Entity<PatientMedication>().HasQueryFilter(e => !e.IsDeleted);
         builder.Entity<ShortageRequest>().HasQueryFilter(e => !e.IsDeleted);
         builder.Entity<TicketMessage>().HasQueryFilter(e => !e.IsDeleted);
+        builder.Entity<FamilyProfile>().HasQueryFilter(e => !e.IsDeleted);
+        builder.Entity<FamilyMedication>().HasQueryFilter(e => !e.IsDeleted);
+        builder.Entity<FamilyCaregiverLink>().HasQueryFilter(e => !e.IsDeleted);
     }
 }

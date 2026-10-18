@@ -19,6 +19,7 @@ import 'package:nawakes_mobile/features/admin/data/admin_models.dart';
 import 'package:nawakes_mobile/features/support/data/ticket_models.dart';
 import 'package:nawakes_mobile/features/profile/data/medication_models.dart';
 import 'package:nawakes_mobile/features/pharmacy/data/sales_ledger_models.dart';
+import 'package:nawakes_mobile/features/family_cabinet/data/family_cabinet_models.dart';
 import 'package:nawakes_mobile/core/network/api_response_models.dart';
 
 part 'api_client.g.dart';
@@ -233,6 +234,31 @@ abstract class ApiClient {
   // ── Sales ledger (pharmacy) ───────────────────────────────────────────
   @GET("/pharmacy/reservations/ledger")
   Future<SalesLedgerDto> getSalesLedger({@Query("take") int take = 100});
+
+  // ── Family cabinet ─────────────────────────────────────────────────────
+  @GET("/family-cabinets")
+  Future<FamilyCabinetResponseModel> getFamilyCabinet();
+
+  @POST("/family-cabinets")
+  Future<IdResponse> createFamilyProfile(@Body() CreateFamilyProfileRequest body);
+
+  @POST("/family-cabinets/{profileId}/medications")
+  Future<IdResponse> addFamilyMedication(
+    @Path("profileId") String profileId,
+    @Body() FamilyMedicationRequest body,
+  );
+
+  @POST("/family-cabinets/medications/{id}/refill")
+  Future<IdResponse> refillFamilyMedication(
+    @Path("id") String id,
+    @Body() RefillFamilyMedicationRequest body,
+  );
+
+  @POST("/family-cabinets/{profileId}/invite")
+  Future<IdResponse> inviteCaregiver(
+    @Path("profileId") String profileId,
+    @Body() InviteCaregiverRequest body,
+  );
 }
 
 @JsonSerializable()
