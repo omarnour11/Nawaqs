@@ -31,7 +31,11 @@ public sealed class InventoryAvailabilityNotificationJob(
     /// <summary>
     /// Offers stock to waiting subscribers, up to the available quantity.
     /// Each offer gets a 15-minute window and a scheduled expiry job.
+    /// Subscription.RowVersion makes the read-modify-write race-safe: if two
+    /// allocations run concurrently (two items going in stock, or a retry),
+    /// the loser gets DbUpdateConcurrencyException and backs out cleanly.
     /// </summary>
+    [DisableConcurrentExecution(timeoutInSeconds: 60)]
     public async Task AllocateQueueSlotsAsync(Guid inventoryItemId, CancellationToken cancellationToken)
     {
         using var scope = serviceProvider.CreateScope();
@@ -69,6 +73,7 @@ public sealed class InventoryAvailabilityNotificationJob(
 
         var offerCount = Math.Min(item.Quantity, waiting.Count);
         var offeredUserIds = new List<Guid>();
+        var offeredSubscriptions = new List<(Domain.Entities.Subscription Sub, DateTime ExpiresAt)>();
 
         for (var i = 0; i < offerCount; i++)
         {
@@ -81,8 +86,7 @@ public sealed class InventoryAvailabilityNotificationJob(
             sub.OfferedInventoryItemId = item.Id;
             sub.LastNotifiedAt = DateTime.UtcNow;
 
-            var jobId = offerScheduler.ScheduleOfferExpiry(sub.Id, new DateTimeOffset(expiresAt, TimeSpan.Zero));
-            sub.OfferExpiryHangfireJobId = jobId;
+            offeredSubscriptions.Add((sub, expiresAt));
 
             context.Notifications.Add(new Nawakes.Domain.Entities.UserNotification
             {
@@ -94,6 +98,39 @@ public sealed class InventoryAvailabilityNotificationJob(
             });
 
             offeredUserIds.Add(sub.UserId);
+        }
+
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            // Another allocation won this batch. Nothing was persisted, so no
+            // expiry jobs exist yet; just report and let the winner proceed.
+            logger.LogWarning(ex,
+                "Concurrent queue allocation detected for Item {ItemId}; this run backed out.",
+                inventoryItemId);
+            return;
+        }
+
+        // Schedule only after the offers are durably committed: a failure here
+        // cannot leave jobs pointing at offers that were never saved.
+        foreach (var (sub, expiresAt) in offeredSubscriptions)
+        {
+            try
+            {
+                var jobId = offerScheduler.ScheduleOfferExpiry(
+                    sub.Id, new DateTimeOffset(expiresAt, TimeSpan.Zero));
+                sub.OfferExpiryHangfireJobId = jobId;
+            }
+            catch (Exception ex)
+            {
+                // The offer still stands and the claim endpoint checks
+                // OfferExpiresAt, so a missing job only delays re-allocation.
+                logger.LogWarning(ex,
+                    "Failed to schedule expiry job for offer {SubId}.", sub.Id);
+            }
         }
 
         await context.SaveChangesAsync(cancellationToken);
