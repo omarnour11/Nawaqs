@@ -61,7 +61,11 @@ public sealed class ApplicationDbContext(
         builder.ApplyConfiguration(new ShortageRequestConfiguration());
         builder.ApplyConfiguration(new TicketMessageConfiguration());
         builder.ApplyConfiguration(new EgyptianDrugRegistryConfiguration());
-        builder.ApplyConfiguration(new FamilyCabinetConfigurations());
+        // One class configures three entity types, so the generic argument must be explicit.
+        var familyCabinetConfiguration = new FamilyCabinetConfigurations();
+        builder.ApplyConfiguration<FamilyProfile>(familyCabinetConfiguration);
+        builder.ApplyConfiguration<FamilyMedication>(familyCabinetConfiguration);
+        builder.ApplyConfiguration<FamilyCaregiverLink>(familyCabinetConfiguration);
 
         // Global soft-delete filter
         builder.Entity<Pharmacy>().HasQueryFilter(e => !e.IsDeleted);

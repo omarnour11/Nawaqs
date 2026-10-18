@@ -55,7 +55,11 @@ public enum NotificationType : byte
     PharmacyRejected = 6,
     System = 7,
     AvailabilityOfferSent = 8,
-    OfferExpired = 9
+    OfferExpired = 9,
+    CaregiverInviteReceived = 10,
+    CaregiverInviteAccepted = 11,
+    FamilyMedicationRefilled = 12,
+    FamilyMedicationLow = 13
 }
 
 public enum TicketStatus : byte

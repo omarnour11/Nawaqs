@@ -22,6 +22,18 @@ public sealed class FamilyCabinetConfigurations : IEntityTypeConfiguration<Famil
             .HasForeignKey(p => p.OwnerUserId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        // Wire the navigation collections declared on FamilyProfile; otherwise
+        // EF creates shadow FK columns (FamilyProfileId1) alongside the real ones.
+        builder.HasMany(p => p.FamilyMedications)
+            .WithOne(m => m.FamilyProfile)
+            .HasForeignKey(m => m.FamilyProfileId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasMany(p => p.FamilyCaregiverLinks)
+            .WithOne()
+            .HasForeignKey(l => l.FamilyProfileId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         builder.HasIndex(p => p.OwnerUserId).HasFilter("[IsDeleted] = 0");
     }
 
@@ -36,11 +48,6 @@ public sealed class FamilyCabinetConfigurations : IEntityTypeConfiguration<Famil
         builder.Property(m => m.UpdatedAt).HasColumnType("datetime2(7)");
         builder.Property(m => m.DeletedAt).HasColumnType("datetime2(7)");
 
-        builder.HasOne<FamilyProfile>()
-            .WithMany()
-            .HasForeignKey(m => m.FamilyProfileId)
-            .OnDelete(DeleteBehavior.Cascade);
-
         builder.HasIndex(m => new { m.FamilyProfileId, m.IsActive }).HasFilter("[IsDeleted] = 0");
     }
 
@@ -52,15 +59,14 @@ public sealed class FamilyCabinetConfigurations : IEntityTypeConfiguration<Famil
         builder.Property(l => l.UpdatedAt).HasColumnType("datetime2(7)");
         builder.Property(l => l.DeletedAt).HasColumnType("datetime2(7)");
 
-        builder.HasOne<FamilyProfile>()
-            .WithMany()
-            .HasForeignKey(l => l.FamilyProfileId)
-            .OnDelete(DeleteBehavior.Cascade);
-
         builder.HasOne<ApplicationUser>()
             .WithMany()
             .HasForeignKey(l => l.CaregiverUserId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Property(l => l.RowVersion)
+            .IsRowVersion()
+            .IsConcurrencyToken();
 
         builder.HasIndex(l => new { l.FamilyProfileId, l.CaregiverUserId }).IsUnique();
     }
