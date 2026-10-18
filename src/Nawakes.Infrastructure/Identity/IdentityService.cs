@@ -74,6 +74,15 @@ public sealed class IdentityService(
         await userManager.UpdateAsync(user);
     }
 
+    public async Task ClearFcmTokenAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        var user = await userManager.FindByIdAsync(userId.ToString());
+        if (user is null || user.FcmToken is null) return;
+
+        user.FcmToken = null;
+        await userManager.UpdateAsync(user);
+    }
+
     public async Task<ProfileDto> GetProfileAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         var user = await context.Users

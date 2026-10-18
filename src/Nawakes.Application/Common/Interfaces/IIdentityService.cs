@@ -19,6 +19,12 @@ public interface IIdentityService
 
     Task UpdateFcmTokenAsync(Guid userId, string fcmToken, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Clears the stored push token (called on logout so a shared or resold
+    /// device stops receiving the previous user's notifications).
+    /// </summary>
+    Task ClearFcmTokenAsync(Guid userId, CancellationToken cancellationToken = default);
+
     Task<ProfileDto> GetProfileAsync(Guid userId, CancellationToken cancellationToken = default);
 
     Task UpdateProfileAsync(

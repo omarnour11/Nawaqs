@@ -84,6 +84,33 @@ public sealed class AuthController(ISender mediator) : ControllerBase
         return NoContent();
     }
 
+    /// <summary>
+    /// Registers or refreshes the caller's device push token. Call this after
+    /// login and whenever the OS rotates the token. Push delivery itself is not
+    /// implemented yet (see FcmNotificationService), but the token must be
+    /// stored so it is ready the moment Firebase is configured — and cleared on
+    /// logout for privacy on shared devices.
+    /// </summary>
+    [HttpPut("device-token")]
+    [Microsoft.AspNetCore.Authorization.Authorize]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> UpdateDeviceToken(
+        [FromBody] DeviceTokenRequest request,
+        [FromServices] Nawakes.Application.Common.Interfaces.ICurrentUserService currentUser,
+        [FromServices] Nawakes.Application.Common.Interfaces.IIdentityService identity,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.FcmToken) || request.FcmToken.Length > 500)
+            return BadRequest(new { error = "A device token of at most 500 characters is required." });
+
+        if (!currentUser.IsAuthenticated)
+            return Unauthorized();
+
+        await identity.UpdateFcmTokenAsync(currentUser.UserId, request.FcmToken.Trim(), cancellationToken);
+        return NoContent();
+    }
+
     /// <summary>Request a password reset. Returns a reset token (dev flow — email in production).</summary>
     [HttpPost("forgot-password")]
     [EnableRateLimiting("auth")]
@@ -143,6 +170,8 @@ public sealed record LoginRequest(string Email, string Password);
 public sealed record RefreshTokenRequest(string RefreshToken);
 
 public sealed record LogoutRequest(string RefreshToken);
+
+public sealed record DeviceTokenRequest(string FcmToken);
 
 public sealed record ForgotPasswordRequest(string Email);
 
