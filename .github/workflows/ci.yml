@@ -30,3 +30,90 @@ jobs:
 
       - name: Run unit & integration tests
         run: dotnet test Nawakes.sln --no-build --configuration Release --verbosity normal
+
+  sqlserver-integration:
+    name: SQL Server Integration
+    runs-on: ubuntu-latest
+
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: 'Y'
+          MSSQL_SA_PASSWORD: 'Nawaqs_CI_Str0ng!Pass'
+          MSSQL_PID: Developer
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd "/bin/bash -c '(/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$MSSQL_SA_PASSWORD\" -C -Q \"SELECT 1\" || /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P \"$MSSQL_SA_PASSWORD\" -Q \"SELECT 1\") >/dev/null 2>&1'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 20
+          --health-start-period 20s
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            9.0.x
+
+      - name: Restore dependencies
+        run: dotnet restore Nawakes.sln
+
+      - name: Build solution
+        run: dotnet build Nawakes.sln --no-restore --configuration Release
+
+      # These tests create and drop their own uniquely-named databases; they
+      # never touch an existing one. NAWAQS_REQUIRE_SQL_TESTS makes a missing
+      # server fail the job instead of silently skipping every assertion.
+      - name: Run database-backed tests
+        env:
+          NAWAQS_TEST_SQL_CONNECTION: "Server=localhost,1433;User Id=sa;Password=Nawaqs_CI_Str0ng!Pass;TrustServerCertificate=True;Encrypt=False"
+          NAWAQS_REQUIRE_SQL_TESTS: "true"
+        run: >-
+          dotnet test Nawakes.sln --no-build --configuration Release --verbosity normal
+          --filter "FullyQualifiedName~Integration"
+
+  mobile:
+    name: Analyze & Test (Flutter)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.6'
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        working-directory: src/nawakes_mobile
+        run: flutter pub get
+
+      # Generated files are committed, but stale or missing ones are exactly
+      # how the family-cabinet feature broke; verify codegen is reproducible.
+      - name: Verify generated code is current
+        working-directory: src/nawakes_mobile
+        run: |
+          dart run build_runner build
+          if [ -n "$(git status --porcelain -- '*.g.dart' '*.freezed.dart')" ]; then
+            echo "Generated files are stale. Run 'dart run build_runner build' and commit the result."
+            git --no-pager diff --stat -- '*.g.dart' '*.freezed.dart'
+            exit 1
+          fi
+
+      - name: Analyze
+        working-directory: src/nawakes_mobile
+        run: flutter analyze
+
+      - name: Test
+        working-directory: src/nawakes_mobile
+        run: flutter test

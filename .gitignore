@@ -38,3 +38,12 @@ appsettings.*.json
 screenshots/
 .freebuff/
 .env
+
+# ── Secrets: release signing ──────────────────────────────────────────
+# Never commit keystores or their passwords. android/key.properties is
+# ignored by src/nawakes_mobile/android/.gitignore; these cover keystores
+# stored anywhere else in the repo, including a root-level secrets/ folder.
+secrets/
+*.jks
+*.keystore
+key.properties
