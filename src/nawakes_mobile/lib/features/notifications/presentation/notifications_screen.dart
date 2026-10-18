@@ -112,6 +112,12 @@ class _NotificationCard extends HookConsumerWidget {
         'MedicationAvailable' => (Icons.medication_rounded, AppColors.primary),
         'PharmacyApproved' => (Icons.verified_rounded, AppColors.success),
         'PharmacyRejected' => (Icons.gavel_rounded, AppColors.danger),
+        'AvailabilityOfferSent' => (Icons.notifications_active_rounded, AppColors.accentBlue),
+        'OfferExpired' => (Icons.timer_off_outlined, AppColors.warning),
+        'CaregiverInviteReceived' => (Icons.person_add_alt_1_rounded, AppColors.accentBlue),
+        'CaregiverInviteAccepted' => (Icons.group_add_rounded, AppColors.success),
+        'FamilyMedicationRefilled' => (Icons.inventory_2_outlined, AppColors.success),
+        'FamilyMedicationLow' => (Icons.warning_amber_rounded, AppColors.warning),
         _ => (Icons.info_outline_rounded, AppColors.info),
       };
 

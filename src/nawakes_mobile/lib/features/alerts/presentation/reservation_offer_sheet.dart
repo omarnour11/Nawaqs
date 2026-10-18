@@ -4,7 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
-import 'package:nawakes_mobile/core/network/api_client.dart' show apiClientProvider, describeApiError;
+import 'package:nawakes_mobile/core/network/api_client.dart' show apiClientProvider;
+import 'package:nawakes_mobile/features/auth/presentation/auth_controller.dart' show describeApiError;
 
 /// Payload of an availability offer pushed to the app.
 class QueueOffer {

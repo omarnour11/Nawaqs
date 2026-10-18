@@ -56,3 +56,56 @@ ClaimShortageResponse _$ClaimShortageResponseFromJson(
 Map<String, dynamic> _$ClaimShortageResponseToJson(
   ClaimShortageResponse instance,
 ) => <String, dynamic>{'reservationId': instance.reservationId};
+
+ParseMultimodalBody _$ParseMultimodalBodyFromJson(Map<String, dynamic> json) =>
+    ParseMultimodalBody(
+      rawText: json['rawText'] as String,
+      inputType: json['inputType'] as String?,
+    );
+
+Map<String, dynamic> _$ParseMultimodalBodyToJson(
+  ParseMultimodalBody instance,
+) => <String, dynamic>{
+  'rawText': instance.rawText,
+  'inputType': instance.inputType,
+};
+
+ParsedMedicationResponse _$ParsedMedicationResponseFromJson(
+  Map<String, dynamic> json,
+) => ParsedMedicationResponse(
+  resolvedName: json['resolvedName'] as String,
+  strength: json['strength'] as String?,
+  dosageForm: json['dosageForm'] as String?,
+  confidence: (json['confidence'] as num).toDouble(),
+  requiresDisambiguation: json['requiresDisambiguation'] as bool,
+  candidates: (json['candidates'] as List<dynamic>)
+      .map((e) => ParsedCandidate.fromJson(e as Map<String, dynamic>))
+      .toList(),
+);
+
+Map<String, dynamic> _$ParsedMedicationResponseToJson(
+  ParsedMedicationResponse instance,
+) => <String, dynamic>{
+  'resolvedName': instance.resolvedName,
+  'strength': instance.strength,
+  'dosageForm': instance.dosageForm,
+  'confidence': instance.confidence,
+  'requiresDisambiguation': instance.requiresDisambiguation,
+  'candidates': instance.candidates,
+};
+
+ParsedCandidate _$ParsedCandidateFromJson(Map<String, dynamic> json) =>
+    ParsedCandidate(
+      tradeName: json['tradeName'] as String,
+      strength: json['strength'] as String?,
+      dosageForm: json['dosageForm'] as String?,
+      confidence: (json['confidence'] as num).toDouble(),
+    );
+
+Map<String, dynamic> _$ParsedCandidateToJson(ParsedCandidate instance) =>
+    <String, dynamic>{
+      'tradeName': instance.tradeName,
+      'strength': instance.strength,
+      'dosageForm': instance.dosageForm,
+      'confidence': instance.confidence,
+    };

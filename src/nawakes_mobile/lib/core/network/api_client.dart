@@ -101,6 +101,10 @@ abstract class ApiClient {
   @DELETE("/subscriptions/{id}")
   Future<void> deleteAlert(@Path("id") String id);
 
+  /// Claims an active 15-minute queue offer, converting it into a 2-hour reservation.
+  @POST("/subscriptions/{id}/claim-offer")
+  Future<ReservationResponse> claimQueueOffer(@Path("id") String id);
+
   // ── Notifications ──────────────────────────────────────────────────────
   @GET("/notifications")
   Future<List<NotificationDto>> getNotifications();
@@ -259,6 +263,12 @@ abstract class ApiClient {
     @Path("profileId") String profileId,
     @Body() InviteCaregiverRequest body,
   );
+
+  @GET("/family-cabinets/invites/pending")
+  Future<List<PendingCaregiverInviteModel>> getPendingCaregiverInvites();
+
+  @POST("/family-cabinets/invites/{linkId}/accept")
+  Future<AcceptCaregiverInviteResponse> acceptCaregiverInvite(@Path("linkId") String linkId);
 }
 
 @JsonSerializable()
