@@ -37,3 +37,4 @@ appsettings.*.json
 # Session artifacts
 screenshots/
 .freebuff/
+.env
