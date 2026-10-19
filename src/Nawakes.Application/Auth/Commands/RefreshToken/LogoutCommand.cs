@@ -6,7 +6,9 @@ namespace Nawakes.Application.Auth.Commands.RefreshToken;
 
 public sealed record LogoutCommand(string RefreshToken) : IRequest;
 
-public sealed class LogoutCommandHandler(IApplicationDbContext context)
+public sealed class LogoutCommandHandler(
+    IApplicationDbContext context,
+    IIdentityService identity)
     : IRequestHandler<LogoutCommand>
 {
     public async Task Handle(LogoutCommand request, CancellationToken cancellationToken)
@@ -21,6 +23,10 @@ public sealed class LogoutCommandHandler(IApplicationDbContext context)
         {
             stored.RevokedAt = DateTime.UtcNow;
             await context.SaveChangesAsync(cancellationToken);
+
+            // Drop the device push token so a shared/resold device stops
+            // receiving this account's notifications after logout.
+            await identity.ClearFcmTokenAsync(stored.UserId, cancellationToken);
         }
         // Idempotent: unknown or already-revoked tokens still return success.
     }

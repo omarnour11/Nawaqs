@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:nawakes_mobile/core/network/api_client.dart' show apiClientProvider, describeApiError;
+import 'package:nawakes_mobile/core/network/api_client.dart' show apiClientProvider;
+import 'package:nawakes_mobile/features/auth/presentation/auth_controller.dart' show describeApiError;
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
+import 'package:nawakes_mobile/features/family_cabinet/data/family_cabinet_models.dart';
 
 /// Bottom sheet to create a tracked family member (cabinet) and optionally
 /// invite a caregiver by phone. Returns true when a cabinet was created.
@@ -24,6 +26,10 @@ class _AddFamilyMemberSheet extends HookConsumerWidget {
     final nickname = useTextEditingController();
     final phone = useTextEditingController();
     final submitting = useState(false);
+    // Created once per sheet: if the invite below fails (e.g. the phone number
+    // has no account), retrying must reuse this profile instead of adding a
+    // duplicate cabinet entry.
+    final createdProfileId = useState<String?>(null);
 
     Future<void> submit() async {
       if (submitting.value || nickname.text.trim().isEmpty) return;
@@ -31,16 +37,21 @@ class _AddFamilyMemberSheet extends HookConsumerWidget {
       try {
         // Cairo-area default home coordinates; the user's last known location
         // refines this when location permission is granted.
-        final id = await ref.read(apiClientProvider).createFamilyProfile(
-              CreateFamilyProfileRequest(
-                nickname: nickname.text.trim(),
-                homeLatitude: 30.0444,
-                homeLongitude: 31.2357,
-              ),
-            );
+        var profileId = createdProfileId.value;
+        if (profileId == null) {
+          final created = await ref.read(apiClientProvider).createFamilyProfile(
+                CreateFamilyProfileRequest(
+                  nickname: nickname.text.trim(),
+                  homeLatitude: 30.0444,
+                  homeLongitude: 31.2357,
+                ),
+              );
+          profileId = created.id;
+          createdProfileId.value = profileId;
+        }
         if (phone.text.trim().isNotEmpty) {
           await ref.read(apiClientProvider).inviteCaregiver(
-                id,
+                profileId,
                 InviteCaregiverRequest(invitedPhoneNumber: phone.text.trim()),
               );
         }

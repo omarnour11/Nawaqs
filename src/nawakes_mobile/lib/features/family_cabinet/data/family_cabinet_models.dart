@@ -2,7 +2,7 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'family_cabinet_models.g.dart';
 
-@JsonSerializable()
+@JsonSerializable(createToJson: false)
 class FamilyCabinetResponseModel {
   FamilyCabinetResponseModel({required this.profiles});
 
@@ -12,7 +12,7 @@ class FamilyCabinetResponseModel {
   final List<FamilyCabinetProfileModel> profiles;
 }
 
-@JsonSerializable()
+@JsonSerializable(createToJson: false)
 class FamilyCabinetProfileModel {
   FamilyCabinetProfileModel({
     required this.id,
@@ -32,7 +32,7 @@ class FamilyCabinetProfileModel {
   final List<FamilyMedicationModel> medications;
 }
 
-@JsonSerializable()
+@JsonSerializable(createToJson: false)
 class FamilyMedicationModel {
   FamilyMedicationModel({
     required this.id,
@@ -120,4 +120,32 @@ class InviteCaregiverRequest {
   Map<String, dynamic> toJson() => _$InviteCaregiverRequestToJson(this);
 
   final String? invitedPhoneNumber;
+}
+
+@JsonSerializable(createToJson: false)
+class PendingCaregiverInviteModel {
+  PendingCaregiverInviteModel({
+    required this.linkId,
+    required this.familyProfileId,
+    required this.familyProfileNickname,
+    required this.invitedAt,
+  });
+
+  factory PendingCaregiverInviteModel.fromJson(Map<String, dynamic> json) =>
+      _$PendingCaregiverInviteModelFromJson(json);
+
+  final String linkId;
+  final String familyProfileId;
+  final String familyProfileNickname;
+  final DateTime invitedAt;
+}
+
+@JsonSerializable(createToJson: false)
+class AcceptCaregiverInviteResponse {
+  AcceptCaregiverInviteResponse({required this.familyProfileId});
+
+  factory AcceptCaregiverInviteResponse.fromJson(Map<String, dynamic> json) =>
+      _$AcceptCaregiverInviteResponseFromJson(json);
+
+  final String familyProfileId;
 }

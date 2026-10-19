@@ -68,7 +68,7 @@ public sealed class CheckCabinetDepletionJob(
                 context.Notifications.Add(new Nawakes.Domain.Entities.UserNotification
                 {
                     UserId = userId,
-                    Type = Nawakes.Domain.Enums.NotificationType.System,
+                    Type = Nawakes.Domain.Enums.NotificationType.FamilyMedicationLow,
                     Title = "دواء العيلة قرب يخلص",
                     Body = nearestPharmacy is null
                         ? $"دواء {med.FamilyProfile.Nickname} ({med.MedicationName}) هيكفي {daysRemaining} أيام بس."
@@ -95,7 +95,7 @@ public sealed class CheckCabinetDepletionJob(
                     u.FcmToken!,
                     "دواء العيلة قرب يخلص",
                     "افتح تطبيق نواقص لحجز الدواء قبل ما يخلص.",
-                    CancellationToken.None);
+                    cancellationToken: CancellationToken.None);
             }
             catch (Exception ex)
             {

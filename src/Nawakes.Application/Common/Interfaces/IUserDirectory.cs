@@ -11,4 +11,10 @@ public interface IUserDirectory
 
     /// <summary>Phone number if present, else email — for pharmacist order contact.</summary>
     Task<Dictionary<Guid, string>> GetContactAsync(IReadOnlyCollection<Guid> userIds, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Finds an active, non-deleted account by phone number. Returns null when
+    /// no account matches so callers can avoid leaking account existence.
+    /// </summary>
+    Task<Guid?> FindUserIdByPhoneAsync(string phoneNumber, CancellationToken cancellationToken = default);
 }

@@ -161,6 +161,9 @@ public sealed class SubscriptionConfiguration : IEntityTypeConfiguration<Subscri
 
         // Fair queue fields (Phase 3)
         builder.Property(s => s.QueueStatus).HasConversion<byte>();
+        builder.Property(s => s.RowVersion)
+            .IsRowVersion()
+            .IsConcurrencyToken();
         builder.HasIndex(s => new { s.MedicationNameNormalized, s.QueueStatus })
             .HasFilter("[IsDeleted] = 0");
     }

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:nawakes_mobile/core/network/api_client.dart' show apiClientProvider, describeApiError;
+import 'package:nawakes_mobile/core/network/api_client.dart' show apiClientProvider;
+import 'package:nawakes_mobile/features/auth/presentation/auth_controller.dart' show describeApiError;
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
 import 'package:nawakes_mobile/features/family_cabinet/data/family_cabinet_models.dart';
 
@@ -28,7 +29,10 @@ class MedicationDepletionCard extends HookConsumerWidget {
       if (submitting.value) return;
       submitting.value = true;
       try {
-        await ref.read(apiClientProvider).refillFamilyMedication(\n              medication.id,\n              RefillFamilyMedicationRequest(stripsAdded: 1),\n            );
+        await ref.read(apiClientProvider).refillFamilyMedication(
+              medication.id,
+              RefillFamilyMedicationRequest(stripsAdded: 1),
+            );
         onChanged();
       } catch (e) {
         if (context.mounted) {

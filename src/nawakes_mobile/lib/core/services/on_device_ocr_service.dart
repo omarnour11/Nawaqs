@@ -6,8 +6,10 @@ import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart
 /// uploaded anywhere (Egyptian Law 151/2020 privacy mandate) and are deleted
 /// immediately after extraction.
 class OnDeviceOcrService {
-  final _latinRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
-  final _arabicRecognizer = TextRecognizer(script: TextRecognitionScript.arabic);
+  // ML Kit's on-device text recognition has no Arabic script model (only
+  // Latin, Chinese, Devanagari, Japanese and Korean), so OCR runs on the Latin
+  // model and the Arabic keyword heuristics below filter the results.
+  final _recognizer = TextRecognizer(script: TextRecognitionScript.latin);
 
   /// Extracts candidate medication name lines from a box/prescription photo.
   /// Returns noisy lines; the backend fuzzy pipeline does the actual matching.
@@ -15,19 +17,14 @@ class OnDeviceOcrService {
     try {
       final inputImage = InputImage.fromFilePath(imageFile.path);
 
-      final results = await Future.wait([
-        _latinRecognizer.processImage(inputImage),
-        _arabicRecognizer.processImage(inputImage),
-      ]);
+      final result = await _recognizer.processImage(inputImage);
 
       final lines = <String>{};
-      for (final result in results) {
-        for (final block in result.blocks) {
-          for (final line in block.lines) {
-            final text = line.text.trim();
-            if (text.isNotEmpty && _looksLikePharmaceutical(text)) {
-              lines.add(text);
-            }
+      for (final block in result.blocks) {
+        for (final line in block.lines) {
+          final text = line.text.trim();
+          if (text.isNotEmpty && _looksLikePharmaceutical(text)) {
+            lines.add(text);
           }
         }
       }
@@ -69,7 +66,6 @@ class OnDeviceOcrService {
   }
 
   void dispose() {
-    _latinRecognizer.close();
-    _arabicRecognizer.close();
+    _recognizer.close();
   }
 }

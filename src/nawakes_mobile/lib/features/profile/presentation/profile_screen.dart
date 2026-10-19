@@ -278,6 +278,12 @@ class _ProfileBody extends HookConsumerWidget {
                 label: 'تنبيهات التوفر',
                 onTap: () => context.push('/alerts'),
               ),
+              const SizedBox(height: 8),
+              _LinkCard(
+                icon: Icons.medication_liquid_outlined,
+                label: 'دولاب دوا العيلة',
+                onTap: () => context.push('/family-cabinet'),
+              ),
               const SizedBox(height: 16),
 
               if (editing.value)

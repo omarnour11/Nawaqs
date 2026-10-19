@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
+import 'package:nawakes_mobile/core/ui/widgets.dart';
 import 'package:nawakes_mobile/features/search/data/search_models.dart';
+
+String _formatDistance(double km) {
+  if (km < 1) return '${(km * 1000).round()} متر';
+  return '${km.toStringAsFixed(1)} كم';
+}
 
 /// Bioequivalent substitutes card (Phase 4). Rendered below empty search
 /// results or on an out-of-stock pharmacy screen. Shows side-by-side
@@ -9,11 +15,6 @@ class MedicationEquivalentsCard extends StatelessWidget {
   const MedicationEquivalentsCard({super.key, required this.response});
 
   final MedicationEquivalentsResponse response;
-
-  String _formatDistance(double km) {
-    if (km < 1) return '${(km * 1000).round()} متر';
-    return '${km.toStringAsFixed(1)} كم';
-  }
 
   @override
   Widget build(BuildContext context) {

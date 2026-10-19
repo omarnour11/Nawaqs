@@ -33,10 +33,21 @@ public sealed class OfferWindowExpiryJob(
             return;
         }
 
+        // The job is scheduled for the deadline, but Hangfire can fire late or
+        // a retry can arrive after the offer was already re-issued. Never expire
+        // an offer whose window is still open.
+        if (subscription.OfferExpiresAt is null ||
+            subscription.OfferExpiresAt > DateTime.UtcNow)
+        {
+            logger.LogInformation(
+                "Offer expiry skipped: subscription {SubId} window still open until {ExpiresAt}.",
+                subscriptionId, subscription.OfferExpiresAt);
+            return;
+        }
+
         subscription.QueueStatus = QueueStatus.Skipped;
 
         var offeredItemId = subscription.OfferedInventoryItemId;
-        await context.SaveChangesAsync(cancellationToken);
 
         context.Notifications.Add(new Nawakes.Domain.Entities.UserNotification
         {
@@ -46,6 +57,8 @@ public sealed class OfferWindowExpiryJob(
             Body = "The 15-minute claim window expired and the offer passed to the next person in line.",
             RelatedEntityId = subscription.Id
         });
+
+        // One save so the status flip and the notification are atomic.
         await context.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation("Offer {SubId} expired; re-allocating item {ItemId}.", subscriptionId, offeredItemId);

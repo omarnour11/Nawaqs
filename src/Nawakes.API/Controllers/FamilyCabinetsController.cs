@@ -76,13 +76,33 @@ public sealed class FamilyCabinetsController(ISender mediator) : ControllerBase
 
     public sealed record RefillRequest([Required, Range(1, 100)] int StripsAdded);
 
-    public sealed record InviteRequest([MaxLength(20)] string? InvitedPhoneNumber);
+    public sealed record InviteRequest([Required, MaxLength(20)] string InvitedPhoneNumber);
 
     [HttpPost("{profileId:guid}/invite")]
     [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Invite(Guid profileId, [FromBody] InviteRequest request, CancellationToken cancellationToken)
     {
         var id = await mediator.Send(new InviteCaregiverCommand(profileId, request.InvitedPhoneNumber), cancellationToken);
         return Created(string.Empty, new { Id = id });
+    }
+
+    /// <summary>Lists invitations addressed to the calling user that are not yet accepted.</summary>
+    [HttpGet("invites/pending")]
+    [ProducesResponseType(typeof(IReadOnlyList<PendingCaregiverInviteDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyList<PendingCaregiverInviteDto>>> GetPendingInvites(
+        CancellationToken cancellationToken)
+        => Ok(await mediator.Send(new GetPendingCaregiverInvitesQuery(), cancellationToken));
+
+    /// <summary>Accepts an invitation addressed to the calling user.</summary>
+    [HttpPost("invites/{linkId:guid}/accept")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> AcceptInvite(Guid linkId, CancellationToken cancellationToken)
+    {
+        var profileId = await mediator.Send(new AcceptCaregiverInviteCommand(linkId), cancellationToken);
+        return Ok(new { FamilyProfileId = profileId });
     }
 }

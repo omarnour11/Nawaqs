@@ -33,11 +33,11 @@ class VoiceSearchService {
           onDone();
         }
       },
-      localeId: 'ar_EG',
       listenOptions: SpeechListenOptions(
         cancelOnError: true,
         partialResults: true,
         listenMode: ListenMode.search,
+        localeId: 'ar_EG',
       ),
     );
   }

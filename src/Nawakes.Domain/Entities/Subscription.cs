@@ -21,4 +21,10 @@ public sealed class Subscription : BaseEntity
     public DateTime? OfferExpiresAt { get; set; }
     public Guid? OfferedInventoryItemId { get; set; }
     public string? OfferExpiryHangfireJobId { get; set; }
+
+    /// <summary>
+    /// Optimistic concurrency guard so two allocation/claim paths can never
+    /// hand the same subscriber two different offers.
+    /// </summary>
+    public byte[] RowVersion { get; set; } = [];
 }

@@ -1,10 +1,14 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 
 #nullable disable
 
 namespace Nawakes.Infrastructure.Persistence.Migrations
 {
     /// <inheritdoc />
+    [DbContext(typeof(Nawakes.Infrastructure.Persistence.ApplicationDbContext))]
+    [Migration("20261018000000_AddEgyptianDrugRegistry")]
     public partial class AddEgyptianDrugRegistry : Migration
     {
         /// <inheritdoc />

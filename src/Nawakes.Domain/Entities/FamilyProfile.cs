@@ -48,4 +48,10 @@ public sealed class FamilyCaregiverLink : BaseEntity
     public Guid CaregiverUserId { get; set; }
     public string? InvitedPhoneNumber { get; set; }
     public bool IsAccepted { get; set; }
+
+    /// <summary>
+    /// Optimistic concurrency guard so two simultaneous accepts of the same
+    /// invitation cannot both succeed (which would double-notify the owner).
+    /// </summary>
+    public byte[] RowVersion { get; set; } = [];
 }
