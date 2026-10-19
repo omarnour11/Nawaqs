@@ -24,7 +24,9 @@ Thumbs.db
 **/build/
 **/.pub-cache/
 **/.pub/
-**/pubspec.lock
+# pubspec.lock is committed on purpose: CI must resolve the exact same
+# transitive build tools as local development so the generated-code
+# freshness check compares like with like.
 .flutter-plugins
 .flutter-plugins-dependencies
 
