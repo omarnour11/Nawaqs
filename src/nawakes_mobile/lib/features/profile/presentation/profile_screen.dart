@@ -382,7 +382,7 @@ class _ProfileBody extends HookConsumerWidget {
                     const SizedBox(width: 8),
                     Switch.adaptive(
                       value: profile.allowPharmacistViewActiveMedications,
-                      activeColor: AppColors.brand900,
+                      activeTrackColor: AppColors.brand900,
                       onChanged: (val) async {
                         try {
                           await ref

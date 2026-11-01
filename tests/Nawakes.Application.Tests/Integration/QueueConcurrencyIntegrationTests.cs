@@ -63,7 +63,8 @@ public sealed class QueueConcurrencyIntegrationTests : IAsyncLifetime
         {
             Name = "صيدلية النور",
             OwnerId = ownerId,
-            GeoPoint = new Point(31.0, 30.0) { SRID = 4326 }
+            GeoPoint = new Point(31.0, 30.0) { SRID = 4326 },
+            VerificationStatus = VerificationStatus.Approved
         };
         context.Pharmacies.Add(pharmacy);
 

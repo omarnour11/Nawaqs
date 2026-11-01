@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
-import 'package:latlong2/latlong.dart';
-import 'package:nawakes_mobile/core/map/nawaqs_map.dart';
 import 'package:nawakes_mobile/core/network/api_response_models.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
 import 'package:nawakes_mobile/core/ui/medication_image_view.dart';
@@ -300,7 +298,7 @@ class _HomeCatalogViewState extends ConsumerState<HomeCatalogView> {
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: _categories.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 8),
+            separatorBuilder: (context, index) => const SizedBox(width: 8),
             itemBuilder: (context, index) {
               final catItem = _categories[index];
               final isAll = index == 0 && selectedCategory == null;
@@ -1258,7 +1256,7 @@ class _LocationPickerBottomSheetState
         shrinkWrap: true,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         itemCount: places.length,
-        separatorBuilder: (_, __) => const Divider(height: 1),
+        separatorBuilder: (context, index) => const Divider(height: 1),
         itemBuilder: (context, index) {
           final place = places[index];
           return ListTile(
@@ -1366,7 +1364,7 @@ class _LocationPickerBottomSheetState
       shrinkWrap: true,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       itemCount: _suggestions.length,
-      separatorBuilder: (_, __) => const Divider(height: 1),
+      separatorBuilder: (context, index) => const Divider(height: 1),
       itemBuilder: (context, index) {
         final suggestion = _suggestions[index];
         return ListTile(

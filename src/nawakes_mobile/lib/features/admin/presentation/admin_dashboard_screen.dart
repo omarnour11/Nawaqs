@@ -54,6 +54,7 @@ final shortageDemandProvider = FutureProvider<ShortageDemandResponse>((ref) {
 class AdminDashboardTabNotifier extends Notifier<int> {
   @override
   int build() => 0;
+  @override
   set state(int value) => super.state = value;
 }
 final adminDashboardTabProvider = NotifierProvider<AdminDashboardTabNotifier, int>(AdminDashboardTabNotifier.new);
@@ -61,6 +62,7 @@ final adminDashboardTabProvider = NotifierProvider<AdminDashboardTabNotifier, in
 class AdminTicketSubTabNotifier extends Notifier<int> {
   @override
   int build() => 0;
+  @override
   set state(int value) => super.state = value;
 }
 final adminTicketSubTabProvider = NotifierProvider<AdminTicketSubTabNotifier, int>(AdminTicketSubTabNotifier.new);
@@ -68,6 +70,7 @@ final adminTicketSubTabProvider = NotifierProvider<AdminTicketSubTabNotifier, in
 class AdminTicketFilterNotifier extends Notifier<String?> {
   @override
   String? build() => 'Open';
+  @override
   set state(String? value) => super.state = value;
 }
 final adminTicketFilterProvider = NotifierProvider<AdminTicketFilterNotifier, String?>(AdminTicketFilterNotifier.new);

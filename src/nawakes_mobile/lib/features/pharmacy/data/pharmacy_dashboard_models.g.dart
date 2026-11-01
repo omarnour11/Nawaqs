@@ -100,26 +100,6 @@ Map<String, dynamic> _$PagedInventoryResultToJson(
   'totalPages': instance.totalPages,
 };
 
-AddInventoryItemRequest _$AddInventoryItemRequestFromJson(
-  Map<String, dynamic> json,
-) => AddInventoryItemRequest(
-  medicationName: json['medicationName'] as String,
-  price: (json['price'] as num).toDouble(),
-  quantity: (json['quantity'] as num).toInt(),
-  patientNote: json['patientNote'] as String?,
-  status: (json['status'] as num?)?.toInt(),
-);
-
-Map<String, dynamic> _$AddInventoryItemRequestToJson(
-  AddInventoryItemRequest instance,
-) => <String, dynamic>{
-  'medicationName': instance.medicationName,
-  'price': instance.price,
-  'quantity': instance.quantity,
-  'patientNote': instance.patientNote,
-  'status': instance.status,
-};
-
 ToggleStatusRequest _$ToggleStatusRequestFromJson(Map<String, dynamic> json) =>
     ToggleStatusRequest(status: (json['status'] as num).toInt());
 

@@ -420,7 +420,7 @@ class _NearbyPharmacyOptionsSheetState
               shrinkWrap: true,
               padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
               itemCount: p.pharmacies.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              separatorBuilder: (context, index) => const SizedBox(height: 10),
               itemBuilder: (context, index) {
                 final opt = p.pharmacies[index];
                 final isReserving = _reservingPharmacyId == opt.pharmacyId;

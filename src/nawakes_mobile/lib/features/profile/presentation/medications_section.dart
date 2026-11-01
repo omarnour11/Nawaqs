@@ -323,7 +323,7 @@ class _MedicationEditSheet extends HookConsumerWidget {
                 child: ListView.separated(
                   shrinkWrap: true,
                   itemCount: suggestions.value.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  separatorBuilder: (context, index) => const Divider(height: 1),
                   itemBuilder: (ctx, i) {
                     final item = suggestions.value[i];
                     return InkWell(

@@ -98,7 +98,7 @@ final class PharmacyInventoryControllerProvider
 }
 
 String _$pharmacyInventoryControllerHash() =>
-    r'faf1a65f1f1737b44553f57b72df5b6c63525f36';
+    r'4f36294191bd5c2c5e2455d4e66da9371e650d2f';
 
 abstract class _$PharmacyInventoryController
     extends $AsyncNotifier<List<PharmacyInventoryItemDto>> {

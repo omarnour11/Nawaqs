@@ -33,7 +33,7 @@ class MedicationImageView extends StatelessWidget {
           width: width,
           height: height,
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _buildFallbackVector(),
+          errorBuilder: (context, error, stackTrace) => _buildFallbackVector(),
           loadingBuilder: (context, child, progress) {
             if (progress == null) return child;
             return Container(

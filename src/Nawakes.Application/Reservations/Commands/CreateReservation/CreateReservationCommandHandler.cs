@@ -88,7 +88,7 @@ public sealed class CreateReservationCommandHandler(
             UserId = currentUser.UserId,
             Type = NotificationType.ReservationCreated,
             Title = "تم تأكيد الحجز بنجاح ✓",
-            Body = $"تم حجز دواء {item.MedicationName} بنجاح في صيدلية {item.Pharmacy.Name} لمدة ساعتين. كود الحجز: #{reservation.ReservationCode}",
+            Body = $"تم حجز دواء {item.MedicationName} بنجاح في صيدلية {item.Pharmacy?.Name} لمدة ساعتين. كود الحجز: #{reservation.ReservationCode}",
             RelatedEntityId = reservation.Id
         });
 
@@ -107,8 +107,8 @@ public sealed class CreateReservationCommandHandler(
             reservation.Id,
             item.Id,
             item.PharmacyId,
-            item.Pharmacy.Name,
-            item.Pharmacy.Phone,
+            item.Pharmacy?.Name ?? string.Empty,
+            item.Pharmacy?.Phone ?? string.Empty,
             item.MedicationName,
             nameof(ReservationStatus.Active),
             expiresAt,
