@@ -10,8 +10,9 @@ public sealed record CreateTicketCommand(
     string Subject,
     string Description,
     Domain.Enums.TicketCategory Category,
-    Guid? ReservationId,
-    Guid? PharmacyId) : IRequest<Guid>;
+    Guid? ReservationId = null,
+    Guid? PharmacyId = null,
+    string? AttachmentUrl = null) : IRequest<Guid>;
 
 public sealed class CreateTicketCommandValidator : AbstractValidator<CreateTicketCommand>
 {
@@ -34,7 +35,8 @@ public sealed class CreateTicketCommandHandler(IApplicationDbContext context, IC
             Description = request.Description.Trim(),
             Category = request.Category,
             ReservationId = request.ReservationId,
-            PharmacyId = request.PharmacyId
+            PharmacyId = request.PharmacyId,
+            AttachmentUrl = request.AttachmentUrl
         };
         context.SupportTickets.Add(ticket);
         await context.SaveChangesAsync(cancellationToken);

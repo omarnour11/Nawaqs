@@ -1,7 +1,9 @@
 using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Nawakes.Application.Common.Interfaces;
 using Nawakes.Infrastructure.BackgroundJobs;
 using Nawakes.Infrastructure.Caching;
@@ -54,7 +56,20 @@ public static class DependencyInjection
         .AddEntityFrameworkStores<ApplicationDbContext>();
 
         // ── Cache ───────────────────────────────────────────────────────
-        services.AddDistributedMemoryCache();
+        var redisConn = configuration.GetConnectionString("Redis");
+        if (!string.IsNullOrWhiteSpace(redisConn))
+        {
+            services.AddStackExchangeRedisCache(opts =>
+            {
+                opts.Configuration = redisConn;
+                opts.InstanceName = "Nawakes:";
+            });
+        }
+        else
+        {
+            services.AddDistributedMemoryCache();
+        }
+        services.AddMemoryCache();                                            // IMemoryCache for in-process catalog warm-up
         services.AddScoped<ICacheService, RedisCacheService>();
 
         // ── Hangfire ────────────────────────────────────────────────────
@@ -82,8 +97,30 @@ public static class DependencyInjection
         // ── Security ────────────────────────────────────────────────────
         services.AddSingleton<IEncryptionService, AesEncryptionService>();
 
-        // ── NLP / Dialect Normalization ──────────────────────────────
+        // ── NLP / Clinical Prescription Matching ──────────────────────────────
+        // ClinicalMatchingOptions: Singleton — weights don't change at runtime.
+        services.AddSingleton(new Nawakes.Application.Common.Models.ClinicalMatchingOptions());
+        // EgyptianDialectNormalizerService: Scoped — accesses DbContext per request.
         services.AddScoped<IEgyptianDialectNormalizer, EgyptianDialectNormalizerService>();
+        // ClinicalPrescriptionMatcher: Singleton — owns the IMemoryCache catalog warm-up.
+        // Uses IServiceScopeFactory internally to safely resolve the scoped DbContext
+        services.AddScoped<IClinicalPrescriptionMatcher>(sp =>
+            new ClinicalPrescriptionMatcher(
+                sp.GetRequiredService<IServiceScopeFactory>(),
+                sp.GetRequiredService<IEgyptianDialectNormalizer>(),
+                sp.GetRequiredService<IMemoryCache>(),
+                sp.GetRequiredService<ILogger<ClinicalPrescriptionMatcher>>(),
+                sp.GetRequiredService<Nawakes.Application.Common.Models.ClinicalMatchingOptions>()));
+
+        // ── Gemini Flash AI (High Accuracy Prescription Parsing with 1400 Daily Quota) ─
+        services.Configure<Nawakes.Application.Common.Models.GeminiOptions>(
+            configuration.GetSection(Nawakes.Application.Common.Models.GeminiOptions.SectionName));
+        services.AddHttpClient<IGeminiPrescriptionService, GeminiPrescriptionService>();
+
+        // ── Secondary Cloud OCR (Azure AI Vision 4.0 Read API Failover) ────
+        services.Configure<Nawakes.Application.Common.Models.AzureVisionOptions>(
+            configuration.GetSection(Nawakes.Application.Common.Models.AzureVisionOptions.SectionName));
+        services.AddHttpClient<ISecondaryOcrService, AzureVisionOcrService>();
 
         // ── Notifications ───────────────────────────────────────────────
         services.AddScoped<INotificationService, FcmNotificationService>();

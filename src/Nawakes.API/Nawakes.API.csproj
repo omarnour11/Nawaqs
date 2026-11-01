@@ -5,6 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>12</LangVersion>
     <InvariantGlobalization>false</InvariantGlobalization>
+    <UserSecretsId>nawakes-api-local-secrets</UserSecretsId>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\Nawakes.Application\Nawakes.Application.csproj" />

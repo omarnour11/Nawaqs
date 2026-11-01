@@ -10,4 +10,8 @@ namespace Nawakes.Application.Pharmacy.Commands.AddInventoryItem;
 public sealed record AddInventoryItemCommand(
     string MedicationName,
     decimal Price,
-    InventoryStatus Status) : IRequest<InventoryItemDto>;
+    InventoryStatus Status,
+    int Quantity = 10,
+    string? PatientNote = null,
+    string? DosageForm = null,
+    string? Strength = null) : IRequest<InventoryItemDto>;

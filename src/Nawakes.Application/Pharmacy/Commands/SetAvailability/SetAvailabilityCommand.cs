@@ -79,6 +79,6 @@ public sealed class SetAvailabilityCommandHandler(
         if (previousStatus == InventoryStatus.OutOfStock && item.Status == InventoryStatus.InStock)
             jobScheduler.EnqueueAvailabilityNotification(item.Id);
 
-        return new InventoryItemDto(item.Id, item.MedicationName, item.Price, item.Status.ToString(), item.UpdatedAt);
+        return new InventoryItemDto(item.Id, item.MedicationName, item.Price, item.Quantity, item.Status.ToString(), item.PatientNote, item.UpdatedAt);
     }
 }

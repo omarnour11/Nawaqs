@@ -10,6 +10,17 @@ part 'widgets.g.dart';
 /// Live unread-notifications count for the bell badge; 0 on failure.
 @Riverpod(keepAlive: true)
 class UnreadNotificationsCount extends _$UnreadNotificationsCount {
+  void resetToZero() {
+    state = const AsyncValue.data(0);
+  }
+
+  void decrement() {
+    final current = state.value ?? 0;
+    if (current > 0) {
+      state = AsyncValue.data(current - 1);
+    }
+  }
+
   @override
   Future<int> build() async {
     try {
@@ -48,8 +59,6 @@ class NawaqsTopBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final unread = ref.watch(unreadNotificationsCountProvider).value ?? 0;
-
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
       child: Row(
@@ -62,9 +71,9 @@ class NawaqsTopBar extends ConsumerWidget {
                   context.pop();
                 } else {
                   final loc = GoRouterState.of(context).matchedLocation;
-                  if (loc.startsWith('/admin')) {
+                  if (loc == '/admin' || loc.startsWith('/admin/')) {
                     context.go('/admin');
-                  } else if (loc.startsWith('/pharmacy')) {
+                  } else if (loc == '/pharmacy' || loc.startsWith('/pharmacy/')) {
                     context.go('/pharmacy');
                   } else {
                     context.go('/home');
@@ -108,43 +117,58 @@ class NawaqsTopBar extends ConsumerWidget {
           ),
           ...extraActions,
           if (showBell)
-            Stack(
-              children: [
-                IconButton(
-                  onPressed: onBell ?? () {},
-                  icon: const Icon(Icons.notifications_none_rounded, size: 23),
-                  padding: const EdgeInsets.all(6),
-                  constraints:
-                      const BoxConstraints(minWidth: 36, minHeight: 36),
-                ),
-                if (unread > 0)
-                  PositionedDirectional(
-                    top: 5,
-                    end: 6,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      constraints: const BoxConstraints(minWidth: 15),
-                      height: 15,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: AppColors.dangerIcon,
-                        borderRadius: BorderRadius.circular(999),
-                        border:
-                            Border.all(color: AppColors.page, width: 1.4),
-                      ),
-                      child: Text(
-                        unread > 9 ? '9+' : '$unread',
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 9,
-                            fontWeight: FontWeight.w800),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
+            NotificationBellButton(onPressed: onBell),
         ],
       ),
+    );
+  }
+}
+
+/// Standalone reusable notification bell button with live unread badge.
+class NotificationBellButton extends ConsumerWidget {
+  final VoidCallback? onPressed;
+  final Color? color;
+
+  const NotificationBellButton({super.key, this.onPressed, this.color});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final unread = ref.watch(unreadNotificationsCountProvider).value ?? 0;
+
+    return Stack(
+      children: [
+        IconButton(
+          onPressed: onPressed ?? () => context.push('/notifications'),
+          icon: Icon(Icons.notifications_none_rounded, size: 23, color: color),
+          tooltip: 'الإشعارات',
+          padding: const EdgeInsets.all(6),
+          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+        ),
+        if (unread > 0)
+          PositionedDirectional(
+            top: 5,
+            end: 6,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              constraints: const BoxConstraints(minWidth: 15),
+              height: 15,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: AppColors.dangerIcon,
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: AppColors.page, width: 1.4),
+              ),
+              child: Text(
+                unread > 9 ? '9+' : '$unread',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

@@ -2,25 +2,25 @@ using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
-using Nawakes.Application.Common.Interfaces;
 using Nawakes.Domain.Enums;
 using Nawakes.Infrastructure.Persistence;
 
 namespace Nawakes.Infrastructure.BackgroundJobs;
 
 /// <summary>
-/// Expires a queue offer still in Offered status after the 15-minute window,
-/// marks it Skipped, and re-triggers allocation so the next person in line
-/// gets the offer.
+/// Fires at Subscription.OfferExpiresAt. If the offer is still in Offered status,
+/// marks it Skipped and immediately triggers AllocateQueueSlotsAsync on the
+/// freed item so the next person in line gets the opportunity without waiting
+/// for a polling sweep.
 /// </summary>
 public sealed class OfferWindowExpiryJob(
     IServiceProvider serviceProvider,
     ILogger<OfferWindowExpiryJob> logger)
 {
     [AutomaticRetry(Attempts = 3, DelaysInSeconds = [10, 60, 300])]
+    [DisableConcurrentExecution(timeoutInSeconds: 60)]
     public async Task ExpireOfferAsync(Guid subscriptionId, CancellationToken cancellationToken)
     {
-        // Own scope — Hangfire jobs outlive the request scope
         using var scope = serviceProvider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
@@ -33,9 +33,6 @@ public sealed class OfferWindowExpiryJob(
             return;
         }
 
-        // The job is scheduled for the deadline, but Hangfire can fire late or
-        // a retry can arrive after the offer was already re-issued. Never expire
-        // an offer whose window is still open.
         if (subscription.OfferExpiresAt is null ||
             subscription.OfferExpiresAt > DateTime.UtcNow)
         {
@@ -53,12 +50,11 @@ public sealed class OfferWindowExpiryJob(
         {
             UserId = subscription.UserId,
             Type = Nawakes.Domain.Enums.NotificationType.OfferExpired,
-            Title = "Offer Expired",
-            Body = "The 15-minute claim window expired and the offer passed to the next person in line.",
+            Title = "انتهت مهلة العرض",
+            Body = "انتهت مهلة الـ 15 دقيقة لتأكيد الحجز وتم تمرير العرض للمشترك التالي في قائمة الانتظار.",
             RelatedEntityId = subscription.Id
         });
 
-        // One save so the status flip and the notification are atomic.
         await context.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation("Offer {SubId} expired; re-allocating item {ItemId}.", subscriptionId, offeredItemId);

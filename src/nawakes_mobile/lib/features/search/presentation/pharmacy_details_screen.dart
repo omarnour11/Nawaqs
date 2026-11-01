@@ -8,6 +8,7 @@ import 'package:nawakes_mobile/core/ui/widgets.dart';
 import 'package:nawakes_mobile/features/auth/presentation/auth_controller.dart';
 import 'package:nawakes_mobile/features/search/data/search_models.dart';
 import 'package:nawakes_mobile/features/reservations/presentation/reservation_controller.dart';
+import 'package:nawakes_mobile/features/reservations/presentation/passes_screen.dart' show passesControllerProvider;
 import 'package:nawakes_mobile/features/reports/presentation/report_controller.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -31,37 +32,62 @@ class PharmacyDetailsScreen extends HookConsumerWidget {
     final selectedPharmacy = useState(true); // this pharmacy selected
 
     useEffect(() {
+      // Clear stale loading/success from a previous visit (global provider).
+      ref.invalidate(reservationControllerProvider);
+      ref.invalidate(reportControllerProvider);
+
       Future(() async {
         try {
           final favorites = await ref.read(apiClientProvider).getMyFavorites();
-          isFavorite.value = favorites.any((f) => f.pharmacyId == item.pharmacyId);
+          if (context.mounted) {
+            isFavorite.value =
+                favorites.any((f) => f.pharmacyId == item.pharmacyId);
+          }
         } catch (_) {}
       });
       return null;
     }, const []);
 
-    ref.listen<AsyncValue<void>>(reservationControllerProvider, (_, state) {
-      if (!state.isLoading && state.hasError) {
+    ref.listen<AsyncValue<void>>(reservationControllerProvider, (prev, state) {
+      if (prev?.isLoading != true) return;
+      if (!context.mounted) return;
+      if (state.hasError) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(describeApiError(state.error!)),
-              backgroundColor: AppColors.dangerText),
+          SnackBar(
+            content: Text(describeApiError(state.error!)),
+            backgroundColor: AppColors.dangerText,
+          ),
         );
-      } else if (!state.isLoading && !state.hasError && state.hasValue) {
+        return;
+      }
+      if (state.hasValue && !state.hasError) {
+        ref.invalidate(passesControllerProvider);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('الحجز اتعمل. التصريح صالح لمدة ساعتين.')),
+          const SnackBar(
+            content: Text('الحجز اتعمل. التصريح صالح لمدة ساعتين.'),
+          ),
         );
+        context.go('/passes');
       }
     });
 
-    ref.listen<AsyncValue<void>>(reportControllerProvider, (_, state) {
-      if (!state.isLoading && state.hasError) {
+    ref.listen<AsyncValue<void>>(reportControllerProvider, (prev, state) {
+      if (prev?.isLoading != true) return;
+      if (!context.mounted) return;
+      if (state.hasError) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(describeApiError(state.error!)),
-              backgroundColor: AppColors.dangerText),
+          SnackBar(
+            content: Text(describeApiError(state.error!)),
+            backgroundColor: AppColors.dangerText,
+          ),
         );
-      } else if (!state.isLoading && !state.hasError && state.hasValue) {
+        return;
+      }
+      if (state.hasValue && !state.hasError) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('شكرًا، تقريرك بيساعد باقي المستخدمين.')),
+          const SnackBar(
+            content: Text('شكرًا، تقريرك بيساعد باقي المستخدمين.'),
+          ),
         );
       }
     });
@@ -70,7 +96,8 @@ class PharmacyDetailsScreen extends HookConsumerWidget {
     final (availLabel, availTone) = inStock
         ? (item.quantity <= 4
             ? 'مخزون محدود · ${item.quantity} وحدة'
-            : 'متاح · ${item.quantity} وحدة', ChipTone.warning)
+            : 'متاح · ${item.quantity} وحدة',
+            item.quantity <= 4 ? ChipTone.warning : ChipTone.success)
         : ('غير متاح حاليًا', ChipTone.danger);
     final trust = (item.trustScore / 100).clamp(0.0, 1.0);
 
@@ -88,7 +115,7 @@ class PharmacyDetailsScreen extends HookConsumerWidget {
               showBell: true,
               onBell: () => context.push('/notifications'),
             ),
-            ScreenSubtitle('EGP ${item.price.toStringAsFixed(2)} · تحديث لحظي من الصيدلية'),
+            ScreenSubtitle('${item.price.toStringAsFixed(2)} ج.م · تحديث لحظي من الصيدلية'),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Column(
@@ -121,7 +148,7 @@ class PharmacyDetailsScreen extends HookConsumerWidget {
                               child: Text(
                                 inStock
                                     ? '${item.quantity > 0 ? item.quantity : 5}+ وحدة مُبلّغ عنها قريبًا'
-                                    : 'الصيدلية reporting إنه غير متاح',
+                                    : 'الصيدلية مبلّغة إنه غير متاح',
                                 style: const TextStyle(
                                     fontSize: 14.5, fontWeight: FontWeight.w700),
                               ),

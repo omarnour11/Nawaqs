@@ -10,6 +10,7 @@ class ProfileResponse {
   final String? phone;
   final String? medicalHistoryNotes;
   final DateTime createdAt;
+  final bool allowPharmacistViewActiveMedications;
 
   ProfileResponse({
     required this.userId,
@@ -18,6 +19,7 @@ class ProfileResponse {
     this.phone,
     this.medicalHistoryNotes,
     required this.createdAt,
+    this.allowPharmacistViewActiveMedications = true,
   });
 
   factory ProfileResponse.fromJson(Map<String, dynamic> json) =>
@@ -30,8 +32,14 @@ class UpdateProfileRequest {
   final String? fullName;
   final String? phone;
   final String? medicalHistoryNotes;
+  final bool? allowPharmacistViewActiveMedications;
 
-  UpdateProfileRequest({this.fullName, this.phone, this.medicalHistoryNotes});
+  UpdateProfileRequest({
+    this.fullName,
+    this.phone,
+    this.medicalHistoryNotes,
+    this.allowPharmacistViewActiveMedications,
+  });
 
   factory UpdateProfileRequest.fromJson(Map<String, dynamic> json) =>
       _$UpdateProfileRequestFromJson(json);

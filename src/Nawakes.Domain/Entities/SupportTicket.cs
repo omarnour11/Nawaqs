@@ -13,6 +13,7 @@ public sealed class SupportTicket : BaseEntity
     /// <summary>Reservation the dispute is about, if any.</summary>
     public Guid? ReservationId { get; set; }
     public Guid? PharmacyId { get; set; }
+    public string? AttachmentUrl { get; set; }
 
     public string Subject { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;

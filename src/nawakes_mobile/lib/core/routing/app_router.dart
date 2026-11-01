@@ -74,6 +74,7 @@ GoRouter appRouter(Ref ref) {
           loc == '/alerts' ||
           loc == '/family-cabinet' ||
           loc == '/profile' ||
+          loc.startsWith('/search') ||
           loc.startsWith('/support') ||
           loc.startsWith('/pass-detail') ||
           loc.startsWith('/pharmacy-details') ||
@@ -83,10 +84,10 @@ GoRouter appRouter(Ref ref) {
       // Notifications are visible to every authenticated role (admin/pharmacy bells too)
       if (loc.startsWith('/notifications')) return null;
 
-      final inPharmacyArea = loc.startsWith('/pharmacy');
+      final inPharmacyArea = loc == '/pharmacy' || loc.startsWith('/pharmacy/');
       if (inPharmacyArea && status != AuthStatus.pharmacyOwner) return '/login';
 
-      final inAdminArea = loc.startsWith('/admin');
+      final inAdminArea = loc == '/admin' || loc.startsWith('/admin/');
       if (inAdminArea && status != AuthStatus.admin) return '/login';
 
       return null;
@@ -100,7 +101,26 @@ GoRouter appRouter(Ref ref) {
       ShellRoute(
         builder: (context, state, child) => PatientShell(child: child),
         routes: [
-          GoRoute(path: '/home', builder: (context, state) => const SearchScreen()),
+          GoRoute(
+            path: '/home',
+            builder: (context, state) {
+              final query =
+                  state.uri.queryParameters['q'] ??
+                  state.uri.queryParameters['query'] ??
+                  (state.extra as String?);
+              return SearchScreen(initialQuery: query);
+            },
+          ),
+          GoRoute(
+            path: '/search',
+            builder: (context, state) {
+              final query =
+                  state.uri.queryParameters['query'] ??
+                  state.uri.queryParameters['q'] ??
+                  (state.extra as String?);
+              return SearchScreen(initialQuery: query);
+            },
+          ),
           GoRoute(
               path: '/passes', builder: (context, state) => const PassesScreen()),
           GoRoute(path: '/profile', builder: (context, state) => const ProfileScreen()),
@@ -114,21 +134,30 @@ GoRouter appRouter(Ref ref) {
       GoRoute(
         path: '/pass-detail',
         builder: (context, state) {
-          final r = state.extra as ReservationResponse;
+          final r = state.extra;
+          if (r is! ReservationResponse) {
+            return const PassesScreen();
+          }
           return PassDetailScreen(reservation: r);
         },
       ),
       GoRoute(
         path: '/all-results',
         builder: (context, state) {
-          final r = state.extra as AllResultsArgs;
+          final r = state.extra;
+          if (r is! AllResultsArgs) {
+            return const SearchScreen();
+          }
           return AllResultsScreen(results: r.results, medicationName: r.medicationName);
         },
       ),
       GoRoute(
         path: '/pharmacy-details',
         builder: (context, state) {
-          final item = state.extra as PharmacyDetailsArgs;
+          final item = state.extra;
+          if (item is! PharmacyDetailsArgs) {
+            return const SearchScreen();
+          }
           return PharmacyDetailsScreen(args: item);
         },
       ),
@@ -156,16 +185,32 @@ GoRouter appRouter(Ref ref) {
       // ── Admin area ────────────────────────────────────────────────────
       GoRoute(path: '/admin', builder: (context, state) => const AdminDashboardScreen()),
       GoRoute(
+        path: '/admin/pharmacy-review',
+        builder: (context, state) {
+          final pharmacy = state.extra;
+          if (pharmacy is! AdminPharmacyDto) {
+            return const AdminDashboardScreen();
+          }
+          return PharmacyReviewScreen(pharmacy: pharmacy);
+        },
+      ),
+      GoRoute(
         path: '/admin/review',
         builder: (context, state) {
-          final pharmacy = state.extra as AdminPharmacyDto;
+          final pharmacy = state.extra;
+          if (pharmacy is! AdminPharmacyDto) {
+            return const AdminDashboardScreen();
+          }
           return PharmacyReviewScreen(pharmacy: pharmacy);
         },
       ),
       GoRoute(
         path: '/admin/ticket-detail',
         builder: (context, state) {
-          final ticket = state.extra as AdminTicketDto;
+          final ticket = state.extra;
+          if (ticket is! AdminTicketDto) {
+            return const AdminDashboardScreen();
+          }
           return AdminTicketDetailScreen(ticket: ticket);
         },
       ),

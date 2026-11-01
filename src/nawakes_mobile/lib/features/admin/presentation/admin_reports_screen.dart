@@ -2,18 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
 import 'package:nawakes_mobile/core/network/api_client.dart';
 import 'package:nawakes_mobile/core/ui/widgets.dart';
 import 'package:nawakes_mobile/features/auth/presentation/auth_controller.dart';
 import 'package:nawakes_mobile/features/admin/data/admin_models.dart';
+import 'package:nawakes_mobile/features/admin/presentation/admin_dashboard_screen.dart';
 import 'package:intl/intl.dart' show DateFormat;
 
 part 'admin_reports_screen.g.dart';
 
 @riverpod
 Future<List<AdminReportDto>> pendingReports(Ref ref) async {
-  return ref.read(apiClientProvider).getAdminReports(true);
+  return ref.read(apiClientProvider).getAdminReports(false);
 }
 
 /// مراجعة البلاغات — community reports moderation (confirm / dismiss).
@@ -42,14 +44,14 @@ class AdminReportsScreen extends HookConsumerWidget {
               return ListView(
                 padding: const EdgeInsets.only(bottom: 24),
                 children: [
-                  NawaqsTopBar(
+                  const NawaqsTopBar(
                     eyebrow: 'نواقص / العمليات',
                     title: 'مراجعة البلاغات',
                     back: true,
                     showBell: false,
                   ),
-                  ScreenSubtitle(
-                      'بلاغات المجتمع عن توفر الأدوية — تأكيدها بيرفع ثقة الصيدلية'),
+                  const ScreenSubtitle(
+                      'بلاغات المجتمع حول توفر الأدوية وتحديث موثوقية الصيدليات'),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Column(
@@ -84,7 +86,7 @@ class AdminReportsScreen extends HookConsumerWidget {
                                 SizedBox(width: 10),
                                 Expanded(
                                   child: Text(
-                                      'مفيش بلاغات معلقة — كل حاجة اتذراست',
+                                      'لا توجد بلاغات معلقة — تمت مراجعة جميع البلاغات بنجاح',
                                       style: TextStyle(
                                           fontWeight: FontWeight.w700,
                                           color: AppColors.successText)),
@@ -94,7 +96,7 @@ class AdminReportsScreen extends HookConsumerWidget {
                           )
                         else
                           ...shown.map((r) => Padding(
-                                padding: const EdgeInsets.only(bottom: 10),
+                                padding: const EdgeInsets.only(bottom: 12),
                                 child: _ReportCard(report: r),
                               )),
                       ],
@@ -162,6 +164,78 @@ class _ReportCard extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final busy = useState(false);
     final pending = report.status == 'Pending';
+    final pharmaciesState = ref.watch(adminPharmaciesProvider(all: true));
+
+    final AdminPharmacyDto? matchedPharmacy = pharmaciesState.value
+        ?.cast<AdminPharmacyDto?>()
+        .firstWhere(
+          (p) =>
+              p?.id.toLowerCase() == report.pharmacyId.toLowerCase() ||
+              (p?.name.trim().toLowerCase() == report.pharmacyName.trim().toLowerCase()),
+          orElse: () => null,
+        );
+
+    Future<void> sendInquiryNotification() async {
+      final titleCtrl = TextEditingController(
+          text: 'استفسار بخصوص بلاغ: ${report.medicationName ?? "دواء"}');
+      final msgCtrl = TextEditingController(
+          text:
+              'وردنا بلاغ يفيد عدم دقة توفر الدواء لديك. يرجى مراجعة المخزون وتحديث حالته تجنباً للخصم من الموثوقية.');
+
+      await showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('إرسال إشعار للصيدلية'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: titleCtrl,
+                decoration: const InputDecoration(labelText: 'عنوان الإشعار'),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: msgCtrl,
+                maxLines: 3,
+                decoration: const InputDecoration(labelText: 'نص الإشعار / الاستفسار'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('إلغاء'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                Navigator.pop(ctx);
+                try {
+                  await ref.read(apiClientProvider).notifyPharmacy(
+                        report.pharmacyId,
+                        NotifyPharmacyRequest(
+                          title: titleCtrl.text.trim(),
+                          message: msgCtrl.text.trim(),
+                        ),
+                      );
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('تم إرسال الإشعار لمالك الصيدلية بنجاح.')),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('فشل إرسال الإشعار: ${describeApiError(e)}')),
+                    );
+                  }
+                }
+              },
+              child: const Text('إرسال الآن'),
+            ),
+          ],
+        ),
+      );
+    }
 
     Future<void> act(bool confirm) async {
       busy.value = true;
@@ -174,9 +248,10 @@ class _ReportCard extends HookConsumerWidget {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-                content: Text(confirm
-                    ? 'البلاغ اتأكد — درجة ثقة الصيدلية هتتأثر.'
-                    : 'البلاغ اترفض.')),
+              content: Text(confirm
+                  ? 'تم تأكيد البلاغ وتحديث تقييم الصيدلية.'
+                  : 'تم رفض وحفظ البلاغ.'),
+            ),
           );
         }
       } catch (e) {
@@ -193,18 +268,18 @@ class _ReportCard extends HookConsumerWidget {
     final isFound = report.type == 'Found';
     final (typeLabel, typeIcon, typeColor) = isFound
         ? (
-            'لقيت الدواء هنا',
+            'توفر الدواء',
             Icons.check_circle_outline_rounded,
             AppColors.successText
           )
         : (
-            'معلومة مش دقيقة',
+            'معلومة غير دقيقة',
             Icons.error_outline_rounded,
             AppColors.dangerText
           );
 
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
         color: AppColors.card,
         borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -232,17 +307,62 @@ class _ReportCard extends HookConsumerWidget {
           if (report.description != null &&
               report.description!.isNotEmpty) ...[
             const SizedBox(height: 6),
-            Text(report.description!,
-                style: const TextStyle(
-                    fontSize: 12.5,
-                    color: AppColors.textSecondary,
-                    height: 1.5)),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF7F8FA),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(report.description!,
+                  style: const TextStyle(
+                      fontSize: 12.5,
+                      color: AppColors.textPrimary,
+                      height: 1.5)),
+            ),
           ],
           const SizedBox(height: 6),
           Text(
               DateFormat('d MMM · hh:mm a').format(report.createdAt.toLocal()),
               style:
                   const TextStyle(fontSize: 11, color: AppColors.textMuted)),
+
+          // ── Pharmacy Contact & Inquiry Actions ──────────────────
+          const SizedBox(height: 12),
+          const Divider(),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              if (matchedPharmacy != null && matchedPharmacy.phone.isNotEmpty) ...[
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    final uri = Uri.parse('tel:${matchedPharmacy.phone}');
+                    if (await canLaunchUrl(uri)) {
+                      await launchUrl(uri);
+                    }
+                  },
+                  icon: const Icon(Icons.phone_outlined, size: 15),
+                  label: Text('اتصال (${matchedPharmacy.phone})', style: const TextStyle(fontSize: 11.5)),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: sendInquiryNotification,
+                  icon: const Icon(Icons.notifications_active_outlined, size: 15, color: AppColors.accentBlue),
+                  label: const Text('إرسال استفسار للصيدلية', style: TextStyle(fontSize: 11.5, color: AppColors.accentBlue)),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
+              ),
+            ],
+          ),
+
           if (pending) ...[
             const SizedBox(height: 12),
             Row(
@@ -251,7 +371,7 @@ class _ReportCard extends HookConsumerWidget {
                   child: FilledButton.icon(
                     onPressed: busy.value ? null : () => act(true),
                     icon: const Icon(Icons.check_rounded, size: 16),
-                    label: const Text('تأكيد'),
+                    label: const Text('تأكيد البلاغ'),
                     style: FilledButton.styleFrom(
                         backgroundColor: AppColors.successText,
                         minimumSize: const Size(0, 42),
@@ -264,7 +384,7 @@ class _ReportCard extends HookConsumerWidget {
                   child: OutlinedButton.icon(
                     onPressed: busy.value ? null : () => act(false),
                     icon: const Icon(Icons.close_rounded, size: 16),
-                    label: const Text('رفض'),
+                    label: const Text('رفض وحفظ'),
                     style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.dangerText,
                         side: const BorderSide(

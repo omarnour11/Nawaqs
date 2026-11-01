@@ -3,12 +3,15 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
 import 'package:nawakes_mobile/core/ui/widgets.dart';
+import 'package:dio/dio.dart' show MultipartFile;
 import 'package:nawakes_mobile/core/network/api_client.dart';
-import 'package:nawakes_mobile/core/network/api_response_models.dart' show SetAvailabilityRequest;
 import 'package:nawakes_mobile/features/pharmacy/presentation/pharmacy_dashboard_controller.dart';
 import 'package:nawakes_mobile/features/pharmacy/presentation/quick_barcode_scanner_sheet.dart';
 import 'package:nawakes_mobile/features/auth/presentation/auth_controller.dart';
 import 'package:intl/intl.dart' show DateFormat;
+import 'package:nawakes_mobile/features/pharmacy/data/pharmacy_dashboard_models.dart';
+import 'package:nawakes_mobile/features/pharmacy/presentation/pharmacy_onboarding_screen.dart'
+    show myPharmacyProvider;
 
 /// المخزون — verified pharmacy card + tinted stat grid + med list with
 /// available/limited/unavailable action buttons (per mockup).
@@ -20,6 +23,9 @@ class InventoryTab extends HookConsumerWidget {
     final searchQuery = useState('');
     final searchCtrl = useTextEditingController();
     final state = ref.watch(pharmacyInventoryControllerProvider);
+    final pharmacyState = ref.watch(myPharmacyProvider);
+    final verificationStatus =
+        pharmacyState.value?.verificationStatus ?? 'Pending';
 
     return Scaffold(
       backgroundColor: AppColors.page,
@@ -78,13 +84,29 @@ class InventoryTab extends HookConsumerWidget {
                     children: [
                       Row(
                         children: [
-                          const Expanded(
-                            child: SectionLabel('صيدلية موثقة'),
+                          Expanded(
+                            child: SectionLabel(
+                              verificationStatus == 'Approved'
+                                  ? 'صيدلية موثقة'
+                                  : 'حالة اعتماد الصيدلية',
+                            ),
                           ),
-                          const StatusChip(
-                            'موثقة',
-                            tone: ChipTone.success,
-                            icon: Icons.verified_outlined,
+                          StatusChip(
+                            verificationStatus == 'Approved'
+                                ? 'موثقة'
+                                : (verificationStatus == 'Rejected'
+                                    ? 'مرفوضة'
+                                    : 'قيد المراجعة'),
+                            tone: verificationStatus == 'Approved'
+                                ? ChipTone.success
+                                : (verificationStatus == 'Rejected'
+                                    ? ChipTone.danger
+                                    : ChipTone.warning),
+                            icon: verificationStatus == 'Approved'
+                                ? Icons.verified_outlined
+                                : (verificationStatus == 'Rejected'
+                                    ? Icons.cancel_outlined
+                                    : Icons.hourglass_top_rounded),
                           ),
                         ],
                       ),
@@ -101,12 +123,14 @@ class InventoryTab extends HookConsumerWidget {
                       const SizedBox(height: 8),
                       Row(
                         children: [
-                          const SizedBox(
-                              width: 7,
-                              height: 7,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: AppColors.successIcon)),
+                          Container(
+                            width: 7,
+                            height: 7,
+                            decoration: const BoxDecoration(
+                              color: AppColors.successIcon,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
                           const SizedBox(width: 6),
                           const Text('تُبلغ مباشرة',
                               style: TextStyle(
@@ -114,9 +138,11 @@ class InventoryTab extends HookConsumerWidget {
                                   fontWeight: FontWeight.w700,
                                   color: AppColors.successText)),
                           const Spacer(),
-                          const Text('آخر تحديث: الآن',
-                              style: TextStyle(
-                                  fontSize: 12, color: AppColors.textSecondary)),
+                          Text(
+                            'آخر تحديث: ${DateFormat('HH:mm').format(DateTime.now())}',
+                            style: const TextStyle(
+                                fontSize: 12, color: AppColors.textSecondary),
+                          ),
                         ],
                       ),
                     ],
@@ -164,75 +190,82 @@ class InventoryTab extends HookConsumerWidget {
                   const SizedBox(height: 12),
 
                   // ── Section header + search ──────────────────────────────
+                  const SectionLabel('قائمة الأدوية'),
+                  const Text('مخزون اليوم',
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 10),
                   Row(
                     children: [
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            SectionLabel('قائمة الأدوية'),
-                            Text('مخزون اليوم',
-                                style: TextStyle(
-                                    fontSize: 16, fontWeight: FontWeight.w800)),
-                          ],
-                        ),
-                      ),
-                      // Quick Barcode Scanner button
-                      GestureDetector(
-                        onTap: () => QuickBarcodeScannerSheet.show(context),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: AppColors.accentBlueBg,
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.qr_code_scanner_rounded,
-                                  size: 15, color: AppColors.accentBlue),
-                              SizedBox(width: 4),
-                              Text('مسح سريع',
-                                  style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w700,
-                                      color: AppColors.accentBlue)),
-                            ],
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => QuickBarcodeScannerSheet.show(context),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            decoration: BoxDecoration(
+                              color: AppColors.accentBlueBg,
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.qr_code_scanner_rounded,
+                                    size: 15, color: AppColors.accentBlue),
+                                SizedBox(width: 4),
+                                Text('مسح سريع',
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.accentBlue)),
+                              ],
+                            ),
                           ),
                         ),
                       ),
                       const SizedBox(width: 8),
-                      // Add medication button
-                      GestureDetector(
-                        onTap: () => showModalBottomSheet(
-                          context: context,
-                          isScrollControlled: true,
-                          builder: (_) => _AddMedSheet(),
-                        ),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: AppColors.accentBlueBg,
-                            borderRadius: BorderRadius.circular(999),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => showModalBottomSheet(
+                            context: context,
+                            isScrollControlled: true,
+                            builder: (_) => const _AddMedSheet(),
                           ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.add_rounded,
-                                  size: 15, color: AppColors.accentBlue),
-                              SizedBox(width: 4),
-                              Text('إضافة دواء',
-                                  style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w700,
-                                      color: AppColors.accentBlue)),
-                            ],
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            decoration: BoxDecoration(
+                              color: AppColors.accentBlueBg,
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.add_rounded,
+                                    size: 15, color: AppColors.accentBlue),
+                                SizedBox(width: 4),
+                                Text('إضافة دواء',
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.accentBlue)),
+                              ],
+                            ),
                           ),
                         ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: TextButton.icon(
+                      onPressed: () => showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        builder: (_) => const _CsvImportSheet(),
+                      ),
+                      icon: const Icon(Icons.upload_file_outlined, size: 16),
+                      label: const Text('استيراد CSV'),
+                    ),
                   ),
                   const SizedBox(height: 10),
                   TextField(
@@ -324,11 +357,10 @@ class StatCardTinted extends StatelessWidget {
               style: TextStyle(
                   fontSize: 24, fontWeight: FontWeight.w800, color: fg, height: 1.1)),
           const SizedBox(height: 2),
-          Text(label.toUpperCase(),
+          Text(label,
               style: TextStyle(
-                  fontSize: 9.5,
+                  fontSize: 11,
                   fontWeight: FontWeight.w700,
-                  letterSpacing: 0.3,
                   color: fg.withValues(alpha: 0.85))),
         ],
       ),
@@ -338,7 +370,7 @@ class StatCardTinted extends StatelessWidget {
 
 // ─── Medication card with availability actions ────────────────────────────────
 class _MedCard extends HookConsumerWidget {
-  final dynamic item;
+  final PharmacyInventoryItemDto item;
   const _MedCard({required this.item});
 
   @override
@@ -359,8 +391,8 @@ class _MedCard extends HookConsumerWidget {
       busy.value = true;
       try {
         await ref.read(apiClientProvider).setAvailability(
-              item.id as String,
-              SetAvailabilityRequest(quantity: qty, price: item.price as double),
+              item.id,
+              SetAvailabilityRequest(quantity: qty, price: item.price),
             );
         ref.invalidate(pharmacyInventoryControllerProvider);
       } catch (e) {
@@ -403,13 +435,13 @@ class _MedCard extends HookConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(item.medicationName as String,
+                    Text(item.medicationName,
                         style: const TextStyle(
                             fontSize: 14, fontWeight: FontWeight.w700),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis),
                     const SizedBox(height: 2),
-                    Text('EGP ${(item.price as double).toStringAsFixed(2)}',
+                    Text('${item.price.toStringAsFixed(2)} ج.م',
                         style: const TextStyle(
                             fontSize: 12.5, color: AppColors.textSecondary)),
                   ],
@@ -428,15 +460,59 @@ class _MedCard extends HookConsumerWidget {
                         fontWeight: FontWeight.w700,
                         color: chipFg)),
               ),
+              const SizedBox(width: 4),
+              IconButton(
+                icon: const Icon(Icons.settings_outlined, size: 20, color: AppColors.textSecondary),
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                tooltip: 'إدارة الصنف',
+                onPressed: () => _showItemSettingsSheet(context, ref, item),
+              ),
             ],
           ),
           const SizedBox(height: 6),
-          Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: Text(
-              '${item.quantity} وحدة · ${DateFormat('HH:mm').format((item.updatedAt ?? item.createdAt as DateTime).toLocal())}',
-              style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
-            ),
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 6,
+            children: [
+              Text(
+                'الكمية بالمخزون: ${item.quantity} وحدة · ${DateFormat('HH:mm').format((item.lastUpdatedAt ?? item.createdAt).toLocal())}',
+                style: const TextStyle(fontSize: 12, color: AppColors.textMuted, fontWeight: FontWeight.w600),
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      minimumSize: const Size(28, 26),
+                      visualDensity: VisualDensity.compact,
+                      side: const BorderSide(color: AppColors.hairline),
+                    ),
+                    icon: const Icon(Icons.remove, size: 14),
+                    label: const Text('بيع كاونتر (-1)', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700)),
+                    onPressed: (busy.value || item.quantity <= 0)
+                        ? null
+                        : () => setAvailability(item.quantity - 1),
+                  ),
+                  const SizedBox(width: 4),
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      minimumSize: const Size(28, 26),
+                      visualDensity: VisualDensity.compact,
+                      side: const BorderSide(color: AppColors.hairline),
+                    ),
+                    icon: const Icon(Icons.add, size: 14),
+                    label: const Text('+1', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700)),
+                    onPressed: busy.value ? null : () => setAvailability(item.quantity + 1),
+                  ),
+                ],
+              ),
+            ],
           ),
           const SizedBox(height: 10),
           Row(
@@ -472,6 +548,226 @@ class _MedCard extends HookConsumerWidget {
                   selectedFg: AppColors.dangerText,
                   selectedBorder: AppColors.dangerIcon,
                   onTap: busy.value ? null : () => setAvailability(0),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+void _showItemSettingsSheet(
+    BuildContext context, WidgetRef ref, PharmacyInventoryItemDto item) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    builder: (ctx) => _ItemSettingsModal(item: item),
+  );
+}
+
+class _ItemSettingsModal extends HookConsumerWidget {
+  final PharmacyInventoryItemDto item;
+  const _ItemSettingsModal({required this.item});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final qty = useState(item.quantity);
+    final priceCtrl = useTextEditingController(text: item.price.toStringAsFixed(2));
+    final isSaving = useState(false);
+    final isDeleting = useState(false);
+
+    Future<void> save() async {
+      final parsedPrice = double.tryParse(
+              priceCtrl.text.replaceAll('،', '.').replaceAll(',', '.').trim()) ??
+          item.price;
+      isSaving.value = true;
+      try {
+        await ref
+            .read(pharmacyInventoryControllerProvider.notifier)
+            .updateItem(item.id, qty.value, parsedPrice);
+        if (context.mounted) {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('تم تحديث بيانات الصنف بنجاح.')),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(describeApiError(e))),
+          );
+        }
+      } finally {
+        isSaving.value = false;
+      }
+    }
+
+    Future<void> delete() async {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dCtx) => AlertDialog(
+          title: const Text('حذف الصنف من المخزون'),
+          content: Text(
+              'هل أنت متأكد من حذف "${item.medicationName}"؟ لن يؤثر الحذف على سجلات المبيعات أو الحجوزات السابقة.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dCtx, false),
+              child: const Text('إلغاء'),
+            ),
+            FilledButton(
+              style:
+                  FilledButton.styleFrom(backgroundColor: AppColors.danger),
+              onPressed: () => Navigator.pop(dCtx, true),
+              child: const Text('حذف'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
+
+      isDeleting.value = true;
+      try {
+        await ref
+            .read(pharmacyInventoryControllerProvider.notifier)
+            .deleteItem(item.id);
+        if (context.mounted) {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('تم حذف الصنف من المخزون.')),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(describeApiError(e))),
+          );
+        }
+      } finally {
+        isDeleting.value = false;
+      }
+    }
+
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        top: 8,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.medicationName,
+                      style: const TextStyle(
+                          fontSize: 17, fontWeight: FontWeight.w800),
+                    ),
+                    const SizedBox(height: 2),
+                    const Text('إدارة الصنف والمخزون',
+                        style: TextStyle(
+                            fontSize: 12, color: AppColors.textSecondary)),
+                  ],
+                ),
+              ),
+              IconButton(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.close_rounded),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const Text('الكمية المتوفرة',
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              IconButton.filledTonal(
+                onPressed: qty.value > 0 ? () => qty.value-- : null,
+                icon: const Icon(Icons.remove_rounded),
+              ),
+              const SizedBox(width: 14),
+              Container(
+                width: 72,
+                alignment: Alignment.center,
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.hairline),
+                ),
+                child: Text(
+                  '${qty.value}',
+                  style: const TextStyle(
+                      fontSize: 20, fontWeight: FontWeight.w800),
+                ),
+              ),
+              const SizedBox(width: 14),
+              IconButton.filledTonal(
+                onPressed: () => qty.value++,
+                icon: const Icon(Icons.add_rounded),
+              ),
+              const SizedBox(width: 8),
+              TextButton(
+                onPressed: () => qty.value += 10,
+                child: const Text('+10'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const Text('السعر (ج.م)',
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+          const SizedBox(height: 6),
+          TextField(
+            controller: priceCtrl,
+            keyboardType:
+                const TextInputType.numberWithOptions(decimal: true),
+            decoration: const InputDecoration(
+              hintText: 'مثال: 45.50',
+              suffixText: 'ج.م',
+            ),
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed:
+                      (isSaving.value || isDeleting.value) ? null : delete,
+                  icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                  label: const Text('حذف الصنف'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.danger,
+                    side:
+                        const BorderSide(color: AppColors.danger, width: 1.2),
+                    minimumSize: const Size(0, 46),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: (isSaving.value || isDeleting.value) ? null : save,
+                  icon: isSaving.value
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white))
+                      : const Icon(Icons.check_rounded, size: 18),
+                  label: const Text('حفظ التعديلات'),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size(0, 46),
+                  ),
                 ),
               ),
             ],
@@ -522,14 +818,20 @@ class _AvailabilityButton extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               if (selected && icon != null) ...[
-                Icon(icon, size: 15, color: selectedFg),
-                const SizedBox(width: 5),
+                Icon(icon, size: 14, color: selectedFg),
+                const SizedBox(width: 3),
               ],
-              Text(label,
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 11,
                       fontWeight: FontWeight.w700,
-                      color: selected ? selectedFg : AppColors.textSecondary)),
+                      color: selected ? selectedFg : AppColors.textSecondary),
+                ),
+              ),
             ],
           ),
         ),
@@ -540,6 +842,8 @@ class _AvailabilityButton extends StatelessWidget {
 
 // ─── Add medication bottom sheet (mockup: إضافة دواء) ─────────────────────────
 class _AddMedSheet extends HookConsumerWidget {
+  const _AddMedSheet();
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final nameCtrl = useTextEditingController();
@@ -551,14 +855,43 @@ class _AddMedSheet extends HookConsumerWidget {
     final availability = useState<int>(10); // 10=available, 3=limited, 0=unavailable
     final submitting = useState(false);
 
+    double? parseArabicDouble(String? raw) {
+      if (raw == null) return null;
+      var s = raw.trim();
+      if (s.isEmpty) return null;
+      const arabicDigits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+      for (int i = 0; i < arabicDigits.length; i++) {
+        s = s.replaceAll(arabicDigits[i], '$i');
+      }
+      s = s.replaceAll('،', '.').replaceAll(',', '.');
+      return double.tryParse(s);
+    }
+
+    int? parseArabicInt(String? raw) {
+      if (raw == null) return null;
+      var s = raw.trim();
+      if (s.isEmpty) return null;
+      const arabicDigits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+      for (int i = 0; i < arabicDigits.length; i++) {
+        s = s.replaceAll(arabicDigits[i], '$i');
+      }
+      return int.tryParse(s);
+    }
+
     Future<void> save() async {
       if (!formKey.currentState!.validate()) return;
       submitting.value = true;
+      final qty = parseArabicInt(qtyCtrl.text.trim()) ?? availability.value;
+      final strength = strengthCtrl.text.trim();
+      final name = strength.isEmpty
+          ? nameCtrl.text.trim()
+          : '${nameCtrl.text.trim()} $strength';
+      final price = parseArabicDouble(priceCtrl.text) ?? 0.0;
       try {
         await ref.read(pharmacyInventoryControllerProvider.notifier).addItem(
-              nameCtrl.text.trim(),
-              double.tryParse(priceCtrl.text) ?? 0,
-              quantity: int.tryParse(qtyCtrl.text) ?? 10,
+              name,
+              price,
+              quantity: qty,
               note: noteCtrl.text.trim().isEmpty ? null : noteCtrl.text.trim(),
             );
         if (context.mounted) {
@@ -578,16 +911,16 @@ class _AddMedSheet extends HookConsumerWidget {
       }
     }
 
+    final media = MediaQuery.of(context);
     return Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-        left: 20, right: 20, top: 4,
-      ),
-      child: Form(
-        key: formKey,
-        child: ListView(
-          shrinkWrap: true,
-          children: [
+      padding: EdgeInsets.only(bottom: media.viewInsets.bottom),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: media.size.height * 0.88),
+        child: Form(
+          key: formKey,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+            children: [
             const SectionLabel('إضافة دواء'),
             const SizedBox(height: 12),
             TextFormField(
@@ -604,18 +937,23 @@ class _AddMedSheet extends HookConsumerWidget {
                   child: TextFormField(
                     controller: strengthCtrl,
                     decoration: const InputDecoration(
-                        labelText: 'التركيز', hintText: '500 مجم'),
+                        labelText: 'التركيز (اختياري)', hintText: '500 مجم'),
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: TextFormField(
                     controller: priceCtrl,
-                    keyboardType: TextInputType.number,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     decoration: const InputDecoration(
-                        labelText: 'السعر EGP', hintText: '28.50'),
-                    validator: (v) =>
-                        v == null || double.tryParse(v) == null ? 'رقم غير صحيح' : null,
+                        labelText: 'السعر (ج.م)', hintText: '28.50'),
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) return null;
+                      final parsed = parseArabicDouble(v);
+                      if (parsed == null || parsed < 0) return 'رقم غير صحيح';
+                      if (parsed > 10000000) return 'الحد الأقصى 10,000,000 ج.م';
+                      return null;
+                    },
                   ),
                 ),
               ],
@@ -625,6 +963,11 @@ class _AddMedSheet extends HookConsumerWidget {
               controller: qtyCtrl,
               keyboardType: TextInputType.number,
               decoration: const InputDecoration(labelText: 'الكمية المتوفرة'),
+              onChanged: (v) {
+                final parsed = parseArabicInt(v);
+                if (parsed == null) return;
+                availability.value = parsed.clamp(0, 100000);
+              },
             ),
             const SizedBox(height: 14),
             const SectionLabel('حالة التوفر'),
@@ -639,7 +982,10 @@ class _AddMedSheet extends HookConsumerWidget {
                     selectedFg: AppColors.successText,
                     selectedBorder: AppColors.successIcon,
                     icon: Icons.check_rounded,
-                    onTap: () => availability.value = 10,
+                    onTap: () {
+                      availability.value = 10;
+                      qtyCtrl.text = '10';
+                    },
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -650,7 +996,10 @@ class _AddMedSheet extends HookConsumerWidget {
                     selectedBg: AppColors.warningBg,
                     selectedFg: AppColors.warningText,
                     selectedBorder: AppColors.warningIcon,
-                    onTap: () => availability.value = 3,
+                    onTap: () {
+                      availability.value = 3;
+                      qtyCtrl.text = '3';
+                    },
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -661,7 +1010,10 @@ class _AddMedSheet extends HookConsumerWidget {
                     selectedBg: AppColors.dangerBg,
                     selectedFg: AppColors.dangerText,
                     selectedBorder: AppColors.dangerIcon,
-                    onTap: () => availability.value = 0,
+                    onTap: () {
+                      availability.value = 0;
+                      qtyCtrl.text = '0';
+                    },
                   ),
                 ),
               ],
@@ -675,23 +1027,99 @@ class _AddMedSheet extends HookConsumerWidget {
                   hintText: 'مثلاً: متوفر بس علبة الـ30 كبسولة'),
             ),
             const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: submitting.value ? null : save,
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.brand900,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(13)),
-                ),
-                child: submitting.value
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white))
-                    : const Text('حفظ في المخزون'),
+            FilledButton(
+              onPressed: submitting.value ? null : save,
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.brand900,
+                minimumSize: const Size.fromHeight(48),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(13)),
               ),
+              child: submitting.value
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white))
+                  : const Text('حفظ في المخزون'),
+            ),
+          ],
+        ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CsvImportSheet extends HookConsumerWidget {
+  const _CsvImportSheet();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final csvCtrl = useTextEditingController(
+      text: 'MedicationName,Price,Status\nPanadol,25,InStock\n',
+    );
+    final submitting = useState(false);
+
+    Future<void> import() async {
+      submitting.value = true;
+      try {
+        final file = MultipartFile.fromString(
+          csvCtrl.text,
+          filename: 'inventory.csv',
+        );
+        final result =
+            await ref.read(apiClientProvider).bulkImportInventory(file);
+        ref.invalidate(pharmacyInventoryControllerProvider);
+        if (context.mounted) {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'اتضاف ${result.importedCount} · اتنحّى ${result.skippedCount}',
+              ),
+            ),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(describeApiError(e))),
+          );
+        }
+      } finally {
+        submitting.value = false;
+      }
+    }
+
+    final media = MediaQuery.of(context);
+    return Padding(
+      padding: EdgeInsets.only(bottom: media.viewInsets.bottom),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: media.size.height * 0.7),
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+          children: [
+            const SectionLabel('استيراد مخزون'),
+            const SizedBox(height: 8),
+            const Text(
+              'الصيغة: MedicationName,Price,Status — Status = InStock أو OutOfStock',
+              style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: csvCtrl,
+              maxLines: 8,
+              decoration: const InputDecoration(
+                labelText: 'CSV',
+                alignLabelWithHint: true,
+              ),
+            ),
+            const SizedBox(height: 16),
+            FilledButton(
+              onPressed: submitting.value ? null : import,
+              style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+              child: Text(submitting.value ? 'جارٍ الاستيراد…' : 'استيراد'),
             ),
           ],
         ),

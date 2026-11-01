@@ -129,13 +129,21 @@ class _CreateAlertCard extends HookConsumerWidget {
       }
       submitting.value = true;
       try {
-        final locationService = ref.read(locationServiceProvider);
-        final pos = await locationService.getCurrentLocation();
+        double lat = 30.0444, lng = 31.2357;
+        try {
+          final locationService = ref.read(locationServiceProvider);
+          final pos = await locationService.getCurrentLocation();
+          if (pos != null) {
+            lat = pos.latitude;
+            lng = pos.longitude;
+          }
+        } catch (_) {}
+
         await ref.read(apiClientProvider).createAlert(CreateAlertRequest(
               medicationName: name,
               radiusKm: radius.value,
-              latitude: pos?.latitude ?? 30.0444,
-              longitude: pos?.longitude ?? 31.2357,
+              latitude: lat,
+              longitude: lng,
             ));
         nameCtrl.clear();
         onCreated();

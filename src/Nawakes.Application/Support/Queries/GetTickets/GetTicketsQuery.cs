@@ -18,6 +18,7 @@ public sealed record AdminTicketDto(
     string? Resolution,
     Guid? ReservationId,
     Guid? PharmacyId,
+    string? AttachmentUrl,
     DateTime CreatedAt);
 
 public sealed class GetTicketsQueryHandler(IApplicationDbContext context, IUserDirectory users)
@@ -37,7 +38,7 @@ public sealed class GetTicketsQueryHandler(IApplicationDbContext context, IUserD
             .Select(t => new
             {
                 t.Id, t.UserId, t.Subject, t.Description, t.Category,
-                t.Status, t.Resolution, t.ReservationId, t.PharmacyId, t.CreatedAt
+                t.Status, t.Resolution, t.ReservationId, t.PharmacyId, t.AttachmentUrl, t.CreatedAt
             })
             .ToListAsync(cancellationToken);
 
@@ -46,6 +47,6 @@ public sealed class GetTicketsQueryHandler(IApplicationDbContext context, IUserD
         return rows.Select(r => new AdminTicketDto(
             r.Id, r.UserId, emails.GetValueOrDefault(r.UserId, ""),
             r.Subject, r.Description, r.Category.ToString(), r.Status.ToString(),
-            r.Resolution, r.ReservationId, r.PharmacyId, r.CreatedAt)).ToList();
+            r.Resolution, r.ReservationId, r.PharmacyId, r.AttachmentUrl, r.CreatedAt)).ToList();
     }
 }

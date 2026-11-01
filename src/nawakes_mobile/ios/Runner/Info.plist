@@ -26,6 +26,14 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>نحتاج الكاميرا لتصوير الروشتة أو علبة الدواء.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>نحتاج إذن الوصول إلى الصور لاختيار صورة الروشتة أو علبة الدواء من المعرض.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>نحتاج موقعك عشان نلاقي أقرب صيدلية.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>نحتاج الميكروفون للبحث بالصوت.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

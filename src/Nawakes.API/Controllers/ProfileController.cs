@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Nawakes.Application.Profile.Commands.UpdateProfile;
 using Nawakes.Application.Profile.Queries.GetProfile;
-using System.ComponentModel.DataAnnotations;
 
 namespace Nawakes.API.Controllers;
 
@@ -35,17 +34,18 @@ public sealed class ProfileController(ISender mediator) : ControllerBase
         CancellationToken cancellationToken)
     {
         await mediator.Send(new UpdateProfileCommand(
-            request.FullName, request.Phone, request.MedicalHistoryNotes), cancellationToken);
+            request.FullName, request.Phone, request.MedicalHistoryNotes, request.AllowPharmacistViewActiveMedications), cancellationToken);
         return NoContent();
     }
 
     private static ProfileResponse ToResponse(ProfileDto dto) => new(
-        dto.UserId, dto.Email, dto.FullName, dto.Phone, dto.MedicalHistoryNotes, dto.CreatedAt);
+        dto.UserId, dto.Email, dto.FullName, dto.Phone, dto.MedicalHistoryNotes, dto.CreatedAt, dto.AllowPharmacistViewActiveMedications);
 
     public sealed record UpdateProfileRequest(
         string? FullName,
         string? Phone,
-        string? MedicalHistoryNotes);
+        string? MedicalHistoryNotes,
+        bool? AllowPharmacistViewActiveMedications = null);
 }
 
 public sealed record ProfileResponse(
@@ -54,4 +54,5 @@ public sealed record ProfileResponse(
     string? FullName,
     string? Phone,
     string? MedicalHistoryNotes,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    bool AllowPharmacistViewActiveMedications = true);

@@ -6,7 +6,8 @@ namespace Nawakes.Application.Profile.Commands.UpdateProfile;
 public sealed record UpdateProfileCommand(
     string? FullName,
     string? Phone,
-    string? MedicalHistoryNotes) : IRequest;
+    string? MedicalHistoryNotes,
+    bool? AllowPharmacistViewActiveMedications = null) : IRequest;
 
 public sealed class UpdateProfileCommandValidator : AbstractValidator<UpdateProfileCommand>
 {
@@ -34,5 +35,10 @@ public sealed class UpdateProfileCommandHandler(
 {
     public Task Handle(UpdateProfileCommand request, CancellationToken cancellationToken)
         => identityService.UpdateProfileAsync(
-            currentUser.UserId, request.FullName, request.Phone, request.MedicalHistoryNotes, cancellationToken);
+            currentUser.UserId,
+            request.FullName,
+            request.Phone,
+            request.MedicalHistoryNotes,
+            request.AllowPharmacistViewActiveMedications,
+            cancellationToken);
 }

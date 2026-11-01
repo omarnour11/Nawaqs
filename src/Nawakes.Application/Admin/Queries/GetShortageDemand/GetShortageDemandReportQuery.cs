@@ -2,7 +2,6 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Nawakes.Application.Common.Interfaces;
 using Nawakes.Domain.Enums;
-
 namespace Nawakes.Application.Admin.Queries.GetShortageDemand;
 
 /// <summary>
@@ -27,17 +26,44 @@ public sealed class GetShortageDemandReportQueryHandler(IApplicationDbContext co
     public async Task<ShortageDemandResponse> Handle(
         GetShortageDemandReportQuery request, CancellationToken cancellationToken)
     {
-        var rows = await context.Subscriptions
+        var now = DateTime.UtcNow;
+
+        var subscriptionRows = await context.Subscriptions
+            .AsNoTracking()
             .Where(s => s.IsActive && s.QueueStatus == QueueStatus.Waiting)
             .GroupBy(s => s.MedicationName)
+            .Select(g => new
+            {
+                MedicationName = g.Key,
+                Count = g.Count(),
+                Oldest = g.Min(s => s.CreatedAt),
+            })
+            .ToListAsync(cancellationToken);
+
+        var shortageRows = await context.ShortageRequests
+            .AsNoTracking()
+            .Where(r => r.Status == ShortageRequestStatus.Open && r.ExpiresAt > now)
+            .GroupBy(r => r.MedicationName)
+            .Select(g => new
+            {
+                MedicationName = g.Key,
+                Count = g.Count(),
+                Oldest = g.Min(r => r.CreatedAt),
+            })
+            .ToListAsync(cancellationToken);
+
+        var merged = subscriptionRows
+            .Concat(shortageRows)
+            .GroupBy(r => r.MedicationName, StringComparer.OrdinalIgnoreCase)
             .Select(g => new ShortageDemandRow(
                 g.Key,
                 string.Empty,
-                g.Count(),
-                g.Min(s => s.CreatedAt)))
+                g.Sum(x => x.Count),
+                g.Min(x => x.Oldest)))
             .OrderByDescending(r => r.WaitingCount)
-            .ToListAsync(cancellationToken);
+            .ThenBy(r => r.MedicationName)
+            .ToList();
 
-        return new ShortageDemandResponse(rows, DateTime.UtcNow);
+        return new ShortageDemandResponse(merged, now);
     }
 }

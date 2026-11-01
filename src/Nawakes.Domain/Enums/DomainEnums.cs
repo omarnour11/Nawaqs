@@ -21,7 +21,8 @@ public enum VerificationStatus : byte
 {
     Pending = 0,
     Approved = 1,
-    Rejected = 2
+    Rejected = 2,
+    Suspended = 3
 }
 
 public enum ReportType : byte
@@ -59,7 +60,8 @@ public enum NotificationType : byte
     CaregiverInviteReceived = 10,
     CaregiverInviteAccepted = 11,
     FamilyMedicationRefilled = 12,
-    FamilyMedicationLow = 13
+    FamilyMedicationLow = 13,
+    ClinicalConflict = 14
 }
 
 public enum TicketStatus : byte

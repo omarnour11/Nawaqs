@@ -11,7 +11,7 @@ namespace Nawakes.Application.Pharmacy.Commands.RegisterPharmacy;
 /// <summary>
 /// Pharmacist onboarding: registers the pharmacy profile of a logged-in
 /// PharmacyOwner, including documents and exact pin-dropped location.
-/// Idempotent — updating an existing profile re-submits it for review.
+/// Idempotent — updating an existing profile re-submits it for review if critical fields change.
 /// </summary>
 public sealed record RegisterPharmacyCommand(
     string Name,
@@ -55,11 +55,28 @@ public sealed class RegisterPharmacyCommandHandler(IApplicationDbContext context
             };
             context.Pharmacies.Add(pharmacy);
         }
-        else if (pharmacy.VerificationStatus == VerificationStatus.Rejected)
+        else
         {
-            // Resubmission re-enters the review queue
-            pharmacy.VerificationStatus = VerificationStatus.Pending;
-            pharmacy.RejectionReason = null;
+            if (pharmacy.VerificationStatus == VerificationStatus.Rejected)
+            {
+                pharmacy.VerificationStatus = VerificationStatus.Pending;
+                pharmacy.RejectionReason = null;
+            }
+            else if (pharmacy.VerificationStatus == VerificationStatus.Approved)
+            {
+                var currentLat = pharmacy.GeoPoint?.Y ?? 0;
+                var currentLon = pharmacy.GeoPoint?.X ?? 0;
+                var locationChanged = Math.Abs(currentLat - request.Latitude) > 0.0001 || Math.Abs(currentLon - request.Longitude) > 0.0001;
+                var nameChanged = !string.Equals(pharmacy.Name, request.Name.Trim(), StringComparison.OrdinalIgnoreCase);
+                var licenseChanged = !string.Equals(pharmacy.LicenseDocUrl, request.LicenseDocUrl, StringComparison.Ordinal);
+                var idChanged = !string.Equals(pharmacy.NationalIdDocUrl, request.NationalIdDocUrl, StringComparison.Ordinal);
+
+                if (locationChanged || nameChanged || licenseChanged || idChanged)
+                {
+                    pharmacy.VerificationStatus = VerificationStatus.Pending;
+                    pharmacy.RejectionReason = null;
+                }
+            }
         }
 
         pharmacy.Name = request.Name.Trim();

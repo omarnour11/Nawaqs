@@ -21,16 +21,20 @@ dependencies:
   geolocator: ^14.0.1
   intl: ^0.20.2
   go_router: ^17.2.3
-  google_maps_flutter: ^2.17.0
+  flutter_map: ^8.2.2
+  latlong2: ^0.9.1
   hooks_riverpod: ^3.3.1
   json_annotation: ^4.11.0
   retrofit: ^4.9.2
   riverpod_annotation: ^4.0.2
   url_launcher: ^6.3.2
   camera: ^0.11.1
+  image_picker: ^1.1.2
   google_mlkit_text_recognition: ^0.14.0
   speech_to_text: ^7.0.0
   permission_handler: ^11.3.1
+  image: ^4.5.4
+  flutter_local_notifications: ^22.3.3
 
 dev_dependencies:
   flutter_test:

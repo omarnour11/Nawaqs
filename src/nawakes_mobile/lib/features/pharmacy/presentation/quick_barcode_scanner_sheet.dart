@@ -3,6 +3,7 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
+import 'package:nawakes_mobile/core/network/api_client.dart';
 import 'package:nawakes_mobile/features/pharmacy/data/pharmacy_dashboard_models.dart';
 import 'package:nawakes_mobile/features/pharmacy/presentation/pharmacy_dashboard_controller.dart';
 
@@ -57,9 +58,6 @@ class QuickBarcodeScannerSheet extends HookConsumerWidget {
         }
       }
 
-      // If no exact item matches barcode, use first item or display not-found action
-      matchedItem ??= items.isNotEmpty ? items.first : null;
-
       if (matchedItem == null) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -74,10 +72,17 @@ class QuickBarcodeScannerSheet extends HookConsumerWidget {
       }
 
       try {
-        final isCurrentlyInStock = matchedItem.status == 'InStock';
-        await ref
-            .read(pharmacyInventoryControllerProvider.notifier)
-            .toggleStatus(matchedItem.id, matchedItem.status);
+        final isCurrentlyInStock =
+            matchedItem.status == 'InStock' && matchedItem.quantity > 0;
+        final newQty = isCurrentlyInStock ? 0 : 10;
+        await ref.read(apiClientProvider).setAvailability(
+              matchedItem.id,
+              SetAvailabilityRequest(
+                quantity: newQty,
+                price: matchedItem.price,
+              ),
+            );
+        ref.invalidate(pharmacyInventoryControllerProvider);
 
         if (context.mounted) {
           final newStatusArabic = isCurrentlyInStock ? 'غير متوفر' : 'متوفر الآن';

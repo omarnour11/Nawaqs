@@ -49,3 +49,10 @@ secrets/
 *.jks
 *.keystore
 key.properties
+
+# User / Runtime Uploads
+src/Nawakes.API/wwwroot/uploads/*
+!src/Nawakes.API/wwwroot/uploads/.gitkeep
+
+# Teamwork subagent scratch
+.agents/teamwork/

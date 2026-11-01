@@ -11,6 +11,51 @@ import 'package:nawakes_mobile/features/profile/presentation/profile_controller.
 import 'package:nawakes_mobile/features/profile/presentation/medications_section.dart';
 import 'package:nawakes_mobile/features/favorites/data/favorite_models.dart';
 
+
+const List<String> _standardAllergies = [
+  'حساسية الصدر والربو الشعبي',
+  'حساسية البنسلين ومشتقاته',
+  'حساسية الأسبرين ومسكنات NSAIDs',
+  'حساسية السلفا (السلفوناميدات)',
+  'حساسية اللاكتوز (سكر الحليب)',
+  'حساسية الجلوتين (القمح)',
+  'حساسية المكسرات والفول السوداني',
+  'حساسية البيض',
+  'حساسية السمك والمأكولات البحرية',
+  'حساسية الفراولة والموز',
+  'حساسية الصبغات الوريدية واليود',
+  'حساسية اللاتكس (المطاط)',
+  'أكزيما وحساسية جلدية',
+  'حساسية الجيوب الأنفية وحبوب اللقاح',
+];
+
+const List<String> _standardConditions = [
+  'داء السكري النوع الأول',
+  'داء السكري النوع الثاني',
+  'ارتفاع ضغط الدم الشرياني',
+  'قصور الشرايين التاجية والقلب',
+  'ضعف وقصور عضلة القلب',
+  'الربو الشعبي المزمن وحساسية الصدر',
+  'السدة الرئوية المزمنة (COPD)',
+  'الفشل الكلوي المزمن وقصور الكلى',
+  'خمول وقصور الغدة الدرقية',
+  'فرط نشاط الغدة الدرقية',
+  'الروماتويد والتهاب المفاصل المزمن',
+  'الصرع واضطراب الشحنات الكهربائية',
+  'مرض كرون والتهاب الأمعاء',
+  'التهاب القولون التقرحي',
+  'متلازمة القولون العصبي المزمن',
+  'النقرس وارتفاع حمض اليوريك',
+  'ارتفاع دهون الدم والكوليسترول',
+  'تليف والتهاب الكبد المزمن',
+  'هشاشة العظام المزمنة',
+  'التصلب المتعدد (MS)',
+  'مرض باركنسون (الشلل الرعاش)',
+  'الذئبة الحمراء الجهازية (SLE)',
+  'ارتجاع المريء وقرحة المعدة المزمنة',
+  'المياه الزرقاء بالعين (الجلوكوما)',
+];
+
 /// الحساب — profile + medical record (chronic conditions, allergies, notes).
 class ProfileScreen extends HookConsumerWidget {
   const ProfileScreen({super.key});
@@ -61,15 +106,18 @@ class _ProfileBody extends HookConsumerWidget {
     final saving = useState(false);
     final nameCtrl = useTextEditingController(text: profile.fullName ?? '');
     final phoneCtrl = useTextEditingController(text: profile.phone ?? '');
-    final notesCtrl =
-        useTextEditingController(text: profile.medicalHistoryNotes ?? '');
+    final initialFreeNotes = useMemoized(
+      () => _parseMedicalNotes(profile.medicalHistoryNotes).join('\n'),
+      [profile.medicalHistoryNotes],
+    );
+    final notesCtrl = useTextEditingController(text: initialFreeNotes);
 
     // Structured health lists (parsed from the encrypted questionnaire stored
     // at registration; profile notes act as the editable source).
     final conditions = useState<List<String>>(
-        _parseList(profile.medicalHistoryNotes, 'أمراض:'));
+        _parseConditions(profile.medicalHistoryNotes));
     final allergies =
-        useState<List<String>>(_parseList(profile.medicalHistoryNotes, 'حساسية:'));
+        useState<List<String>>(_parseAllergies(profile.medicalHistoryNotes));
 
     final newConditionCtrl = useTextEditingController();
     final newAllergyCtrl = useTextEditingController();
@@ -77,21 +125,41 @@ class _ProfileBody extends HookConsumerWidget {
     Future<void> save() async {
       saving.value = true;
       try {
-        // Compose notes = structured lists + free text
-        final buf = StringBuffer();
-        if (conditions.value.isNotEmpty) buf.writeln('أمراض: ${conditions.value.join('، ')}');
-        if (allergies.value.isNotEmpty) buf.writeln('حساسية: ${allergies.value.join('، ')}');
-        if (notesCtrl.text.trim().isNotEmpty) buf.write(notesCtrl.text.trim());
+        // Compose notes = structured lists + free text (distinct and deduplicated)
+        final distinctConditions = conditions.value
+            .map((e) => e.trim())
+            .where((e) => e.isNotEmpty)
+            .toSet()
+            .toList();
+        final distinctAllergies = allergies.value
+            .map((e) => e.trim())
+            .where((e) => e.isNotEmpty)
+            .toSet()
+            .toList();
+        final distinctFreeNotes = _parseMedicalNotes(notesCtrl.text);
 
+        final buf = StringBuffer();
+        if (distinctConditions.isNotEmpty) {
+          buf.writeln('أمراض: ${distinctConditions.join('، ')}');
+        }
+        if (distinctAllergies.isNotEmpty) {
+          buf.writeln('حساسية: ${distinctAllergies.join('، ')}');
+        }
+        if (distinctFreeNotes.isNotEmpty) {
+          buf.write(distinctFreeNotes.join('\n'));
+        }
+
+        final savedNotes = buf.toString().trim();
         await ref.read(profileControllerProvider.notifier).updateProfile(
               fullName: nameCtrl.text.trim().isEmpty ? null : nameCtrl.text.trim(),
               phone: phoneCtrl.text.trim().isEmpty ? null : phoneCtrl.text.trim(),
-              medicalHistoryNotes: buf.toString().trim(),
+              medicalHistoryNotes: savedNotes,
             );
         editing.value = false;
         // Re-parse from the saved notes so chips reflect exactly what's stored
-        conditions.value = _parseList(profile.medicalHistoryNotes, 'أمراض:');
-        allergies.value = _parseList(profile.medicalHistoryNotes, 'حساسية:');
+        conditions.value = _parseConditions(savedNotes);
+        allergies.value = _parseAllergies(savedNotes);
+        notesCtrl.text = _parseMedicalNotes(savedNotes).join('\n');
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('التغييرات اتحفظت.')),
@@ -108,9 +176,11 @@ class _ProfileBody extends HookConsumerWidget {
       }
     }
 
-    return ListView(
-      padding: const EdgeInsets.only(bottom: 24),
-      children: [
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: ListView(
+        padding: EdgeInsets.only(bottom: editing.value ? 100 : 24),
+        children: [
         NawaqsTopBar(
           eyebrow: 'نواقص / الحساب',
           title: 'الملف الطبي',
@@ -169,7 +239,11 @@ class _ProfileBody extends HookConsumerWidget {
                           : Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(profile.fullName ?? 'مستخدم نواقص',
+                                Text(
+                                    (profile.fullName != null &&
+                                            profile.fullName!.trim().isNotEmpty)
+                                        ? profile.fullName!
+                                        : 'مستخدم نواقص',
                                     style: const TextStyle(
                                         fontSize: 15,
                                         fontWeight: FontWeight.w800)),
@@ -196,7 +270,12 @@ class _ProfileBody extends HookConsumerWidget {
                     .toList(),
                 onAdd: editing.value
                     ? () => _addDialog(context, 'أمراض مزمنة', newConditionCtrl,
-                        (v) => conditions.value = [...conditions.value, v])
+                        (v) {
+                          final trimmed = v.trim();
+                          if (trimmed.isNotEmpty && !conditions.value.contains(trimmed)) {
+                            conditions.value = [...conditions.value, trimmed];
+                          }
+                        })
                     : null,
                 emptyText: 'مفيش أمراض مزمنة مسجلة',
               ),
@@ -213,7 +292,12 @@ class _ProfileBody extends HookConsumerWidget {
                 onAdd: editing.value
                     ? () => _addDialog(
                         context, 'حساسية', newAllergyCtrl,
-                        (v) => allergies.value = [...allergies.value, v])
+                        (v) {
+                          final trimmed = v.trim();
+                          if (trimmed.isNotEmpty && !allergies.value.contains(trimmed)) {
+                            allergies.value = [...allergies.value, trimmed];
+                          }
+                        })
                     : null,
                 emptyText: 'مفيش حساسية مسجلة',
               ),
@@ -249,7 +333,12 @@ class _ProfileBody extends HookConsumerWidget {
                     ] else ...[
                       InfoCell(label: 'الموبايل', value: profile.phone ?? '—'),
                       const SizedBox(height: 8),
-                      InfoCell(label: 'ملاحظات طبية', value: profile.medicalHistoryNotes ?? '—'),
+                      InfoCell(
+                        label: 'ملاحظات طبية',
+                        value: _parseMedicalNotes(profile.medicalHistoryNotes).isNotEmpty
+                            ? _parseMedicalNotes(profile.medicalHistoryNotes).join('\n')
+                            : '—',
+                      ),
                     ],
                   ],
                 ),
@@ -257,6 +346,63 @@ class _ProfileBody extends HookConsumerWidget {
               const SizedBox(height: 12),
 
               // ── Current medications (الأدوية الحالية) ───────────────────
+                            // ── Pharmacist Privacy Sharing Toggle ──────────────────────
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(
+                  color: AppColors.card,
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  border: Border.all(color: AppColors.hairline),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.privacy_tip_outlined,
+                        size: 22, color: AppColors.accentBlue),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          Text(
+                            'هل تسمح للصيدلي برؤية أدويتك الحالية؟',
+                            style: TextStyle(
+                                fontSize: 13.5, fontWeight: FontWeight.w700),
+                          ),
+                          SizedBox(height: 2),
+                          Text(
+                            'لتمكين الصيدلي من فحص التداخلات والجرعات عند تنفيذ الحجز بأمان.',
+                            style: TextStyle(
+                                fontSize: 11.5,
+                                color: AppColors.textSecondary,
+                                height: 1.3),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Switch.adaptive(
+                      value: profile.allowPharmacistViewActiveMedications,
+                      activeColor: AppColors.brand900,
+                      onChanged: (val) async {
+                        try {
+                          await ref
+                              .read(profileControllerProvider.notifier)
+                              .updateProfile(
+                                allowPharmacistViewActiveMedications: val,
+                              );
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(describeApiError(e))),
+                            );
+                          }
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
               const MyMedicationsSection(),
               const SizedBox(height: 12),
 
@@ -286,31 +432,33 @@ class _ProfileBody extends HookConsumerWidget {
               ),
               const SizedBox(height: 16),
 
-              if (editing.value)
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    onPressed: saving.value ? null : save,
-                    style: FilledButton.styleFrom(
-                      backgroundColor:
-                          AppColors.brand900, // dark teal "save changes" per mockup
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(13)),
-                    ),
-                    child: saving.value
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                                strokeWidth: 2, color: Colors.white))
-                        : const Text('حفظ التغييرات'),
-                  ),
-                )
-              else
+              if (!editing.value)
                 OutlinedButton.icon(
                   onPressed: () async {
-                    await ref.read(authControllerProvider.notifier).logout();
-                    if (context.mounted) context.go('/login');
+                    final confirmed = await showDialog<bool>(
+                      context: context,
+                      builder: (dCtx) => AlertDialog(
+                        title: const Text('تسجيل الخروج'),
+                        content: const Text('هل أنت متأكد من رغبتك في تسجيل الخروج من حسابك؟'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(dCtx, false),
+                            child: const Text('إلغاء'),
+                          ),
+                          FilledButton(
+                            style: FilledButton.styleFrom(
+                              backgroundColor: AppColors.dangerText,
+                            ),
+                            onPressed: () => Navigator.pop(dCtx, true),
+                            child: const Text('تسجيل الخروج'),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (confirmed == true) {
+                      await ref.read(authControllerProvider.notifier).logout();
+                      if (context.mounted) context.go('/login');
+                    }
                   },
                   icon: const Icon(Icons.logout_rounded, size: 18),
                   label: const Text('تسجيل الخروج'),
@@ -325,75 +473,248 @@ class _ProfileBody extends HookConsumerWidget {
           ),
         ),
       ],
+      ),
+      bottomNavigationBar: editing.value
+          ? Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: AppColors.card,
+                border: const Border(top: BorderSide(color: AppColors.hairline)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 12,
+                    offset: const Offset(0, -3),
+                  ),
+                ],
+              ),
+              child: SafeArea(
+                top: false,
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: FilledButton(
+                    onPressed: saving.value ? null : save,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.brand900,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(13),
+                      ),
+                    ),
+                    child: saving.value
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Text(
+                            'حفظ التغييرات',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                  ),
+                ),
+              ),
+            )
+          : null,
     );
   }
 
-  static List<String> _parseList(String? notes, String key) {
+  static List<String> _parseSections(String? notes, String prefix) {
     if (notes == null) return [];
+    final result = <String>{};
     for (final line in notes.split('\n')) {
-      if (line.trim().startsWith(key)) {
-        return line
-            .substring(key.length)
-            .split('،')
+      final trimmed = line.trim();
+      if (trimmed.startsWith(prefix)) {
+        final items = trimmed
+            .substring(prefix.length)
+            .split(RegExp(r'[،,]'))
             .map((e) => e.trim())
-            .where((e) => e.isNotEmpty)
-            .toList();
+            .where((e) => e.isNotEmpty);
+        result.addAll(items);
       }
     }
-    return [];
+    return result.toList();
+  }
+
+  static List<String> _parseConditions(String? notes) => _parseSections(notes, 'أمراض:');
+  static List<String> _parseAllergies(String? notes) => _parseSections(notes, 'حساسية:');
+
+  static List<String> _parseMedicalNotes(String? notes) {
+    if (notes == null) return [];
+    final result = <String>{};
+    for (final rawLine in notes.split('\n')) {
+      final trimmed = rawLine.trim();
+      if (trimmed.isEmpty) continue;
+      if (trimmed.startsWith('أمراض:') || trimmed.startsWith('حساسية:')) continue;
+      result.add(trimmed);
+    }
+    return result.toList();
+  }
+
+  String _normalizeArabic(String text) {
+    return text
+        .replaceAll(RegExp(r'[\u064B-\u065F\u0670]'), '')
+        .replaceAll(RegExp(r'[أإآ]'), 'ا')
+        .replaceAll('ة', 'ه')
+        .replaceAll('ى', 'ي')
+        .trim()
+        .toLowerCase();
   }
 
   void _addDialog(BuildContext context, String title, TextEditingController ctrl,
       ValueChanged<String> onAdd) {
+    final isAllergy = title.contains('حساسية');
+    final standards = isAllergy ? _standardAllergies : _standardConditions;
+    final queryNotifier = ValueNotifier<String>('');
+
     showDialog(
       context: context,
       barrierDismissible: true,
-      builder: (dialogContext) => AlertDialog(
-        title: Row(
-          children: [
-            Expanded(child: Text('إضافة $title')),
-            IconButton(
-              icon: const Icon(Icons.close_rounded, size: 20),
-              onPressed: () => Navigator.pop(dialogContext),
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'إضافة $title',
+                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close_rounded, size: 20),
+                onPressed: () => Navigator.pop(dialogContext),
+              ),
+            ],
+          ),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(
+                    controller: ctrl,
+                    autofocus: true,
+                    textInputAction: TextInputAction.done,
+                    onChanged: (val) => queryNotifier.value = val,
+                    onSubmitted: (v) {
+                      if (v.trim().isNotEmpty) {
+                        onAdd(v.trim());
+                        ctrl.clear();
+                        Navigator.pop(dialogContext);
+                      }
+                    },
+                    decoration: InputDecoration(
+                      hintText: isAllergy
+                          ? 'اكتب الحساسية (مثلاً: بنسلين، صدر...)'
+                          : 'اكتب المرض (مثلاً: ضغط، سكر...)',
+                      prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                    ),
+                  ),
+                  ValueListenableBuilder<String>(
+                    valueListenable: queryNotifier,
+                    builder: (context, rawQuery, _) {
+                      final normQuery = _normalizeArabic(rawQuery);
+                      if (normQuery.isEmpty) {
+                        return const Padding(
+                          padding: EdgeInsets.only(top: 12),
+                          child: Text(
+                            'ابدأ بكتابة اسم المرض للبحث في قائمة الأمراض المعيارية…',
+                            style: TextStyle(fontSize: 11.5, color: AppColors.textHint),
+                          ),
+                        );
+                      }
+
+                      final matches = standards
+                          .where((s) => _normalizeArabic(s).contains(normQuery))
+                          .take(6)
+                          .toList();
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 12),
+                          Text(
+                            matches.isNotEmpty
+                                ? 'المصطلح الطبي المعياري المقترح (اضغط للاختيار):'
+                                : 'لا يوجد اقتراح معياري مطابق — يمكنك الإضافة بالضغط على الزر أدناه.',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: matches.isNotEmpty ? FontWeight.w700 : FontWeight.normal,
+                              color: matches.isNotEmpty ? AppColors.textSecondary : AppColors.textHint,
+                            ),
+                          ),
+                          if (matches.isNotEmpty) ...[
+                            const SizedBox(height: 6),
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 6,
+                              children: matches.map((match) {
+                                return ActionChip(
+                                  avatar: const Icon(Icons.medical_services_outlined,
+                                      size: 14, color: AppColors.brand700),
+                                  label: Text(
+                                    match,
+                                    style: const TextStyle(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.brand900,
+                                    ),
+                                  ),
+                                  backgroundColor: AppColors.brand700.withValues(alpha: 0.08),
+                                  side: BorderSide(
+                                    color: AppColors.brand700.withValues(alpha: 0.25),
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  onPressed: () {
+                                    ctrl.text = match;
+                                    onAdd(match);
+                                    ctrl.clear();
+                                    Navigator.pop(dialogContext);
+                                  },
+                                );
+                              }).toList(),
+                            ),
+                          ],
+                        ],
+                      );
+                    },
+                  ),
+                ],
+              ),
             ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: ctrl,
-              autofocus: true,
-              textInputAction: TextInputAction.done,
-              onSubmitted: (v) {
-                if (v.trim().isNotEmpty) {
-                  onAdd(v.trim());
-                  Navigator.pop(dialogContext);
-                }
-              },
-              decoration: const InputDecoration(hintText: 'اكتب الاسم'),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
+          ),
+          actions: [
+            TextButton(
               onPressed: () {
                 ctrl.clear();
                 Navigator.pop(dialogContext);
               },
-              child: const Text('إلغاء')),
-          FilledButton(
-            onPressed: () {
-              if (ctrl.text.trim().isNotEmpty) {
-                onAdd(ctrl.text.trim());
-                ctrl.clear();
-              }
-              Navigator.pop(dialogContext);
-            },
-            child: const Text('إضافة'),
-          ),
-        ],
-      ),
+              child: const Text('إلغاء'),
+            ),
+            FilledButton(
+              onPressed: () {
+                if (ctrl.text.trim().isNotEmpty) {
+                  onAdd(ctrl.text.trim());
+                  ctrl.clear();
+                }
+                Navigator.pop(dialogContext);
+              },
+              child: const Text('إضافة'),
+            ),
+          ],
+        );
+      },
     );
   }
 

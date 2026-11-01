@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
 import 'package:nawakes_mobile/core/network/api_client.dart';
+import 'package:nawakes_mobile/core/location/location_service.dart';
 import 'package:nawakes_mobile/core/ui/widgets.dart';
 import 'package:nawakes_mobile/features/auth/presentation/auth_controller.dart';
 import 'package:nawakes_mobile/features/profile/data/medication_models.dart';
@@ -15,19 +15,11 @@ part 'shortage_queue_tab.g.dart';
 Future<List<ShortageRequestDto>> openShortageRequests(Ref ref) async {
   double lat = 30.0444, lng = 31.2357;
   try {
-    if (await Geolocator.isLocationServiceEnabled()) {
-      var perm = await Geolocator.checkPermission();
-      if (perm == LocationPermission.denied) {
-        perm = await Geolocator.requestPermission();
-      }
-      if (perm == LocationPermission.always ||
-          perm == LocationPermission.whileInUse) {
-        final pos = await Geolocator.getCurrentPosition(
-            locationSettings:
-                const LocationSettings(timeLimit: Duration(seconds: 8)));
-        lat = pos.latitude;
-        lng = pos.longitude;
-      }
+    final locationService = ref.read(locationServiceProvider);
+    final pos = await locationService.getCurrentLocation();
+    if (pos != null) {
+      lat = pos.latitude;
+      lng = pos.longitude;
     }
   } catch (_) {}
 

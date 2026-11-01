@@ -53,6 +53,11 @@ public sealed class ClaimQueueOfferCommandHandler(
         if (item.Status != InventoryStatus.InStock)
             throw new ConflictException("This item was just reserved. Please try again shortly.");
 
+        if (item.Pharmacy is not null && item.Pharmacy.VerificationStatus != VerificationStatus.Approved)
+        {
+            throw new ConflictException("لا يمكن إتمام حجز جديد لأن الصيدلية معلقة أو قيد مراجعة الإدارة حالياً.");
+        }
+
         item.Status = InventoryStatus.Reserved;
 
         var expiresAt = DateTime.UtcNow.AddHours(HoldDurationHours);
@@ -86,8 +91,8 @@ public sealed class ClaimQueueOfferCommandHandler(
         {
             UserId = currentUser.UserId,
             Type = NotificationType.ReservationCreated,
-            Title = "Reservation Confirmed",
-            Body = $"Your hold on {item.MedicationName} at {item.Pharmacy.Name} is active for 2 hours.",
+            Title = "تم تأكيد الحجز بنجاح ✓",
+            Body = $"تم حجز دواء {item.MedicationName} في صيدلية {item.Pharmacy.Name} لمدة ساعتين. كود الحجز: #{reservation.ReservationCode}",
             RelatedEntityId = reservation.Id
         });
 

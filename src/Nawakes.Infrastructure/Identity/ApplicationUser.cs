@@ -16,6 +16,9 @@ public sealed class ApplicationUser : IdentityUser<Guid>
     /// <summary>Free-text notes pharmacists should know (allergies, conditions). Plain text by design — non-diagnostic.</summary>
     public string? MedicalHistoryNotes { get; set; }
 
+    /// <summary>Patient consent flag allowing pharmacies to inspect active cabinet medications during reservation verification.</summary>
+    public bool AllowPharmacistViewActiveMedications { get; set; } = true;
+
     public UserRole Role { get; set; } = UserRole.Patient;
 
     /// <summary>AES-256 encrypted JSON blob. Never logged or exposed directly.</summary>

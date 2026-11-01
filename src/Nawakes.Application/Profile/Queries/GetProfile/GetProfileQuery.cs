@@ -8,7 +8,8 @@ public sealed record ProfileDto(
     string? FullName,
     string? Phone,
     string? MedicalHistoryNotes,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    bool AllowPharmacistViewActiveMedications = true);
 
 public sealed record GetProfileQuery : IRequest<ProfileDto>;
 

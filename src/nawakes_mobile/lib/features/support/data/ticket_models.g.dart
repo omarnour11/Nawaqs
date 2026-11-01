@@ -13,6 +13,9 @@ CreateTicketRequest _$CreateTicketRequestFromJson(Map<String, dynamic> json) =>
       category:
           $enumDecodeNullable(_$TicketCategoryEnumMap, json['category']) ??
           TicketCategory.other,
+      reservationId: json['reservationId'] as String?,
+      pharmacyId: json['pharmacyId'] as String?,
+      attachmentUrl: json['attachmentUrl'] as String?,
     );
 
 Map<String, dynamic> _$CreateTicketRequestToJson(
@@ -21,6 +24,9 @@ Map<String, dynamic> _$CreateTicketRequestToJson(
   'subject': instance.subject,
   'description': instance.description,
   'category': _$TicketCategoryEnumMap[instance.category]!,
+  'reservationId': instance.reservationId,
+  'pharmacyId': instance.pharmacyId,
+  'attachmentUrl': instance.attachmentUrl,
 };
 
 const _$TicketCategoryEnumMap = {
@@ -40,6 +46,7 @@ TicketDto _$TicketDtoFromJson(Map<String, dynamic> json) => TicketDto(
   resolution: json['resolution'] as String?,
   reservationId: json['reservationId'] as String?,
   pharmacyId: json['pharmacyId'] as String?,
+  attachmentUrl: json['attachmentUrl'] as String?,
   createdAt: DateTime.parse(json['createdAt'] as String),
 );
 
@@ -52,21 +59,8 @@ Map<String, dynamic> _$TicketDtoToJson(TicketDto instance) => <String, dynamic>{
   'resolution': instance.resolution,
   'reservationId': instance.reservationId,
   'pharmacyId': instance.pharmacyId,
+  'attachmentUrl': instance.attachmentUrl,
   'createdAt': instance.createdAt.toIso8601String(),
-};
-
-ResolveTicketRequest _$ResolveTicketRequestFromJson(
-  Map<String, dynamic> json,
-) => ResolveTicketRequest(
-  startProgress: json['startProgress'] as bool,
-  resolution: json['resolution'] as String?,
-);
-
-Map<String, dynamic> _$ResolveTicketRequestToJson(
-  ResolveTicketRequest instance,
-) => <String, dynamic>{
-  'startProgress': instance.startProgress,
-  'resolution': instance.resolution,
 };
 
 AdminTicketDto _$AdminTicketDtoFromJson(Map<String, dynamic> json) =>
@@ -81,6 +75,7 @@ AdminTicketDto _$AdminTicketDtoFromJson(Map<String, dynamic> json) =>
       resolution: json['resolution'] as String?,
       reservationId: json['reservationId'] as String?,
       pharmacyId: json['pharmacyId'] as String?,
+      attachmentUrl: json['attachmentUrl'] as String?,
       createdAt: DateTime.parse(json['createdAt'] as String),
     );
 
@@ -96,5 +91,20 @@ Map<String, dynamic> _$AdminTicketDtoToJson(AdminTicketDto instance) =>
       'resolution': instance.resolution,
       'reservationId': instance.reservationId,
       'pharmacyId': instance.pharmacyId,
+      'attachmentUrl': instance.attachmentUrl,
       'createdAt': instance.createdAt.toIso8601String(),
     };
+
+ResolveTicketRequest _$ResolveTicketRequestFromJson(
+  Map<String, dynamic> json,
+) => ResolveTicketRequest(
+  startProgress: json['startProgress'] as bool,
+  resolution: json['resolution'] as String?,
+);
+
+Map<String, dynamic> _$ResolveTicketRequestToJson(
+  ResolveTicketRequest instance,
+) => <String, dynamic>{
+  'startProgress': instance.startProgress,
+  'resolution': instance.resolution,
+};

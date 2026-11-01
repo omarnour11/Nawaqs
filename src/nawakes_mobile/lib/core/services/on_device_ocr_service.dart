@@ -1,71 +1,173 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 
-/// On-device OCR — runs Google ML Kit locally in mobile RAM. Images are never
-/// uploaded anywhere (Egyptian Law 151/2020 privacy mandate) and are deleted
-/// immediately after extraction.
+/// On-device OCR — Google ML Kit runs locally. Images are never uploaded.
 class OnDeviceOcrService {
-  // ML Kit's on-device text recognition has no Arabic script model (only
-  // Latin, Chinese, Devanagari, Japanese and Korean), so OCR runs on the Latin
-  // model and the Arabic keyword heuristics below filter the results.
+  OnDeviceOcrService();
+
+  // Brand names on Egyptian boxes are Latin. Handwritten Arabic still yields
+  // Latin fragments (Panadol, Concor) which is what the matcher needs.
   final _recognizer = TextRecognizer(script: TextRecognitionScript.latin);
 
-  /// Extracts candidate medication name lines from a box/prescription photo.
-  /// Returns noisy lines; the backend fuzzy pipeline does the actual matching.
+  /// Extracts candidate medication lines from a box/prescription photo.
+  ///
+  /// Returns an empty list only when ML Kit finds no usable text. Callers must
+  /// show that to the user — swallowing it looks like "0% accuracy".
   Future<List<String>> extractMedicationNames(File imageFile) async {
+    if (!await imageFile.exists()) return [];
+    return extractFromFile(imageFile);
+  }
+
+  /// OCR on in-memory JPEG (e.g. cropped framing region only).
+  Future<List<String>> extractFromJpegBytes(Uint8List jpegBytes) async {
+    if (jpegBytes.isEmpty) return [];
+    final temp = File(
+      '${Directory.systemTemp.path}/nawaqs_crop_${DateTime.now().microsecondsSinceEpoch}.jpg',
+    );
+    await temp.writeAsBytes(jpegBytes, flush: true);
     try {
-      final inputImage = InputImage.fromFilePath(imageFile.path);
-
-      final result = await _recognizer.processImage(inputImage);
-
-      final lines = <String>{};
-      for (final block in result.blocks) {
-        for (final line in block.lines) {
-          final text = line.text.trim();
-          if (text.isNotEmpty && _looksLikePharmaceutical(text)) {
-            lines.add(text);
-          }
-        }
-      }
-      return lines.toList();
+      return extractFromFile(temp);
     } finally {
-      if (await imageFile.exists()) {
-        await imageFile.delete();
+      if (await temp.exists()) {
+        try {
+          await temp.delete();
+        } catch (_) {}
       }
     }
   }
 
-  /// Redacts personal-data lines: doctor, patient, clinic, phone numbers, dates.
-  bool _isPersonalData(String text) {
-    final lower = text.toLowerCase();
-    const keywords = [
-      'دكتور', 'دكتورة', 'عيادة', 'مستشفى', 'كشف', 'مريض', 'اسم المريض',
-      'clinic', 'dr.', 'dr ', 'patient', 'hospital', 'استشاري', 'أستاذ',
-    ];
-    if (keywords.any(lower.contains)) return true;
+  Future<List<String>> extractFromFile(File imageFile) async {
+    final result = await _recognizer.processImage(
+      InputImage.fromFilePath(imageFile.path),
+    );
+    return _linesFromResult(result);
+  }
 
-    // Phone numbers (Egyptian mobile) and long digit runs
-    final digitOnly = RegExp(r'\d{7,}');
-    if (digitOnly.hasMatch(text.replaceAll(' ', ''))) return true;
+  List<String> _linesFromResult(RecognizedText result) {
+    final scored = <_ScoredLine>[];
+    for (final block in result.blocks) {
+      for (final line in block.lines) {
+        for (final piece in _splitLine(line.text)) {
+          if (piece.length < 2) continue;
+          if (isPersonalData(piece)) continue;
+          scored.add(_ScoredLine(piece, _score(piece)));
+        }
+      }
+    }
+
+    scored.sort((a, b) => b.score.compareTo(a.score));
+
+    final seen = <String>{};
+    final lines = <String>[];
+    for (final item in scored) {
+      final key = item.text.toLowerCase();
+      if (seen.add(key)) lines.add(item.text);
+    }
+
+    // If the filter was too aggressive, fall back to raw lines so a scan
+    // never returns nothing when ML Kit actually read text.
+    if (lines.isEmpty) {
+      for (final block in result.blocks) {
+        for (final line in block.lines) {
+          final text = line.text.trim();
+          if (text.length >= 2) lines.add(text);
+        }
+      }
+    }
+
+    return lines;
+  }
+
+  static List<String> _splitLine(String raw) {
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) return const [];
+    final parts = <String>[trimmed];
+    for (final part in trimmed.split(RegExp(r'[|,;•·\n]+'))) {
+      final p = part.trim();
+      if (p.length >= 2 && p != trimmed) parts.add(p);
+    }
+    return parts;
+  }
+
+  /// Doctor / clinic / phone lines. Uses word boundaries so "dr" does not
+  /// wipe "hydrocortisone", "drops", or "androl".
+  static bool isPersonalData(String text) {
+    final lower = text.toLowerCase();
+
+    const phrases = [
+      'دكتور',
+      'دكتورة',
+      'عيادة',
+      'مستشفى',
+      'كشف',
+      'مريض',
+      'اسم المريض',
+      'clinic',
+      'doctor',
+      'patient',
+      'hospital',
+      'استشاري',
+      'أستاذ',
+      'consultant',
+      'specialist',
+      'العنوان',
+      'تليفون',
+      'هاتف',
+      'موبايل',
+    ];
+    if (phrases.any(lower.contains)) return true;
+
+    if (RegExp(r'(^|[^a-z\u0600-\u06FF])(dr\.?|prof\.?)([^a-z\u0600-\u06FF]|$)')
+        .hasMatch(lower)) {
+      return true;
+    }
+
+    final digits = text.replaceAll(RegExp(r'[\s\-]'), '');
+    if (RegExp(r'\d{8,}').hasMatch(digits)) return true;
 
     return false;
   }
 
-  /// Identifies pharmaceutical-looking lines via dosage units and drug-name shapes.
-  bool _looksLikePharmaceutical(String text) {
-    if (_isPersonalData(text)) return false;
-    if (text.length < 3 || text.length > 60) return false;
+  static int _score(String text) {
+    var score = 0;
+    if (looksLikePharmaceutical(text)) score += 5;
+    if (RegExp(r'[A-Za-z]{4,}').hasMatch(text)) score += 3;
+    if (RegExp(r'\d').hasMatch(text)) score += 1;
+    if (text.length > 40) score -= 2;
+    return score;
+  }
 
-    const units = ['mg', 'ml', 'mcg', 'iu', 'g', 'مجم', 'ملجم', 'وحدة', 'أقراص', 'حقن', 'شراب'];
+  static bool looksLikePharmaceutical(String text) {
+    if (isPersonalData(text)) return false;
+    if (text.length < 3 || text.length > 80) return false;
+
+    const units = [
+      'mg',
+      'ml',
+      'mcg',
+      'iu',
+      'tab',
+      'cap',
+      'مجم',
+      'ملجم',
+      'وحدة',
+      'أقراص',
+      'حقن',
+      'شراب',
+    ];
     final lower = text.toLowerCase();
     if (units.any(lower.contains)) return true;
 
-    // Latin word of 4+ letters (typical trade name) — accept OCR noise too
-    return RegExp(r'^[A-Za-z][A-Za-z0-9 /\.\-]{3,}$').hasMatch(text);
+    return RegExp(r'[A-Za-z\u0600-\u06FF]{3,}').hasMatch(text);
   }
 
-  void dispose() {
-    _recognizer.close();
-  }
+  Future<void> dispose() => _recognizer.close();
+}
+
+class _ScoredLine {
+  const _ScoredLine(this.text, this.score);
+  final String text;
+  final int score;
 }

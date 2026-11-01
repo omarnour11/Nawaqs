@@ -14,6 +14,8 @@ ProfileResponse _$ProfileResponseFromJson(Map<String, dynamic> json) =>
       phone: json['phone'] as String?,
       medicalHistoryNotes: json['medicalHistoryNotes'] as String?,
       createdAt: DateTime.parse(json['createdAt'] as String),
+      allowPharmacistViewActiveMedications:
+          json['allowPharmacistViewActiveMedications'] as bool? ?? true,
     );
 
 Map<String, dynamic> _$ProfileResponseToJson(ProfileResponse instance) =>
@@ -24,6 +26,8 @@ Map<String, dynamic> _$ProfileResponseToJson(ProfileResponse instance) =>
       'phone': instance.phone,
       'medicalHistoryNotes': instance.medicalHistoryNotes,
       'createdAt': instance.createdAt.toIso8601String(),
+      'allowPharmacistViewActiveMedications':
+          instance.allowPharmacistViewActiveMedications,
     };
 
 UpdateProfileRequest _$UpdateProfileRequestFromJson(
@@ -32,6 +36,8 @@ UpdateProfileRequest _$UpdateProfileRequestFromJson(
   fullName: json['fullName'] as String?,
   phone: json['phone'] as String?,
   medicalHistoryNotes: json['medicalHistoryNotes'] as String?,
+  allowPharmacistViewActiveMedications:
+      json['allowPharmacistViewActiveMedications'] as bool?,
 );
 
 Map<String, dynamic> _$UpdateProfileRequestToJson(
@@ -40,4 +46,6 @@ Map<String, dynamic> _$UpdateProfileRequestToJson(
   'fullName': instance.fullName,
   'phone': instance.phone,
   'medicalHistoryNotes': instance.medicalHistoryNotes,
+  'allowPharmacistViewActiveMedications':
+      instance.allowPharmacistViewActiveMedications,
 };

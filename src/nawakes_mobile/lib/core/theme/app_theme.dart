@@ -41,6 +41,7 @@ class AppColors {
   static const textPrimary = Color(0xFF111827);
   static const textSecondary = Color(0xFF6B7280);
   static const textMuted = Color(0xFF9CA3AF);
+  static const textDark = textPrimary;
 
   // Legacy aliases for older screens
   static const primary = accentBlue;
@@ -175,7 +176,7 @@ class AppTheme {
           foregroundColor: Colors.white,
           disabledBackgroundColor: const Color(0xFFE5E7EA),
           disabledForegroundColor: AppColors.textMuted,
-          minimumSize: const Size.fromHeight(48),
+          minimumSize: const Size(64, 48),
           elevation: 0,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
           textStyle: const TextStyle(
@@ -188,7 +189,7 @@ class AppTheme {
           foregroundColor: Colors.white,
           disabledBackgroundColor: const Color(0xFFE5E7EA),
           disabledForegroundColor: AppColors.textMuted,
-          minimumSize: const Size.fromHeight(48),
+          minimumSize: const Size(64, 48),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
           textStyle: const TextStyle(
               fontFamily: family, fontSize: 14, fontWeight: FontWeight.w700),
@@ -197,7 +198,7 @@ class AppTheme {
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.textPrimary,
-          minimumSize: const Size.fromHeight(46),
+          minimumSize: const Size(64, 46),
           side: const BorderSide(color: AppColors.hairline, width: 1),
           backgroundColor: AppColors.card,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
@@ -363,7 +364,7 @@ class AppTheme {
             fontSize: 10.5,
             fontWeight: FontWeight.w700,
             color: AppColors.textMuted,
-            letterSpacing: 0.4,
+            letterSpacing: 0.0,
             height: 1.3),
       ),
     );

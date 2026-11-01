@@ -279,17 +279,25 @@ public sealed class GetPendingCaregiverInvitesQueryHandler(
     public async Task<IReadOnlyList<PendingCaregiverInviteDto>> Handle(
         GetPendingCaregiverInvitesQuery request, CancellationToken cancellationToken)
         => await context.FamilyCaregiverLinks
+            .AsNoTracking()
             .Where(l => l.CaregiverUserId == currentUser.UserId && !l.IsAccepted)
             .Join(
-                context.FamilyProfiles.Where(p => p.IsActive),
+                context.FamilyProfiles.AsNoTracking().Where(p => p.IsActive),
                 l => l.FamilyProfileId,
                 p => p.Id,
-                (l, p) => new PendingCaregiverInviteDto(
+                (l, p) => new
+                {
                     l.Id,
                     l.FamilyProfileId,
                     p.Nickname,
-                    l.CreatedAt))
-            .OrderByDescending(i => i.InvitedAt)
+                    l.CreatedAt
+                })
+            .OrderByDescending(x => x.CreatedAt)
+            .Select(x => new PendingCaregiverInviteDto(
+                x.Id,
+                x.FamilyProfileId,
+                x.Nickname,
+                x.CreatedAt))
             .ToListAsync(cancellationToken);
 }
 
@@ -322,10 +330,11 @@ public sealed class GetFamilyCabinetQueryHandler(IApplicationDbContext context, 
     public async Task<FamilyCabinetResponse> Handle(GetFamilyCabinetQuery request, CancellationToken cancellationToken)
     {
         var profiles = await context.FamilyProfiles
+            .AsNoTracking()
             .Include(p => p.FamilyMedications.Where(m => m.IsActive))
             .Where(p => p.IsActive &&
                         (p.OwnerUserId == currentUser.UserId ||
-                         p.FamilyCaregiverLinks.Any(l => l.CaregiverUserId == currentUser.UserId && l.IsAccepted)))
+                         context.FamilyCaregiverLinks.Any(l => l.FamilyProfileId == p.Id && l.CaregiverUserId == currentUser.UserId && l.IsAccepted)))
             .OrderBy(p => p.CreatedAt)
             .ToListAsync(cancellationToken);
 
@@ -361,9 +370,10 @@ internal static class CabinetAccess
         CancellationToken ct)
     {
         var allowed = await context.FamilyProfiles
+            .AsNoTracking()
             .Where(p => p.Id == profileId &&
                         (p.OwnerUserId == userId ||
-                         p.FamilyCaregiverLinks.Any(l => l.CaregiverUserId == userId && l.IsAccepted)))
+                         context.FamilyCaregiverLinks.Any(l => l.FamilyProfileId == p.Id && l.CaregiverUserId == userId && l.IsAccepted)))
             .AnyAsync(ct);
 
         if (!allowed)

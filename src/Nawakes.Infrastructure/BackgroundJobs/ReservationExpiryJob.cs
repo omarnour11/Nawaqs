@@ -10,7 +10,7 @@ namespace Nawakes.Infrastructure.BackgroundJobs;
 /// <summary>
 /// Hangfire job that auto-expires a reservation after 2 hours.
 /// Idempotency: checks Status == Active before proceeding.
-/// Both entity writes are wrapped in a single DB transaction.
+/// Operations are wrapped in the configured execution strategy for retry resilience.
 /// </summary>
 public sealed class ReservationExpiryJob(
     ApplicationDbContext context,
@@ -49,41 +49,45 @@ public sealed class ReservationExpiryJob(
             .Select(u => u.FcmToken)
             .FirstOrDefaultAsync(cancellationToken);
 
-        await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
-        try
+        var strategy = context.Database.CreateExecutionStrategy();
+        await strategy.ExecuteAsync(async () =>
         {
-            reservation.Status = ReservationStatus.Expired;
-            reservation.InventoryItem.Status = InventoryStatus.InStock;
-
-            // Durable in-app record (FCM push below is best-effort)
-            context.Notifications.Add(new Nawakes.Domain.Entities.UserNotification
+            await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+            try
             {
-                UserId = reservation.UserId,
-                Type = Nawakes.Domain.Enums.NotificationType.ReservationExpired,
-                Title = "Reservation Expired",
-                Body = $"Your hold on {reservation.InventoryItem.MedicationName} has expired. The item is back in stock.",
-                RelatedEntityId = reservation.Id
-            });
+                reservation.Status = ReservationStatus.Expired;
+                reservation.InventoryItem.Status = InventoryStatus.InStock;
 
-            await context.SaveChangesAsync(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
+                // Durable in-app record (FCM push below is best-effort)
+                context.Notifications.Add(new Nawakes.Domain.Entities.UserNotification
+                {
+                    UserId = reservation.UserId,
+                    Type = Nawakes.Domain.Enums.NotificationType.ReservationExpired,
+                    Title = "انتهت صلاحية الحجز",
+                    Body = $"انتهت مهلة استلام دواء {reservation.InventoryItem.MedicationName} وأصبح متاحاً للآخرين.",
+                    RelatedEntityId = reservation.Id
+                });
 
-            logger.LogInformation("ReservationExpiryJob: Reservation {ReservationId} expired successfully.", reservationId);
-        }
-        catch (Exception ex)
-        {
-            await transaction.RollbackAsync(cancellationToken);
-            logger.LogError(ex, "ReservationExpiryJob: Transaction failed for Reservation {ReservationId}.", reservationId);
-            throw;
-        }
+                await context.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+
+                logger.LogInformation("ReservationExpiryJob: Reservation {ReservationId} expired successfully.", reservationId);
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                logger.LogError(ex, "ReservationExpiryJob: Transaction failed for Reservation {ReservationId}.", reservationId);
+                throw;
+            }
+        });
 
         // FCM notification — best effort
         if (!string.IsNullOrWhiteSpace(fcmToken))
         {
             await notifications.SendAsync(
                 fcmToken: fcmToken,
-                title: "Reservation Expired",
-                body: $"Your hold on {reservation.InventoryItem.MedicationName} has expired.",
+                title: "انتهت صلاحية الحجز",
+                body: $"انتهت مهلة حجزك لدواء {reservation.InventoryItem.MedicationName}.",
                 data: new Dictionary<string, string>
                 {
                     ["reservationId"] = reservationId.ToString(),

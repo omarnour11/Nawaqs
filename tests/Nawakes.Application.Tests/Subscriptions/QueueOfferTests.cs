@@ -50,7 +50,8 @@ public sealed class QueueOfferTests
         var pharmacy = new Nawakes.Domain.Entities.Pharmacy
         {
             Name = "صيدلية النور",
-            GeoPoint = new Point(31.0, 30.0) { SRID = 4326 }
+            GeoPoint = new Point(31.0, 30.0) { SRID = 4326 },
+            VerificationStatus = VerificationStatus.Approved
         };
         var item = new InventoryItem
         {
@@ -316,5 +317,25 @@ public sealed class QueueOfferTests
 
         var act = () => handler.Handle(new ClaimQueueOfferCommand(sub.Id), CancellationToken.None);
         await act.Should().ThrowAsync<NotFoundException>();
+    }
+
+    [Fact]
+    public async Task Claim_WhenPharmacyIsSuspendedOrPending_IsRejected()
+    {
+        var userId = Guid.NewGuid();
+        _currentUser.Setup(u => u.UserId).Returns(userId);
+        var (pharmacy, item) = SeedStock();
+        pharmacy.VerificationStatus = VerificationStatus.Suspended;
+        var sub = SeedSubscriber(item.Id, "Concor", 0, userId);
+        sub.QueueStatus = QueueStatus.Offered;
+        sub.OfferedInventoryItemId = item.Id;
+        sub.OfferExpiresAt = DateTime.UtcNow.AddMinutes(10);
+        await _context.SaveChangesAsync();
+
+        var handler = new ClaimQueueOfferCommandHandler(
+            _context, _currentUser.Object, _reservationScheduler.Object, _offerScheduler.Object);
+
+        var act = () => handler.Handle(new ClaimQueueOfferCommand(sub.Id), CancellationToken.None);
+        await act.Should().ThrowAsync<ConflictException>();
     }
 }

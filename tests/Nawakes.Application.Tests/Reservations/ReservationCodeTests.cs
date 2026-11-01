@@ -41,7 +41,8 @@ public sealed class ReservationCodeTests
         {
             Name = "Code Pharmacy",
             GeoPoint = new Point(0, 0) { SRID = 4326 },
-            OwnerId = Guid.NewGuid()
+            OwnerId = Guid.NewGuid(),
+            VerificationStatus = VerificationStatus.Approved
         };
         var item = new InventoryItem
         {
@@ -78,7 +79,8 @@ public sealed class ReservationCodeTests
             {
                 Name = $"P{i}",
                 GeoPoint = new Point(0, 0) { SRID = 4326 },
-                OwnerId = Guid.NewGuid()
+                OwnerId = Guid.NewGuid(),
+                VerificationStatus = VerificationStatus.Approved
             };
             var item = new InventoryItem
             {

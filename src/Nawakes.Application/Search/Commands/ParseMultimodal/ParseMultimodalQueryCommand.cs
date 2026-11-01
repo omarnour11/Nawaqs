@@ -4,7 +4,13 @@ namespace Nawakes.Application.Search.Commands.ParseMultimodal;
 
 public sealed record ParseMultimodalQueryCommand(
     string RawText,
-    string InputType) : IRequest<ParsedMedicationDto>;
+    string InputType,
+    string? ImageBase64 = null) : IRequest<ParsedMedicationDto>;
+
+public sealed record ParsePrescriptionImageCommand(
+    byte[] ImageBytes,
+    string ContentType,
+    string? OcrHintText = null) : IRequest<ParsedMedicationDto>;
 
 public sealed record ParsedMedicationDto(
     string ResolvedName,
@@ -12,10 +18,19 @@ public sealed record ParsedMedicationDto(
     string? DosageForm,
     decimal Confidence,
     bool RequiresDisambiguation,
-    IReadOnlyList<ParsedCandidateDto> Candidates);
+    IReadOnlyList<ParsedCandidateDto> Candidates,
+    string? ActiveIngredient = null,
+    bool IsSuccess = true,
+    string? ErrorCode = null,
+    string? ErrorMessage = null);
 
 public sealed record ParsedCandidateDto(
     string TradeName,
     string? Strength,
     string? DosageForm,
-    decimal Confidence);
+    decimal Confidence,
+    int Quantity = 1,
+    string? ActiveIngredient = null,
+    bool RequiresDisambiguation = false,
+    IReadOnlyList<ParsedCandidateDto>? Alternatives = null);
+

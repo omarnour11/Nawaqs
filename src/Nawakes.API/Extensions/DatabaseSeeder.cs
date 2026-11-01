@@ -28,6 +28,16 @@ public static class DatabaseSeeder
                 await context.Database.MigrateAsync();
             }
 
+            // Backfill search keys for inventory rows added before normalization was set.
+            await context.Database.ExecuteSqlRawAsync(
+                """
+                UPDATE InventoryItems
+                SET MedicationNameNormalized = UPPER(LTRIM(RTRIM(MedicationName)))
+                WHERE MedicationNameNormalized IS NULL
+                   OR LTRIM(RTRIM(MedicationNameNormalized)) = ''
+                   OR MedicationNameNormalized <> UPPER(LTRIM(RTRIM(MedicationName)));
+                """);
+
             // 2. Seed Roles
             var roles = new[] { UserRole.Patient.ToString(), UserRole.PharmacyOwner.ToString(), UserRole.Admin.ToString() };
             foreach (var role in roles)
@@ -43,6 +53,7 @@ public static class DatabaseSeeder
             await CreateUserAsync(userManager, "pharmacy@nawaqs.com", "Omar", "Nour", UserRole.PharmacyOwner.ToString());
             await CreateUserAsync(userManager, "pharmacy2@nawaqs.com", "Laila", "Mansour", UserRole.PharmacyOwner.ToString());
             await CreateUserAsync(userManager, "pharmacy3@nawaqs.com", "Youssef", "Farid", UserRole.PharmacyOwner.ToString());
+            await CreateUserAsync(userManager, "pharmacy4@nawaqs.com", "Khaled", "Ibrahim", UserRole.PharmacyOwner.ToString());
             await CreateUserAsync(userManager, "admin@nawaqs.com", "Admin", "User", UserRole.Admin.ToString());
 
             // 4. Seed Pharmacies + Inventory (idempotent — skips owners that already have a pharmacy)
@@ -55,6 +66,9 @@ public static class DatabaseSeeder
             await SeedPharmacyAsync(context, userManager, "pharmacy3@nawaqs.com",
                 "Zamalek Care Pharmacy", "8 Brasil St, Zamalek", "Cairo", "01234567890",
                 30.0624, 31.2150);
+            await SeedPharmacyAsync(context, userManager, "pharmacy4@nawaqs.com",
+                "Al Safwa Pharmacy — 6th of October", "Al-Hosary Square, 6th of October City", "6th of October", "01099887766",
+                29.9737, 30.9529);
             await SeedPharmacyAsync(context, userManager, "admin@nawaqs.com",
                 "Nawaqs Central Pharmacy", "100 El Zamalek Corniche", "Cairo", "01555555555",
                 30.0555, 31.2200, ownerIsAdmin: true);
@@ -136,6 +150,7 @@ public static class DatabaseSeeder
     [
         ("Panadol 500mg", 28.50m, InventoryStatus.InStock),
         ("Panadol Extra 24 tabs", 34.00m, InventoryStatus.InStock),
+        ("Concor 5mg", 42.00m, InventoryStatus.InStock),
         ("Amoxicillin 500mg", 45.75m, InventoryStatus.InStock),
         ("Paracetamol 500mg", 12.00m, InventoryStatus.InStock),
         ("Diclofenac 50mg", 18.25m, InventoryStatus.InStock),

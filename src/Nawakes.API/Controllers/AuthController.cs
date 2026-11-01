@@ -35,9 +35,19 @@ public sealed class AuthController(ISender mediator) : ControllerBase
             request.Password,
             request.FullName,
             request.FcmToken,
+            request.Role,
             request.HealthQuestionnaire is null ? null : new RegisterHealthQuestionnaireDto(
                 request.HealthQuestionnaire.ChronicIllnesses ?? [],
-                request.HealthQuestionnaire.KnownAllergies ?? []));
+                request.HealthQuestionnaire.KnownAllergies ?? []),
+            request.Pharmacy is null ? null : new RegisterPharmacyDto(
+                request.Pharmacy.Name,
+                request.Pharmacy.AddressLine,
+                request.Pharmacy.City,
+                request.Pharmacy.Phone,
+                request.Pharmacy.Latitude,
+                request.Pharmacy.Longitude,
+                request.Pharmacy.LicenseDocUrl,
+                request.Pharmacy.NationalIdDocUrl));
 
         var result = await mediator.Send(command, cancellationToken);
         return CreatedAtAction(nameof(Register), ToResponse(result));
@@ -159,7 +169,19 @@ public sealed record RegisterRequest(
     string Password,
     string FullName,
     string? FcmToken,
-    RegisterHealthDto? HealthQuestionnaire);
+    string? Role,
+    RegisterHealthDto? HealthQuestionnaire,
+    RegisterPharmacyRequestDto? Pharmacy);
+
+public sealed record RegisterPharmacyRequestDto(
+    string Name,
+    string AddressLine,
+    string City,
+    string Phone,
+    double? Latitude,
+    double? Longitude,
+    string? LicenseDocUrl,
+    string? NationalIdDocUrl);
 
 public sealed record RegisterHealthDto(
     IReadOnlyList<string>? ChronicIllnesses,

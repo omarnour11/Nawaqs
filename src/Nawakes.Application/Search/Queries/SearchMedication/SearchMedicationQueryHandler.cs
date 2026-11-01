@@ -41,7 +41,7 @@ public sealed class SearchMedicationQueryHandler(
 
         // 2. DB spatial query via repository (Infrastructure concern)
         var rawResults = await searchRepository.SearchAsync(
-            medicationNameNormalized: request.Medication.Trim().ToUpperInvariant(),
+            medicationNameNormalized: Nawakes.Domain.Common.DrugNameNormalizer.NormalizeName(request.Medication),
             latitude: request.Lat,
             longitude: request.Lng,
             radiusKm: (double)request.RadiusKm,

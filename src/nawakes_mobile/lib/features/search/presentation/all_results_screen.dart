@@ -146,7 +146,7 @@ class _ResultRow extends StatelessWidget {
                           fontWeight: FontWeight.w700,
                           color: AppColors.textPrimary)),
                   const SizedBox(height: 4),
-                  Text('EGP ${item.price.toStringAsFixed(0)}',
+                  Text('${item.price.toStringAsFixed(0)} ج.م',
                       style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,

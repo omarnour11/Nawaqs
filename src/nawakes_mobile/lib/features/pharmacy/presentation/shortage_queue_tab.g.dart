@@ -49,4 +49,4 @@ final class OpenShortageRequestsProvider
 }
 
 String _$openShortageRequestsHash() =>
-    r'5b3714500f927d09167e2ee074d633026a4dbd7d';
+    r'f0db4dea0cb13a01cd57fd45ba590ef602128192';

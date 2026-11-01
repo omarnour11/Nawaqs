@@ -28,6 +28,12 @@ ReservationResponse _$ReservationResponseFromJson(Map<String, dynamic> json) =>
       expiresAt: DateTime.parse(json['expiresAt'] as String),
       createdAt: DateTime.parse(json['createdAt'] as String),
       reservationCode: json['reservationCode'] as String,
+      clinicalContraindicationReason:
+          json['clinicalContraindicationReason'] as String?,
+      recommendedAlternativeMedication:
+          json['recommendedAlternativeMedication'] as String?,
+      recommendedAlternativeItemId:
+          json['recommendedAlternativeItemId'] as String?,
     );
 
 Map<String, dynamic> _$ReservationResponseToJson(
@@ -43,4 +49,7 @@ Map<String, dynamic> _$ReservationResponseToJson(
   'expiresAt': instance.expiresAt.toIso8601String(),
   'createdAt': instance.createdAt.toIso8601String(),
   'reservationCode': instance.reservationCode,
+  'clinicalContraindicationReason': instance.clinicalContraindicationReason,
+  'recommendedAlternativeMedication': instance.recommendedAlternativeMedication,
+  'recommendedAlternativeItemId': instance.recommendedAlternativeItemId,
 };

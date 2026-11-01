@@ -48,10 +48,10 @@ public sealed class ReviewPharmacyCommandHandler(IApplicationDbContext context)
         {
             UserId = pharmacy.OwnerId,
             Type = request.Approve ? NotificationType.PharmacyApproved : NotificationType.PharmacyRejected,
-            Title = request.Approve ? "Pharmacy Approved ✓" : "Pharmacy Registration Rejected",
+            Title = request.Approve ? "تم اعتماد الصيدلية بنجاح ✓" : "تم رفض توثيق الصيدلية",
             Body = request.Approve
-                ? $"Congratulations! {pharmacy.Name} has been approved. You can now manage your inventory and receive patient reservations."
-                : $"Your pharmacy \"{pharmacy.Name}\" was rejected. Reason: {pharmacy.RejectionReason}",
+                ? $"تهانينا! تمت الموافقة على صيدلية {pharmacy.Name}. يمكنك الآن إدارة المخزون واستقبال حجوزات المرضى."
+                : $"تم رفض توثيق صيدلية \"{pharmacy.Name}\". السبب: {pharmacy.RejectionReason}",
             RelatedEntityId = pharmacy.Id
         });
 

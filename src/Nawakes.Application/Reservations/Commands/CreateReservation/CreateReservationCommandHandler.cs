@@ -46,6 +46,12 @@ public sealed class CreateReservationCommandHandler(
                     ? "This item was just reserved. Please try again shortly."
                     : "This item is currently out of stock.");
 
+        // 2.1 Policy: Pharmacy must be Approved (cannot create reservations on Suspended or Pending pharmacies)
+        if (item.Pharmacy is not null && item.Pharmacy.VerificationStatus != VerificationStatus.Approved)
+        {
+            throw new ConflictException("لا يمكن إتمام حجز جديد لأن الصيدلية معلقة أو قيد مراجعة الإدارة حالياً.");
+        }
+
         // 3. Mutate status — EF tracks the original RowVersion automatically
         item.Status = InventoryStatus.Reserved;
 
@@ -81,8 +87,8 @@ public sealed class CreateReservationCommandHandler(
         {
             UserId = currentUser.UserId,
             Type = NotificationType.ReservationCreated,
-            Title = "Reservation Confirmed",
-            Body = $"Your hold on {item.MedicationName} at {item.Pharmacy.Name} is active for 2 hours.",
+            Title = "تم تأكيد الحجز بنجاح ✓",
+            Body = $"تم حجز دواء {item.MedicationName} بنجاح في صيدلية {item.Pharmacy.Name} لمدة ساعتين. كود الحجز: #{reservation.ReservationCode}",
             RelatedEntityId = reservation.Id
         });
 

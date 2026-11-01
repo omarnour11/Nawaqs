@@ -20,11 +20,17 @@ class CreateTicketRequest {
   final String subject;
   final String description;
   final TicketCategory category;
+  final String? reservationId;
+  final String? pharmacyId;
+  final String? attachmentUrl;
 
   CreateTicketRequest({
     required this.subject,
     required this.description,
     this.category = TicketCategory.other,
+    this.reservationId,
+    this.pharmacyId,
+    this.attachmentUrl,
   });
 
   factory CreateTicketRequest.fromJson(Map<String, dynamic> json) =>
@@ -42,6 +48,7 @@ class TicketDto {
   final String? resolution;
   final String? reservationId;
   final String? pharmacyId;
+  final String? attachmentUrl;
   final DateTime createdAt;
 
   TicketDto({
@@ -53,23 +60,12 @@ class TicketDto {
     this.resolution,
     this.reservationId,
     this.pharmacyId,
+    this.attachmentUrl,
     required this.createdAt,
   });
 
   factory TicketDto.fromJson(Map<String, dynamic> json) => _$TicketDtoFromJson(json);
   Map<String, dynamic> toJson() => _$TicketDtoToJson(this);
-}
-
-@JsonSerializable()
-class ResolveTicketRequest {
-  final bool startProgress;
-  final String? resolution;
-
-  ResolveTicketRequest({required this.startProgress, this.resolution});
-
-  factory ResolveTicketRequest.fromJson(Map<String, dynamic> json) =>
-      _$ResolveTicketRequestFromJson(json);
-  Map<String, dynamic> toJson() => _$ResolveTicketRequestToJson(this);
 }
 
 @JsonSerializable()
@@ -84,6 +80,7 @@ class AdminTicketDto {
   final String? resolution;
   final String? reservationId;
   final String? pharmacyId;
+  final String? attachmentUrl;
   final DateTime createdAt;
 
   AdminTicketDto({
@@ -97,10 +94,23 @@ class AdminTicketDto {
     this.resolution,
     this.reservationId,
     this.pharmacyId,
+    this.attachmentUrl,
     required this.createdAt,
   });
 
   factory AdminTicketDto.fromJson(Map<String, dynamic> json) =>
       _$AdminTicketDtoFromJson(json);
   Map<String, dynamic> toJson() => _$AdminTicketDtoToJson(this);
+}
+
+@JsonSerializable()
+class ResolveTicketRequest {
+  final bool startProgress;
+  final String? resolution;
+
+  ResolveTicketRequest({required this.startProgress, this.resolution});
+
+  factory ResolveTicketRequest.fromJson(Map<String, dynamic> json) =>
+      _$ResolveTicketRequestFromJson(json);
+  Map<String, dynamic> toJson() => _$ResolveTicketRequestToJson(this);
 }

@@ -165,10 +165,12 @@ public sealed class BulkImportInventoryCommandHandler(
             else
             {
                 // Insert new
+                var medName = pr.MedName.Trim();
                 var newItem = new InventoryItem
                 {
                     PharmacyId = pharmacy.Id,
-                    MedicationName = pr.MedName,
+                    MedicationName = medName,
+                    MedicationNameNormalized = Nawakes.Domain.Common.DrugNameNormalizer.NormalizeName(medName),
                     Price = pr.Price,
                     Status = pr.Status
                 };

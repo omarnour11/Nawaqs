@@ -34,12 +34,63 @@ public sealed class CreateReservationCommandHandlerTests
             NullLogger<CreateReservationCommandHandler>.Instance);
     }
 
-    private Nawakes.Domain.Entities.Pharmacy CreatePharmacy() => new Nawakes.Domain.Entities.Pharmacy 
+    private Nawakes.Domain.Entities.Pharmacy CreatePharmacy(VerificationStatus status = VerificationStatus.Approved) => new Nawakes.Domain.Entities.Pharmacy 
     { 
         Name = "Test Pharmacy", 
         GeoPoint = new Point(0, 0) { SRID = 4326 },
-        OwnerId = Guid.NewGuid()
+        OwnerId = Guid.NewGuid(),
+        VerificationStatus = status
     };
+
+    [Fact]
+    public async Task Handle_PharmacySuspended_ShouldThrowConflictException()
+    {
+        // Arrange
+        var pharmacy = CreatePharmacy(VerificationStatus.Suspended);
+        var item = new InventoryItem 
+        { 
+            Status = InventoryStatus.InStock,
+            PharmacyId = pharmacy.Id,
+            Pharmacy = pharmacy,
+            MedicationName = "Test Med"
+        };
+        _context.Pharmacies.Add(pharmacy);
+        _context.InventoryItems.Add(item);
+        await _context.SaveChangesAsync();
+
+        var command = new CreateReservationCommand(item.Id);
+
+        // Act
+        var act = () => _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<ConflictException>().WithMessage("*معلقة أو قيد مراجعة*");
+    }
+
+    [Fact]
+    public async Task Handle_PharmacyPending_ShouldThrowConflictException()
+    {
+        // Arrange
+        var pharmacy = CreatePharmacy(VerificationStatus.Pending);
+        var item = new InventoryItem 
+        { 
+            Status = InventoryStatus.InStock,
+            PharmacyId = pharmacy.Id,
+            Pharmacy = pharmacy,
+            MedicationName = "Test Med"
+        };
+        _context.Pharmacies.Add(pharmacy);
+        _context.InventoryItems.Add(item);
+        await _context.SaveChangesAsync();
+
+        var command = new CreateReservationCommand(item.Id);
+
+        // Act
+        var act = () => _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<ConflictException>().WithMessage("*معلقة أو قيد مراجعة*");
+    }
 
     [Fact]
     public async Task Handle_ItemNotInStock_ShouldThrowConflictException()

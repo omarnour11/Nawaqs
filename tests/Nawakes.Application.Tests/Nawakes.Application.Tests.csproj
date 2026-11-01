@@ -9,6 +9,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Nawakes.Application\Nawakes.Application.csproj" />
     <ProjectReference Include="..\..\src\Nawakes.Infrastructure\Nawakes.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Nawakes.API\Nawakes.API.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />

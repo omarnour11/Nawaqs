@@ -30,7 +30,7 @@ public sealed class ToggleInventoryItemStatusCommandHandler(
 
         if (item.Status == request.TargetStatus)
         {
-            return new InventoryItemDto(item.Id, item.MedicationName, item.Price, item.Status.ToString(), item.UpdatedAt);
+            return new InventoryItemDto(item.Id, item.MedicationName, item.Price, item.Quantity, item.Status.ToString(), item.PatientNote, item.UpdatedAt);
         }
 
         // Toggle to OutOfStock blocked if item has Active reservation
@@ -64,7 +64,9 @@ public sealed class ToggleInventoryItemStatusCommandHandler(
             item.Id,
             item.MedicationName,
             item.Price,
+            item.Quantity,
             item.Status.ToString(),
+            item.PatientNote,
             item.UpdatedAt);
     }
 }

@@ -239,6 +239,24 @@ class _PassRow extends HookConsumerWidget {
                         style: const TextStyle(
                             fontSize: 12, color: AppColors.textSecondary),
                         maxLines: 1, overflow: TextOverflow.ellipsis),
+                    if (reservation.clinicalContraindicationReason != null) ...[
+                      const SizedBox(height: 3),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.dangerBg,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Text(
+                          '⚠️ تعارض طبي: الصيدلي رشح بديلاً',
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.dangerText,
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -313,6 +331,102 @@ class PassDetailScreen extends HookConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (reservation.clinicalContraindicationReason != null) ...[
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppColors.dangerBg,
+                        borderRadius: BorderRadius.circular(AppRadius.lg),
+                        border: Border.all(
+                          color: AppColors.dangerIcon.withValues(alpha: 0.35),
+                          width: 1.2,
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: const [
+                              Icon(Icons.warning_amber_rounded,
+                                  size: 22, color: AppColors.dangerText),
+                              SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'تنبيه تعارض طبي من الصيدلي',
+                                  style: TextStyle(
+                                    fontSize: 14.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.dangerText,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'سبب الاعتذار: ${reservation.clinicalContraindicationReason}',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.dangerText,
+                              height: 1.4,
+                            ),
+                          ),
+                          if (reservation.recommendedAlternativeMedication != null) ...[
+                            const SizedBox(height: 12),
+                            Container(
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: AppColors.hairline),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'الدواء البديل المقترح من الصيدلي:',
+                                    style: TextStyle(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    reservation.recommendedAlternativeMedication!,
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.brand900,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  FilledButton.icon(
+                                    onPressed: () {
+                                      final alt = reservation.recommendedAlternativeMedication!;
+                                      context.push('/search?query=${Uri.encodeComponent(alt)}');
+                                    },
+                                    icon: const Icon(Icons.flash_on_rounded, size: 16),
+                                    label: const Text('حجز الدواء البديل فوراً بنقرة واحدة'),
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: AppColors.brand900,
+                                      minimumSize: const Size(double.infinity, 42),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                  ],
+
                   // ── Teal pass hero ───────────────────────────────────────
                   Container(
                     padding: const EdgeInsets.all(18),
@@ -563,7 +677,7 @@ class PassDetailScreen extends HookConsumerWidget {
                         const SizedBox(width: 8),
                         Expanded(
                           child: OutlinedButton.icon(
-                            onPressed: () => context.push('/support'),
+                            onPressed: () => context.go('/support'),
                             icon: const Icon(Icons.help_outline_rounded, size: 17),
                             label: const Text('محتاج مساعدة؟'),
                             style: OutlinedButton.styleFrom(

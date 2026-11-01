@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
 import 'package:nawakes_mobile/core/network/api_client.dart';
 import 'package:nawakes_mobile/core/ui/widgets.dart';
@@ -23,6 +25,7 @@ class SalesLedgerScreen extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(salesLedgerProvider);
     final searchQuery = useState('');
+    final searchCtrl = useTextEditingController();
 
     return Scaffold(
       backgroundColor: AppColors.page,
@@ -33,24 +36,24 @@ class SalesLedgerScreen extends HookConsumerWidget {
           onRefresh: () async => ref.invalidate(salesLedgerProvider),
           child: state.when(
             data: (ledger) {
-              final entries = ledger.entries
-                  .where((e) =>
-                      searchQuery.value.isEmpty ||
-                      e.medicationName
-                          .toLowerCase()
-                          .contains(searchQuery.value.toLowerCase()) ||
-                      e.reservationCode
-                          .toUpperCase()
-                          .contains(searchQuery.value.toUpperCase()))
-                  .toList();
+              final entries = ledger.entries.where((e) {
+                final q = searchQuery.value.trim().toLowerCase();
+                if (q.isEmpty) return true;
+                return e.medicationName.toLowerCase().contains(q) ||
+                    e.reservationCode.toLowerCase().contains(q);
+              }).toList();
 
               return ListView(
                 padding: const EdgeInsets.only(bottom: 24),
                 children: [
                   const NawaqsTopBar(
-                      eyebrow: 'نواقص / الصيدلية', title: 'سجل المبيعات', back: true),
+                    eyebrow: 'الصيدلية / السجلات',
+                    title: 'سجل المبيعات',
+                    back: true,
+                    showBell: false,
+                  ),
                   const ScreenSubtitle(
-                      'كل طلب خرج من الصيدلية — للمتابعة واكتشاف المشاكل مبكرًا'),
+                      'أرشيف الطلبات المكتملة وإجمالي الإيرادات وبيانات التواصل'),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Column(
@@ -60,32 +63,35 @@ class SalesLedgerScreen extends HookConsumerWidget {
                         Row(
                           children: [
                             Expanded(
-                              child: _LedgerStat(
-                                  label: 'طلبات اليوم',
-                                  value: '${ledger.todayCount}',
-                                  color: AppColors.accentBlue),
+                              child: _MetricCard(
+                                label: 'طلبات اليوم',
+                                value: '${ledger.todayCount}',
+                                color: AppColors.textPrimary,
+                              ),
                             ),
-                            const SizedBox(width: 10),
+                            const SizedBox(width: 8),
                             Expanded(
-                              child: _LedgerStat(
-                                  label: 'إجمالي الإيراد',
-                                  value:
-                                      'EGP ${ledger.totalRevenue.toStringAsFixed(0)}',
-                                  color: AppColors.successText),
+                              child: _MetricCard(
+                                label: 'إجمالي الإيراد',
+                                value: '${ledger.totalRevenue.toStringAsFixed(0)} ج.م',
+                                color: AppColors.successText,
+                              ),
                             ),
-                            const SizedBox(width: 10),
+                            const SizedBox(width: 8),
                             Expanded(
-                              child: _LedgerStat(
-                                  label: 'كل الطلبات',
-                                  value: '${ledger.totalCompleted}',
-                                  color: AppColors.textPrimary),
+                              child: _MetricCard(
+                                label: 'كل الطلبات',
+                                value: '${ledger.totalCompleted}',
+                                color: AppColors.accentBlue,
+                              ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 14),
 
                         // ── Search ──────────────────────────────────────────
                         TextField(
+                          controller: searchCtrl,
                           onChanged: (v) => searchQuery.value = v,
                           decoration: const InputDecoration(
                             hintText: 'ابحث بدواء أو كود تصريح',
@@ -138,19 +144,28 @@ class SalesLedgerScreen extends HookConsumerWidget {
               );
             },
             loading: () => const Center(
-                child: CircularProgressIndicator(color: AppColors.accentBlue)),
+              child: Padding(
+                padding: EdgeInsets.all(40),
+                child: CircularProgressIndicator(color: AppColors.accentBlue),
+              ),
+            ),
             error: (e, _) => Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text('تعذر تحميل السجل',
-                      style: TextStyle(fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 12),
-                  ElevatedButton(
-                    onPressed: () => ref.invalidate(salesLedgerProvider),
-                    child: const Text('إعادة المحاولة'),
-                  ),
-                ],
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.error_outline_rounded,
+                        color: AppColors.danger, size: 40),
+                    const SizedBox(height: 10),
+                    const Text('تعذر تحميل سجل المبيعات'),
+                    const SizedBox(height: 10),
+                    ElevatedButton(
+                      onPressed: () => ref.invalidate(salesLedgerProvider),
+                      child: const Text('إعادة المحاولة'),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -160,12 +175,12 @@ class SalesLedgerScreen extends HookConsumerWidget {
   }
 }
 
-class _LedgerStat extends StatelessWidget {
+class _MetricCard extends StatelessWidget {
   final String label;
   final String value;
   final Color color;
 
-  const _LedgerStat(
+  const _MetricCard(
       {required this.label, required this.value, required this.color});
 
   @override
@@ -190,7 +205,7 @@ class _LedgerStat extends StatelessWidget {
               style: const TextStyle(
                   fontSize: 9.5,
                   fontWeight: FontWeight.w700,
-                  letterSpacing: 0.3,
+                  letterSpacing: 0.0,
                   color: AppColors.textMuted)),
         ],
       ),
@@ -204,90 +219,294 @@ class _LedgerRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(13),
-      decoration: BoxDecoration(
-        color: AppColors.card,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: AppColors.hairline),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+        onTap: () => _showOrderDetailsSheet(context, entry),
+        child: Container(
+          padding: const EdgeInsets.all(13),
+          decoration: BoxDecoration(
+            color: AppColors.card,
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            border: Border.all(color: AppColors.hairline),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const IconTile(Icons.check_circle_outline_rounded,
-                  bg: AppColors.successBg, color: AppColors.successIcon),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(entry.medicationName,
+              Row(
+                children: [
+                  const IconTile(Icons.check_circle_outline_rounded,
+                      bg: AppColors.successBg, color: AppColors.successIcon),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(entry.medicationName,
+                            style: const TextStyle(
+                                fontSize: 14, fontWeight: FontWeight.w700),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis),
+                        const SizedBox(height: 2),
+                        Directionality(
+                          textDirection: TextDirection.ltr,
+                          child: Text(entry.reservationCode,
+                              style: const TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.0,
+                                  color: AppColors.textMuted)),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text('${entry.price.toStringAsFixed(2)} ج.م',
+                          style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.successText)),
+                      const SizedBox(height: 2),
+                      Text(
+                          DateFormat('d MMM · HH:mm')
+                              .format(entry.completedAt.toLocal()),
+                          style: const TextStyle(
+                              fontSize: 11, color: AppColors.textMuted)),
+                    ],
+                  ),
+                  const SizedBox(width: 6),
+                  const Icon(Icons.chevron_left_rounded,
+                      color: AppColors.textMuted, size: 20),
+                ],
+              ),
+              const SizedBox(height: 8),
+              const Divider(),
+              const SizedBox(height: 6),
+              // بيانات تواصل المريض
+              Row(
+                children: [
+                  const Icon(Icons.person_outline_rounded,
+                      size: 14, color: AppColors.textHint),
+                  const SizedBox(width: 5),
+                  const Text('المريض:',
+                      style: TextStyle(fontSize: 12, color: AppColors.textHint)),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(entry.patientContact,
                         style: const TextStyle(
-                            fontSize: 14, fontWeight: FontWeight.w700),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textSecondary),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis),
-                    const SizedBox(height: 2),
-                    Directionality(
-                      textDirection: TextDirection.ltr,
-                      child: Text(entry.reservationCode,
-                          style: const TextStyle(
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.5,
-                              color: AppColors.textMuted)),
-                    ),
-                  ],
-                ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text('EGP ${entry.price.toStringAsFixed(2)}',
+                  ),
+                  const SizedBox(width: 4),
+                  Text('${entry.quantity} وحدة',
                       style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.successText)),
-                  const SizedBox(height: 2),
-                  Text(
-                      DateFormat('d MMM · HH:mm')
-                          .format(entry.completedAt.toLocal()),
-                      style: const TextStyle(
-                          fontSize: 11, color: AppColors.textMuted)),
+                          fontSize: 11.5, color: AppColors.textSecondary)),
                 ],
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          const Divider(),
-          const SizedBox(height: 6),
-          // بيانات تواصل المريض (للمتابعة عند المشاكل)
-          Row(
-            children: [
-              const Icon(Icons.person_outline_rounded,
-                  size: 14, color: AppColors.textHint),
-              const SizedBox(width: 5),
-              const Text('المريض:',
-                  style: TextStyle(fontSize: 12, color: AppColors.textHint)),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Text(entry.patientContact,
-                    style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textSecondary),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis),
-              ),
-              const SizedBox(width: 4),
-              Text('${entry.quantity} وحدة',
-                  style: const TextStyle(
-                      fontSize: 11.5, color: AppColors.textSecondary)),
-            ],
-          ),
-        ],
+        ),
       ),
     );
   }
+}
+
+void _showOrderDetailsSheet(BuildContext context, SalesLedgerEntryDto entry) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    builder: (ctx) {
+      final cleanPhone = entry.patientContact.replaceAll(RegExp(r'[^\d+]'), '');
+      final hasPhone = cleanPhone.isNotEmpty && cleanPhone != '—';
+
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        entry.medicationName,
+                        style: const TextStyle(
+                            fontSize: 17, fontWeight: FontWeight.w800),
+                      ),
+                      const SizedBox(height: 2),
+                      const Text('تفاصيل طلب الاستلام المكتمل',
+                          style: TextStyle(
+                              fontSize: 12, color: AppColors.textSecondary)),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.successBg,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: const Text('تم الاستلام',
+                      style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.successText)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            // كود التصريح
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                border: Border.all(color: AppColors.hairline),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.qr_code_rounded,
+                      size: 20, color: AppColors.textSecondary),
+                  const SizedBox(width: 8),
+                  const Text('كود الاستلام:',
+                      style: TextStyle(
+                          fontSize: 13, color: AppColors.textSecondary)),
+                  const SizedBox(width: 8),
+                  Directionality(
+                    textDirection: TextDirection.ltr,
+                    child: Text(
+                      entry.reservationCode,
+                      style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary),
+                    ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.copy_rounded, size: 18),
+                    tooltip: 'نسخ الكود',
+                    onPressed: () {
+                      Clipboard.setData(
+                          ClipboardData(text: entry.reservationCode));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('تم نسخ كود الاستلام.')),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            // بيانات العملية
+            InfoCell(
+              label: 'تاريخ الاستلام',
+              value: DateFormat('d MMMM yyyy · HH:mm')
+                  .format(entry.completedAt.toLocal()),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: InfoCell(
+                    label: 'الكمية المستلمة',
+                    value: '${entry.quantity} عبوة',
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: InfoCell(
+                    label: 'المبلغ المدفوع',
+                    value: '${entry.price.toStringAsFixed(2)} ج.م',
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            // بيانات تواصل المريض
+            const SectionLabel('بيانات تواصل المريض'),
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                border: Border.all(color: AppColors.hairline),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.phone_outlined,
+                          size: 18, color: AppColors.primary),
+                      const SizedBox(width: 8),
+                      Text(
+                        hasPhone ? entry.patientContact : 'غير متوفر',
+                        style: const TextStyle(
+                            fontSize: 14, fontWeight: FontWeight.w700),
+                      ),
+                    ],
+                  ),
+                  if (hasPhone) ...[
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: FilledButton.icon(
+                            icon: const Icon(Icons.call_rounded, size: 17),
+                            label: const Text('اتصال هاتفي'),
+                            style: FilledButton.styleFrom(
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10))),
+                            onPressed: () async {
+                              final uri = Uri.parse('tel:$cleanPhone');
+                              if (await canLaunchUrl(uri)) {
+                                await launchUrl(uri);
+                              }
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            icon: const Icon(Icons.chat_bubble_outline_rounded,
+                                size: 17),
+                            label: const Text('واتساب'),
+                            style: OutlinedButton.styleFrom(
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10))),
+                            onPressed: () async {
+                              final phone = cleanPhone.startsWith('0')
+                                  ? '2$cleanPhone'
+                                  : cleanPhone;
+                              final uri = Uri.parse('https://wa.me/$phone');
+                              if (await canLaunchUrl(uri)) {
+                                await launchUrl(uri,
+                                    mode: LaunchMode.externalApplication);
+                              }
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    },
+  );
 }

@@ -21,11 +21,14 @@ public sealed class IdentityService(
         string fullName,
         string? fcmToken,
         string? encryptedHealthJson,
+        string role = "Patient",
         CancellationToken cancellationToken = default)
     {
         var existingUser = await userManager.FindByEmailAsync(email);
         if (existingUser is not null)
             return (false, null, "An account with this email already exists.");
+
+        var parsedRole = Enum.TryParse<UserRole>(role, true, out var r) ? r : UserRole.Patient;
 
         var user = new ApplicationUser
         {
@@ -34,7 +37,7 @@ public sealed class IdentityService(
             FullName = string.IsNullOrWhiteSpace(fullName) ? null : fullName.Trim(),
             FcmToken = fcmToken,
             HealthQuestionnaireJson = encryptedHealthJson,
-            Role = UserRole.Patient
+            Role = parsedRole
         };
 
         var result = await userManager.CreateAsync(user, password);
@@ -44,7 +47,7 @@ public sealed class IdentityService(
             return (false, null, errors);
         }
 
-        await userManager.AddToRoleAsync(user, "Patient");
+        await userManager.AddToRoleAsync(user, parsedRole.ToString());
 
         return (true, user.Id.ToString(), null);
     }
@@ -96,7 +99,8 @@ public sealed class IdentityService(
             user.FullName,
             user.PhoneNumber,
             user.MedicalHistoryNotes,
-            user.CreatedAt);
+            user.CreatedAt,
+            user.AllowPharmacistViewActiveMedications);
     }
 
     public async Task UpdateProfileAsync(
@@ -104,6 +108,7 @@ public sealed class IdentityService(
         string? fullName,
         string? phone,
         string? medicalHistoryNotes,
+        bool? allowPharmacistViewActiveMedications = null,
         CancellationToken cancellationToken = default)
     {
         var user = await userManager.FindByIdAsync(userId.ToString())
@@ -112,8 +117,17 @@ public sealed class IdentityService(
         if (fullName is not null) user.FullName = fullName.Trim();
         if (phone is not null) user.PhoneNumber = phone.Trim();
         if (medicalHistoryNotes is not null) user.MedicalHistoryNotes = medicalHistoryNotes.Trim();
+        if (allowPharmacistViewActiveMedications.HasValue)
+            user.AllowPharmacistViewActiveMedications = allowPharmacistViewActiveMedications.Value;
 
         await userManager.UpdateAsync(user);
+    }
+
+    public async Task<(string Role, string Email)> GetRoleAndEmailAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        var user = await userManager.FindByIdAsync(userId.ToString());
+        if (user is null) throw new UnauthorizedAccessException("User not found.");
+        return (user.Role.ToString(), user.Email ?? string.Empty);
     }
 
     public async Task<string?> GeneratePasswordResetTokenAsync(
@@ -133,17 +147,5 @@ public sealed class IdentityService(
         return result.Succeeded
             ? null
             : string.Join("; ", result.Errors.Select(e => e.Description));
-    }
-
-    public async Task<(string Role, string Email)> GetRoleAndEmailAsync(Guid userId, CancellationToken cancellationToken = default)
-    {
-        var user = await context.Users
-            .AsNoTracking()
-            .Where(u => u.Id == userId)
-            .Select(u => new { u.Role, u.Email })
-            .FirstOrDefaultAsync(cancellationToken)
-            ?? throw new UnauthorizedAccessException("User not found.");
-
-        return (user.Role.ToString(), user.Email ?? string.Empty);
     }
 }

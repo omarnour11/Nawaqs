@@ -48,4 +48,4 @@ final class PendingReportsProvider
   }
 }
 
-String _$pendingReportsHash() => r'07b92a6e64cab64c2f3142a653d9f12e868c7198';
+String _$pendingReportsHash() => r'3a8785ca00fda2a634b5abab9379839b91aef7e3';

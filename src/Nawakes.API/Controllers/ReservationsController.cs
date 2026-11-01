@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Nawakes.Application.Reservations.Commands.CancelReservation;
 using Nawakes.Application.Reservations.Commands.CreateReservation;
+using Nawakes.Application.Reservations.Commands.ReserveAlternative;
 using Nawakes.Application.Reservations.Queries.GetPatientReservations;
 using Nawakes.Application.Reservations.Dtos;
 
@@ -42,6 +43,21 @@ public sealed class ReservationsController(ISender mediator) : ControllerBase
     {
         var dto = await mediator.Send(new CreateReservationCommand(request.InventoryItemId), cancellationToken);
         return CreatedAtAction(nameof(Create), new { id = dto.Id }, ToResponse(dto));
+    }
+
+    /// <summary>Reserve recommended alternative medication from a previous reservation in 1-click.</summary>
+    /// <param name="id">Prior Reservation GUID.</param>
+    [HttpPost("{id:guid}/reserve-alternative")]
+    [ProducesResponseType(typeof(ReservationResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<ReservationResponse>> ReserveAlternative(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var dto = await mediator.Send(new ReserveAlternativeCommand(id), cancellationToken);
+        return Ok(ToResponse(dto));
     }
 
     /// <summary>Cancel a reservation. Subject to 15-minute lock-in window.</summary>

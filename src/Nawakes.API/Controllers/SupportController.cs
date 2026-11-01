@@ -29,7 +29,8 @@ public sealed class SupportController(ISender mediator) : ControllerBase
         [Required, MaxLength(2000)] string Description,
         Domain.Enums.TicketCategory Category = Domain.Enums.TicketCategory.Other,
         Guid? ReservationId = null,
-        Guid? PharmacyId = null);
+        Guid? PharmacyId = null,
+        string? AttachmentUrl = null);
 
     [HttpPost]
     [ProducesResponseType(StatusCodes.Status201Created)]
@@ -39,7 +40,7 @@ public sealed class SupportController(ISender mediator) : ControllerBase
     {
         var id = await mediator.Send(new CreateTicketCommand(
             request.Subject, request.Description, request.Category,
-            request.ReservationId, request.PharmacyId), cancellationToken);
+            request.ReservationId, request.PharmacyId, request.AttachmentUrl), cancellationToken);
         return Created(string.Empty, new { Id = id });
     }
 

@@ -1,3 +1,4 @@
+using Nawakes.Application.Search.Queries.GetNearbyProducts;
 using Nawakes.Application.Search.Queries.SearchMedication;
 
 namespace Nawakes.Application.Common.Interfaces;
@@ -17,5 +18,17 @@ public interface IPharmacySearchRepository
         double latitude,
         double longitude,
         double radiusKm,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Retrieves distinct in-stock medications available in approved pharmacies within radiusKm (0-15km)
+    /// without exposing pharmacy names upfront, aggregated by medication product.
+    /// </summary>
+    Task<IReadOnlyList<NearbyProductDto>> GetNearbyProductsAsync(
+        double latitude,
+        double longitude,
+        double radiusKm,
+        string? category,
+        int limit,
         CancellationToken cancellationToken = default);
 }

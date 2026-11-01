@@ -1,89 +1,32 @@
 import 'dart:async';
-import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:nawakes_mobile/core/map/nawaqs_map.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
-import 'package:nawakes_mobile/core/network/api_client.dart' show apiClientProvider;
+import 'package:nawakes_mobile/core/network/api_client.dart';
 import 'package:nawakes_mobile/core/ui/widgets.dart';
-import 'package:nawakes_mobile/features/auth/presentation/auth_controller.dart';
+import 'package:nawakes_mobile/features/auth/presentation/auth_controller.dart'
+    show describeApiError;
 import 'package:nawakes_mobile/features/search/presentation/search_controller.dart' as sc;
 import 'package:nawakes_mobile/features/search/data/search_models.dart';
 import 'package:nawakes_mobile/features/search/presentation/all_results_screen.dart';
 import 'package:nawakes_mobile/features/search/presentation/shortage_sos_card.dart';
 import 'package:nawakes_mobile/features/search/presentation/pharmacy_details_screen.dart';
 import 'package:nawakes_mobile/core/services/voice_search_service.dart';
-import 'package:nawakes_mobile/features/search/presentation/camera_scan_sheet.dart';
+import 'package:nawakes_mobile/core/services/arabic_medication_mapper.dart';
+import 'package:nawakes_mobile/core/ui/voice_recording_overlay.dart';
+import 'package:nawakes_mobile/features/search/presentation/voice_confirm_sheet.dart';
+import 'package:nawakes_mobile/features/search/presentation/prescription_source_sheet.dart';
+import 'package:nawakes_mobile/features/search/presentation/prescription_basket_screen.dart';
+import 'package:nawakes_mobile/features/search/presentation/batch_search_results_screen.dart';
+import 'package:nawakes_mobile/core/network/api_response_models.dart';
 import 'package:nawakes_mobile/features/search/presentation/medication_equivalents_card.dart';
+import 'package:nawakes_mobile/features/search/presentation/prescription_scanner_hud_screen.dart';
+import 'package:nawakes_mobile/features/search/presentation/widgets/home_catalog_view.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
-
-// ─── Light clinical map style ────────────────────────────────────────────────
-const _kMapStyle = '''
-[
-  {"featureType":"poi","stylers":[{"visibility":"off"}]},
-  {"featureType":"transit","stylers":[{"visibility":"off"}]},
-  {"featureType":"landscape","elementType":"geometry","stylers":[{"color":"#eef0ee"}]},
-  {"featureType":"water","elementType":"geometry","stylers":[{"color":"#cfe6f5"}]},
-  {"featureType":"road","elementType":"geometry","stylers":[{"color":"#ffffff"}]},
-  {"featureType":"road.arterial","elementType":"geometry","stylers":[{"color":"#f6f2e8"}]},
-  {"featureType":"road.highway","elementType":"geometry","stylers":[{"color":"#f3eedd"}]},
-  {"featureType":"road","elementType":"labels.text.fill","stylers":[{"color":"#8a94a0"}]},
-  {"featureType":"administrative.locality","elementType":"labels.text.fill","stylers":[{"color":"#4b5563"}]}
-]
-''';
-
-// ─── Numbered map pins (badge = live unit count, color = availability) ───────
-final Map<String, BitmapDescriptor> _pinCache = {};
-
-Future<BitmapDescriptor> _buildCountPin({required int count, required bool inStock}) async {
-  final key = '$count|$inStock';
-  if (_pinCache.containsKey(key)) return _pinCache[key]!;
-
-  final recorder = ui.PictureRecorder();
-  final canvas = Canvas(recorder);
-  const w = 44.0, h = 56.0;
-
-  final pinColor = inStock ? AppColors.successIcon : AppColors.warningIcon;
-
-  // soft shadow under the tip
-  canvas.drawCircle(
-      const Offset(w / 2, h - 5), 5,
-      Paint()
-        ..color = Colors.black.withValues(alpha: 0.20)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3));
-
-  // teardrop pin
-  final path = Path()
-    ..addOval(const Rect.fromLTWH(2, 2, w - 4, w - 4))
-    ..moveTo(w * 0.28, w * 0.70)
-    ..quadraticBezierTo(w / 2, h, w / 2, h)
-    ..quadraticBezierTo(w / 2, h, w * 0.72, w * 0.70)
-    ..close();
-  canvas.drawPath(path, Paint()..color = pinColor);
-  canvas.drawPath(
-      path,
-      Paint()
-        ..color = Colors.white
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.5);
-
-  final tp = TextPainter(
-    text: TextSpan(
-        text: '$count',
-        style: const TextStyle(
-            fontSize: 17, fontWeight: FontWeight.w800, color: Colors.white)),
-    textDirection: TextDirection.ltr,
-  )..layout();
-  tp.paint(canvas, Offset((w - tp.width) / 2, (w - tp.height) / 2 + 1));
-
-  final picture = recorder.endRecording();
-  final img = await picture.toImage(w.toInt(), h.toInt());
-  final bytes = await img.toByteData(format: ui.ImageByteFormat.png);
-  final descriptor = BitmapDescriptor.bytes(bytes!.buffer.asUint8List());
-  _pinCache[key] = descriptor;
-  return descriptor;
-}
 
 String _formatDistance(double km) {
   if (km <= 0) return 'قريب جدًا';
@@ -108,21 +51,23 @@ String _timeAgo(DateTime utc) {
 
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 class SearchScreen extends HookConsumerWidget {
-  const SearchScreen({super.key});
+  final String? initialQuery;
+  const SearchScreen({super.key, this.initialQuery});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final searchCtrl = useTextEditingController();
+    final searchCtrl = useTextEditingController(text: initialQuery ?? '');
     final focusNode = useFocusNode();
     final searchState = ref.watch(sc.searchControllerProvider);
-    final hasSearched = useState(false);
+    final hasSearched = useState(initialQuery != null && initialQuery!.trim().length >= 2);
     final radius = useState<double>(10.0);
     final suggestions = useState<List<String>>([]);
     final isListening = useState(false);
+    final isProcessingVoice = useState(false);
+    final speechTranscript = useState<String>('');
     final voice = useMemoized(VoiceSearchService.new, const []);
 
-    final mapController = useState<GoogleMapController?>(null);
-    final markers = useState<Set<Marker>>({});
+    final mapPins = useState<List<NawaqsMapPin>>([]);
 
     // Debounced autocomplete
     useEffect(() {
@@ -151,6 +96,65 @@ class SearchScreen extends HookConsumerWidget {
     Future<void> doSearch(String query) async {
       if (query.trim().length < 2) return;
       focusNode.unfocus();
+
+      // Enforce GPS location
+      try {
+        final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+        if (!serviceEnabled && context.mounted) {
+          final openSettings = await showDialog<bool>(
+            context: context,
+            builder: (dCtx) => AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: const Row(
+                children: [
+                  Icon(Icons.location_off_rounded, color: AppColors.danger, size: 24),
+                  SizedBox(width: 8),
+                  Text('تفعيل خدمة الموقع (GPS)', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                ],
+              ),
+              content: const Text(
+                'لتحديد الصيدليات المتاحة حولك بدقة ومعرفة المسافة الحقيقية، يجب تفعيل خدمة الموقع الجغرافي (GPS) قبل البحث.',
+                style: TextStyle(fontSize: 13, height: 1.4),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dCtx, false),
+                  child: const Text('إلغاء'),
+                ),
+                FilledButton.icon(
+                  style: FilledButton.styleFrom(backgroundColor: AppColors.brand900),
+                  icon: const Icon(Icons.settings, size: 16),
+                  label: const Text('فتح إعدادات الموقع'),
+                  onPressed: () {
+                    Geolocator.openLocationSettings();
+                    Navigator.pop(dCtx, true);
+                  },
+                ),
+              ],
+            ),
+          );
+          if (openSettings != true) return;
+        }
+
+        var permission = await Geolocator.checkPermission();
+        if (permission == LocationPermission.denied) {
+          permission = await Geolocator.requestPermission();
+        }
+        if (permission == LocationPermission.deniedForever && context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('يجب إعطاء إذن الموقع لإظهار الصيدليات القريبة بدقة.'),
+              action: SnackBarAction(
+                label: 'الإعدادات',
+                textColor: Colors.white,
+                onPressed: () => Geolocator.openAppSettings(),
+              ),
+            ),
+          );
+          return;
+        }
+      } catch (_) {}
+
       suggestions.value = [];
       hasSearched.value = true;
       try {
@@ -165,64 +169,165 @@ class SearchScreen extends HookConsumerWidget {
       }
     }
 
-    // Build numbered pins when results arrive + fit camera
+    Future<void> handleVoiceDone() async {
+      if (isProcessingVoice.value) return;
+      if (!isListening.value) return;
+
+      isProcessingVoice.value = true;
+      isListening.value = false;
+
+      // Extract spoken text BEFORE resetting or stopping
+      final raw = speechTranscript.value.trim().isNotEmpty
+          ? speechTranscript.value.trim()
+          : (voice.lastWords.trim().isNotEmpty
+              ? voice.lastWords.trim()
+              : searchCtrl.text.trim());
+
+      speechTranscript.value = '';
+
+      try {
+        await voice.stop();
+      } catch (_) {}
+
+      if (raw.isEmpty) {
+        isProcessingVoice.value = false;
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('لم نتمكن من التقاط الصوت، يرجى المحاولة والتحدث بوضوح'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+        return;
+      }
+
+      // 1. Resolve voice input (Egyptian dialect, Arabic DB check, multiple meds)
+      final segments = ArabicMedicationMapper.splitMedications(raw);
+      final rawTokens = segments.isNotEmpty ? segments : [raw];
+
+      final api = ref.read(apiClientProvider);
+      final List<VoiceResolvedItem> resolvedItems = [];
+      for (final seg in rawTokens) {
+        final resolved = await ArabicMedicationMapper.resolveSingleMedication(seg, api);
+        if (resolved.isNotEmpty) {
+          resolvedItems.add(VoiceResolvedItem(
+            spokenText: seg,
+            resolvedName: resolved,
+          ));
+        }
+      }
+
+      isProcessingVoice.value = false;
+      if (!context.mounted || resolvedItems.isEmpty) return;
+
+      // 2. Show VoiceConfirmSheet (single or multiple)
+      final confirmResult = await VoiceConfirmSheet.showAdvanced(
+        context,
+        rawSpokenText: raw,
+        items: resolvedItems,
+      );
+
+      if (!context.mounted || confirmResult == null || confirmResult.isCancelled) {
+        return;
+      }
+
+      if (confirmResult.isSingleSearch) {
+        final medName = confirmResult.singleMedication ?? resolvedItems.first.resolvedName;
+        searchCtrl.text = medName;
+        doSearch(medName);
+      } else if (confirmResult.isBatchSearch) {
+        final batchItems = resolvedItems
+            .map((e) => BatchSearchItemDto(
+                  medication: e.resolvedName,
+                  quantity: 1,
+                ))
+            .toList();
+        Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => BatchSearchResultsScreen(items: batchItems),
+        ));
+      } else if (confirmResult.isOpenBasket) {
+        final basketItems = resolvedItems
+            .map((e) => PrescriptionBasketItem(
+                  tradeName: e.resolvedName,
+                  quantity: 1,
+                ))
+            .toList();
+        await PrescriptionBasketScreen.show(context, items: basketItems);
+      }
+    }
+
+    useEffect(() {
+      if (initialQuery != null && initialQuery!.trim().length >= 2) {
+        Future.microtask(() => doSearch(initialQuery!));
+      }
+      Future.microtask(() async {
+        try {
+          final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+          var permission = await Geolocator.checkPermission();
+          if (permission == LocationPermission.denied) {
+            permission = await Geolocator.requestPermission();
+          }
+          if (!serviceEnabled && context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('تنبيه: خدمة الموقع (GPS) مغلقة — يُرجى تفعيلها لإظهار الصيدليات الأقرب إليك بدقة.'),
+                duration: Duration(seconds: 4),
+              ),
+            );
+          }
+        } catch (_) {}
+      });
+      return null;
+    }, [initialQuery]);
+
     ref.listen<AsyncValue<SearchMedicationResponse?>>(
       sc.searchControllerProvider,
       (prev, next) {
         final data = next.value;
         if (!next.hasValue || data == null || data.results.isEmpty) {
-          markers.value = {};
+          mapPins.value = [];
           return;
         }
 
-        Future.wait(data.results.map((r) => _buildCountPin(
-              count: r.status == 'InStock'
-                  ? (r.quantity > 0 ? r.quantity : 1)
-                  : 0,
-              inStock: r.status == 'InStock',
-            ))).then((icons) {
-          final newMarkers = <Marker>{};
-          for (var i = 0; i < data.results.length; i++) {
-            final item = data.results[i];
-            newMarkers.add(Marker(
-              markerId: MarkerId(item.inventoryItemId),
-              position: LatLng(item.latitude, item.longitude),
-              icon: icons[i],
-              anchor: const Offset(0.5, 1.0),
+        mapPins.value = [
+          for (final item in data.results)
+            NawaqsMapPin(
+              id: item.inventoryItemId,
+              point: LatLng(item.latitude, item.longitude),
+              label: item.status == 'InStock'
+                  ? '${item.quantity > 0 ? item.quantity : 1}'
+                  : '0',
+              color: item.status == 'InStock'
+                  ? AppColors.successIcon
+                  : AppColors.warningIcon,
               onTap: () => context.push('/pharmacy-details',
                   extra: PharmacyDetailsArgs(item: item)),
-            ));
-          }
-          markers.value = newMarkers;
-
-          if (data.results.length > 1) {
-            final lats = data.results.map((r) => r.latitude);
-            final lngs = data.results.map((r) => r.longitude);
-            mapController.value?.animateCamera(CameraUpdate.newLatLngBounds(
-              LatLngBounds(
-                southwest: LatLng(lats.reduce((a, b) => a < b ? a : b),
-                    lngs.reduce((a, b) => a < b ? a : b)),
-                northeast: LatLng(lats.reduce((a, b) => a > b ? a : b),
-                    lngs.reduce((a, b) => a > b ? a : b)),
-              ),
-              60,
-            ));
-          } else {
-            final r = data.results.first;
-            mapController.value?.animateCamera(
-              CameraUpdate.newLatLngZoom(LatLng(r.latitude, r.longitude), 14),
-            );
-          }
-        });
+            ),
+        ];
       },
     );
 
     final results = searchState.value?.results;
 
-    return Scaffold(
-      backgroundColor: AppColors.page,
-      body: SafeArea(
-        bottom: false,
+    return PopScope(
+      canPop: !isListening.value,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        if (isListening.value) {
+          isListening.value = false;
+          speechTranscript.value = '';
+          try {
+            voice.stop();
+          } catch (_) {}
+        }
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.page,
+        body: Stack(
+        children: [
+          SafeArea(
+            bottom: false,
         child: ListView(
           padding: const EdgeInsets.only(bottom: 16),
           children: [
@@ -275,7 +380,7 @@ class SearchScreen extends HookConsumerWidget {
                               searchCtrl.clear();
                               hasSearched.value = false;
                               suggestions.value = [];
-                              markers.value = {};
+                              mapPins.value = [];
                             },
                             child: const Padding(
                               padding: EdgeInsets.all(6),
@@ -285,28 +390,39 @@ class SearchScreen extends HookConsumerWidget {
                           ),
                         // Microphone (Egyptian dialect voice search)
                         GestureDetector(
+                          key: const ValueKey('search_mic_button'),
                           onTap: () async {
                             if (isListening.value) {
-                              await voice.stop();
-                              isListening.value = false;
+                              await handleVoiceDone();
                               return;
                             }
-                            final ok = await voice.initialize();
-                            if (!ok) {
+                            try {
+                              final ok = await voice.initialize();
+                              if (!ok) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('ميكروفون الجهاز غير متاح أو لم يتم منحه الإذن')),
+                                  );
+                                }
+                                return;
+                              }
+                              speechTranscript.value = '';
+                              isListening.value = true;
+                              await voice.startListening(
+                                onResult: (text) {
+                                  searchCtrl.text = text;
+                                  speechTranscript.value = text;
+                                },
+                                onDone: () => handleVoiceDone(),
+                              );
+                            } catch (_) {
+                              isListening.value = false;
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('ميكروفون الجهاز غير متاح')),
+                                  const SnackBar(content: Text('حدث خطأ أثناء تشغيل الميكروفون، يرجى المحاولة ثانية')),
                                 );
                               }
-                              return;
                             }
-                            isListening.value = true;
-                            await voice.startListening(
-                              onResult: (text) {
-                                searchCtrl.text = text;
-                              },
-                              onDone: () => isListening.value = false,
-                            );
                           },
                           child: Padding(
                             padding: const EdgeInsets.all(6),
@@ -319,108 +435,80 @@ class SearchScreen extends HookConsumerWidget {
                                     size: 18, color: AppColors.accentBlue),
                           ),
                         ),
-                        // Camera scan (on-device OCR)
+                        // Photo & Camera scan (HUD Scanner)
                         GestureDetector(
-                          onTap: () => CameraScanSheet.show(
+                          key: const ValueKey('search_camera_scan_button'),
+                          onTap: () => PrescriptionSourceSheet.show(
                             context,
-                            onScanned: (result) {
-                              if (result.lines.isEmpty) return;
-                              searchCtrl.text = result.lines.first;
-                              doSearch(result.lines.first);
+                            onScanned: (result) async {
+                              final raw = result.lines.join('\n');
+                              await PrescriptionScannerHudScreen.start(
+                                context,
+                                imageFile: result.imageFile,
+                                imageBytes: result.imageBytes,
+                                ocrHintText: raw.isNotEmpty ? raw : null,
+                              );
                             },
                           ),
                           child: const Padding(
                             padding: EdgeInsets.all(6),
-                            child: Icon(Icons.photo_camera_rounded,
-                                size: 17, color: AppColors.textMuted),
+                            child: Icon(Icons.document_scanner_rounded,
+                                size: 18, color: AppColors.primary),
                           ),
                         ),
-                        const SizedBox(width: 6),
-                        Material(
-                          color: AppColors.accentBlue,
-                          shape: const CircleBorder(),
-                          child: InkWell(
-                            customBorder: const CircleBorder(),
-                            onTap: () => doSearch(searchCtrl.text),
-                            child: const SizedBox(
-                              width: 36,
-                              height: 36,
-                              child: Icon(Icons.north_rounded,
-                                  color: Colors.white, size: 18),
+                        const SizedBox(width: 4),
+                        // Explicit Search Submit Button
+                        GestureDetector(
+                          key: const ValueKey('search_submit_button'),
+                          onTap: () => doSearch(searchCtrl.text),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 7),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.search_rounded,
+                                    size: 15, color: Colors.white),
+                                SizedBox(width: 4),
+                                Text(
+                                  'بحث',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
                       ],
                     ),
                   ),
-
-                  // Suggestions
-                  if (suggestions.value.isNotEmpty)
-                    Container(
-                      margin: const EdgeInsets.only(top: 6),
-                      decoration: BoxDecoration(
-                        color: AppColors.card,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.hairline),
-                      ),
-                      child: Column(
-                        children: suggestions.value
-                            .map((s) => ListTile(
-                                  dense: true,
-                                  visualDensity: VisualDensity.compact,
-                                  leading: const Icon(Icons.medication_rounded,
-                                      size: 17, color: AppColors.accentBlue),
-                                  title: Text(s,
-                                      style: const TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w600)),
-                                  onTap: () {
-                                    searchCtrl.text = s;
-                                    suggestions.value = [];
-                                    doSearch(s);
-                                  },
-                                ))
-                            .toList(),
-                      ),
-                    ),
-
-                  const SizedBox(height: 10),
-
-                  // ── Map card ───────────────────────────────────────────────
-                  Container(
-                    height: 210,
-                    clipBehavior: Clip.antiAlias,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppColors.hairline),
-                    ),
-                    child: GoogleMap(
-                      style: _kMapStyle,
-                      initialCameraPosition: const CameraPosition(
-                        target: LatLng(30.0444, 31.2357),
-                        zoom: 12,
-                      ),
-                      markers: markers.value,
-                      mapToolbarEnabled: false,
-                      zoomControlsEnabled: false,
-                      buildingsEnabled: false,
-                      myLocationEnabled: true,
-                      myLocationButtonEnabled: false,
-                      onMapCreated: (c) => mapController.value = c,
-                    ),
-                  ),
-
                   const SizedBox(height: 12),
 
-                  // ── Results card ───────────────────────────────────────────
-                  if (!hasSearched.value)
-                    _IdleCard(
-                      onSample: () {
-                        searchCtrl.text = 'Panadol';
-                        doSearch('Panadol');
-                      },
-                    )
-                  else
+                  if (hasSearched.value) ...[
+                    // ── Map container (Appears only on Search) ───────────────────
+                    Container(
+                      height: 220,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppColors.hairline),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: NawaqsMap(
+                        pins: mapPins.value,
+                        fitPins: mapPins.value.isNotEmpty,
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // ── Results card ───────────────────────────────────────────
                     Container(
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
@@ -434,6 +522,15 @@ class SearchScreen extends HookConsumerWidget {
                           Row(
                             children: [
                               const Expanded(child: SectionLabel('التوفر القريب')),
+                              TextButton.icon(
+                                icon: const Icon(Icons.arrow_back_rounded, size: 14),
+                                label: const Text('الرئيسية', style: TextStyle(fontSize: 11)),
+                                onPressed: () {
+                                  searchCtrl.clear();
+                                  hasSearched.value = false;
+                                },
+                              ),
+                              const SizedBox(width: 4),
                               _FilterButton(
                                 onTap: () {
                                   final order = [5.0, 10.0, 20.0];
@@ -488,33 +585,69 @@ class SearchScreen extends HookConsumerWidget {
                       ),
                     ),
 
-                  const SizedBox(height: 10),
+                    const SizedBox(height: 10),
 
-                  // ── Toggle pills ───────────────────────────────────────────
-                  Row(
-                    children: [
-                      const _TogglePill(label: 'قريب', active: true),
-                      const SizedBox(width: 8),
-                      _TogglePill(
-                        label: 'كل النتايج',
-                        active: false,
-                        onTap: results == null || results.isEmpty
-                            ? null
-                            : () => context.push('/all-results',
-                                extra: AllResultsArgs(
-                                  results: results,
-                                  medicationName: searchCtrl.text.trim(),
-                                )),
+                    // ── Toggle pills ───────────────────────────────────────────
+                    Row(
+                      children: [
+                        const _TogglePill(label: 'قريب', active: true),
+                        const SizedBox(width: 8),
+                        _TogglePill(
+                          label: 'كل النتايج',
+                          active: false,
+                          onTap: results == null || results.isEmpty
+                              ? null
+                              : () => context.push('/all-results',
+                                  extra: AllResultsArgs(
+                                    results: results,
+                                    medicationName: searchCtrl.text.trim(),
+                                  )),
+                        ),
+                      ],
+                    ),
+                  ] else ...[
+                    // ── Home Catalog View (El-Ezaby style with Nawakes Identity) ──
+                    HomeCatalogView(
+                      onOpenScanner: () => PrescriptionSourceSheet.show(
+                        context,
+                        onScanned: (result) async {
+                          final raw = result.lines.join('\n');
+                          await PrescriptionScannerHudScreen.start(
+                            context,
+                            imageFile: result.imageFile,
+                            imageBytes: result.imageBytes,
+                            ocrHintText: raw.isNotEmpty ? raw : null,
+                          );
+                        },
                       ),
-                    ],
-                  ),
+                      onSearchKeyword: (kw) {
+                        searchCtrl.text = kw;
+                        doSearch(kw);
+                      },
+                    ),
+                  ],
                 ],
               ),
             ),
           ],
         ),
       ),
-    );
+      if (isListening.value)
+        VoiceRecordingOverlay(
+          currentTranscript: speechTranscript.value,
+          onCancel: () async {
+            isListening.value = false;
+            speechTranscript.value = '';
+            try {
+              await voice.stop();
+            } catch (_) {}
+          },
+          onDone: () => handleVoiceDone(),
+        ),
+    ],
+  ),
+),
+);
   }
 }
 
@@ -669,7 +802,7 @@ class _PharmacyRow extends StatelessWidget {
                           fontWeight: FontWeight.w700,
                           color: AppColors.textPrimary)),
                   const SizedBox(height: 4),
-                  Text('EGP ${item.price.toStringAsFixed(0)}',
+                  Text('${item.price.toStringAsFixed(0)} ج.م',
                       style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w800,
@@ -679,49 +812,6 @@ class _PharmacyRow extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-// ─── Idle card ────────────────────────────────────────────────────────────────
-class _IdleCard extends StatelessWidget {
-  final VoidCallback onSample;
-  const _IdleCard({required this.onSample});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: AppColors.hairline),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SectionLabel('التوفر القريب'),
-          const SizedBox(height: 6),
-          const Text('ابحث عن دواء وشوف مين متوفر دلوقتي',
-              style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 6),
-          const Text(
-            'اكتب اسم الدواء، شوف أقرب صيدلية عندها مخزون حقيقي، واحجز تصريح استلام مدته ساعتين.',
-            style: TextStyle(
-                fontSize: 12.5, color: AppColors.textSecondary, height: 1.55),
-          ),
-          const SizedBox(height: 10),
-          OutlinedButton.icon(
-            onPressed: onSample,
-            icon: const Icon(Icons.search_rounded, size: 16),
-            label: const Text('جرب: Panadol'),
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size(0, 80),
-              side: const BorderSide(color: AppColors.hairline),
-            ),
-          ),
-        ],
       ),
     );
   }

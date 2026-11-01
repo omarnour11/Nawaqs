@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:nawakes_mobile/core/network/api_client.dart' show apiClientProvider;
 import 'package:nawakes_mobile/features/auth/presentation/auth_controller.dart' show describeApiError;
@@ -102,8 +103,11 @@ class MedicationDepletionCard extends HookConsumerWidget {
                 Expanded(
                   child: FilledButton.icon(
                     onPressed: () {
-                      // Handled by parent routing to pharmacy search for this medication.
-                      onChanged();
+                      final name = medication.medicationName;
+                      context.go(
+                        '/home?q=${Uri.encodeComponent(name)}',
+                        extra: name,
+                      );
                     },
                     style: FilledButton.styleFrom(backgroundColor: AppColors.accentBlue),
                     icon: const Icon(Icons.search),

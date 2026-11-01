@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart' show FlutterSecureStorage;
 import 'package:json_annotation/json_annotation.dart';
@@ -41,6 +43,9 @@ abstract class ApiClient {
   @POST("/auth/logout")
   Future<void> logout(@Body() RefreshTokenRequest body);
 
+  @PUT("/auth/device-token")
+  Future<void> updateDeviceToken(@Body() DeviceTokenRequest body);
+
   // ── Search ─────────────────────────────────────────────────────────────
   @GET("/search")
   Future<SearchMedicationResponse> searchMedications(
@@ -57,6 +62,25 @@ abstract class ApiClient {
   @POST("/search/parse-multimodal")
   Future<ParsedMedicationResponse> parseMultimodal(@Body() ParseMultimodalBody body);
 
+  @POST("/search/parse-prescription-image")
+  @MultiPart()
+  Future<ParsedMedicationResponse> parsePrescriptionImage(
+    @Part(name: 'file') MultipartFile file,
+    @Part(name: 'ocrHintText') String? ocrHintText,
+  );
+
+  @GET("/search/nearby-products")
+  Future<NearbyProductsResponse> getNearbyProducts({
+    @Query("lat") required double lat,
+    @Query("lng") required double lng,
+    @Query("radius") double radius = 15.0,
+    @Query("category") String? category,
+    @Query("limit") int limit = 30,
+  });
+
+  @POST("/search/batch")
+  Future<BatchSearchResponse> batchSearch(@Body() BatchSearchRequest body);
+
   @GET("/search/equivalents")
   Future<MedicationEquivalentsResponse> getMedicationEquivalents(
     @Query("medicationName") String medicationName,
@@ -68,6 +92,9 @@ abstract class ApiClient {
   // ── Reservations (patient) ─────────────────────────────────────────────
   @POST("/reservations")
   Future<ReservationResponse> createReservation(@Body() CreateReservationRequest body);
+
+  @POST("/reservations/{id}/reserve-alternative")
+  Future<ReservationResponse> reserveAlternative(@Path("id") String id);
 
   @GET("/reservations")
   Future<List<ReservationResponse>> getMyReservations();
@@ -131,8 +158,19 @@ abstract class ApiClient {
     @Body() CancelByPharmacyRequest body,
   );
 
+  @POST("/pharmacy/reservations/{id}/clinical-reject")
+  Future<dynamic> clinicalRejectReservation(
+    @Path("id") String id,
+    @Body() ClinicalRejectRequest body,
+  );
+
   @GET("/pharmacy/inventory")
-  Future<List<PharmacyInventoryItemDto>> getPharmacyInventory();
+  Future<PagedInventoryResult> getPharmacyInventory({
+    @Query("page") int page = 1,
+    @Query("pageSize") int pageSize = 50,
+    @Query("search") String? search,
+    @Query("status") String? status,
+  });
 
   @POST("/pharmacy/inventory")
   Future<PharmacyInventoryItemDto> addInventoryItem(@Body() AddInventoryItemRequest body);
@@ -143,10 +181,23 @@ abstract class ApiClient {
     @Body() ToggleStatusRequest body,
   );
 
+  @DELETE("/pharmacy/inventory/{id}")
+  Future<void> deleteInventoryItem(@Path("id") String id);
+
+  @POST("/uploads")
+  @MultiPart()
+  Future<UploadResultDto> uploadFile(@Part(name: 'file') MultipartFile file);
+
   @PATCH("/pharmacy/inventory/{id}/availability")
   Future<dynamic> setAvailability(
     @Path("id") String id,
     @Body() SetAvailabilityRequest body,
+  );
+
+  @POST("/pharmacy/inventory/bulk")
+  @MultiPart()
+  Future<BulkImportResultDto> bulkImportInventory(
+    @Part(name: 'file') MultipartFile file,
   );
 
   // ── Pharmacy profile (onboarding) ──────────────────────────────────────
@@ -173,11 +224,44 @@ abstract class ApiClient {
   @POST("/admin/pharmacies/{id}/review")
   Future<void> reviewPharmacy(@Path("id") String id, @Body() ReviewPharmacyRequest body);
 
+  @DELETE("/admin/pharmacies/{id}")
+  Future<void> deletePharmacy(@Path("id") String id);
+
+  @PATCH("/admin/pharmacies/{id}/status")
+  Future<dynamic> updatePharmacyStatus(
+    @Path("id") String id,
+    @Body() UpdatePharmacyStatusRequest body,
+  );
+
   @GET("/admin/reports")
   Future<List<AdminReportDto>> getAdminReports(@Query("pendingOnly") bool pendingOnly);
 
+  @GET("/admin/shortage-demand")
+  Future<ShortageDemandResponse> getShortageDemand();
+
+  @POST("/admin/pharmacies/{id}/notify")
+  Future<dynamic> notifyPharmacy(
+    @Path("id") String id,
+    @Body() NotifyPharmacyRequest body,
+  );
+
   @POST("/admin/reports/{id}/review")
   Future<void> reviewReport(@Path("id") String id, @Body() ReviewReportRequest body);
+
+  @GET("/admin/patients")
+  Future<PagedPatientsResult> getAdminPatients({
+    @Query("search") String? search,
+    @Query("page") int page = 1,
+    @Query("pageSize") int pageSize = 30,
+  });
+
+  @GET("/admin/medicine-catalog")
+  Future<PagedMedicineCatalogResult> getAdminMedicineCatalog({
+    @Query("search") String? search,
+    @Query("page") int page = 1,
+    @Query("pageSize") int pageSize = 50,
+    @Query("chronicOnly") bool? chronicOnly,
+  });
 
   // ── Support tickets ────────────────────────────────────────────────────
   @POST("/support")
@@ -271,16 +355,7 @@ abstract class ApiClient {
   Future<AcceptCaregiverInviteResponse> acceptCaregiverInvite(@Path("linkId") String linkId);
 }
 
-@JsonSerializable()
-class CancelByPharmacyRequest {
-  final String? reason;
 
-  CancelByPharmacyRequest({this.reason});
-
-  factory CancelByPharmacyRequest.fromJson(Map<String, dynamic> json) =>
-      _$CancelByPharmacyRequestFromJson(json);
-  Map<String, dynamic> toJson() => _$CancelByPharmacyRequestToJson(this);
-}
 
 @JsonSerializable()
 class PharmacyDetailDto {
@@ -341,7 +416,7 @@ class MarkReadRequest {
 Dio dio(Ref ref) {
   final dio = Dio(BaseOptions(
     baseUrl: AppConfig.apiBaseUrl,
-    connectTimeout: const Duration(seconds: 15),
+    connectTimeout: const Duration(seconds: 4),
     receiveTimeout: const Duration(seconds: 20),
   ));
 
@@ -349,6 +424,7 @@ Dio dio(Ref ref) {
 
   dio.interceptors.add(InterceptorsWrapper(
     onRequest: (options, handler) async {
+      options.baseUrl = dio.options.baseUrl;
       final token = await storage.read(key: 'jwt_token');
       if (token != null && token.isNotEmpty) {
         options.headers['Authorization'] = 'Bearer $token';
@@ -358,6 +434,36 @@ Dio dio(Ref ref) {
       handler.next(options);
     },
     onError: (e, handler) async {
+      // If connection failed on development endpoint, attempt alternative physical host (192.168.1.4 <-> 127.0.0.1)
+      if ((e.type == DioExceptionType.connectionError ||
+              e.type == DioExceptionType.connectionTimeout) &&
+          e.requestOptions.extra['host_retried'] != true &&
+          !AppConfig.hasExplicitBaseUrl) {
+        final currentBase = dio.options.baseUrl;
+        String? altBase;
+        if (currentBase.contains(AppConfig.lanHost)) {
+          altBase = currentBase.replaceAll(AppConfig.lanHost, AppConfig.loopbackHost);
+        } else if (currentBase.contains(AppConfig.loopbackHost)) {
+          altBase = currentBase.replaceAll(AppConfig.loopbackHost, AppConfig.lanHost);
+        }
+
+        if (altBase != null) {
+          final opts = e.requestOptions;
+          opts.extra['host_retried'] = true;
+          opts.baseUrl = altBase;
+          try {
+            final response = await dio.fetch(opts);
+            dio.options.baseUrl = altBase;
+            if (altBase.contains(AppConfig.loopbackHost)) {
+              AppConfig.currentHost = AppConfig.loopbackHost;
+            } else if (altBase.contains(AppConfig.lanHost)) {
+              AppConfig.currentHost = AppConfig.lanHost;
+            }
+            return handler.resolve(response);
+          } catch (_) {}
+        }
+      }
+
       // 401 → single-flight token refresh, then retry the original request
       if (e.response?.statusCode == 401 &&
           e.requestOptions.extra['retried'] != true &&
@@ -403,5 +509,41 @@ Future<bool> _tryRefreshToken(FlutterSecureStorage storage, Dio dio) async {
 @riverpod
 ApiClient apiClient(Ref ref) {
   final dio = ref.watch(dioProvider);
-  return ApiClient(dio, baseUrl: AppConfig.apiBaseUrl);
+  return ApiClient(dio, baseUrl: dio.options.baseUrl);
+}
+
+extension ApiClientUploadHelper on ApiClient {
+  Future<ParsedMedicationResponse> parsePrescriptionImageFilePath(
+    String filePath, {
+    String? ocrHintText,
+  }) async {
+    final fileName = filePath.split(RegExp(r'[\/\\\\]')).last;
+    final multipartFile = await MultipartFile.fromFile(
+      filePath,
+      filename: fileName,
+    );
+    return parsePrescriptionImage(multipartFile, ocrHintText);
+  }
+
+  Future<ParsedMedicationResponse> parsePrescriptionImageBytes(
+    Uint8List bytes, {
+    String filename = 'prescription.jpg',
+    String? ocrHintText,
+  }) async {
+    final multipartFile = MultipartFile.fromBytes(
+      bytes,
+      filename: filename,
+    );
+    return parsePrescriptionImage(multipartFile, ocrHintText);
+  }
+
+  Future<String> uploadFilePath(String filePath) async {
+    final fileName = filePath.split(RegExp(r'[\/\\\\]')).last;
+    final multipartFile = await MultipartFile.fromFile(
+      filePath,
+      filename: fileName,
+    );
+    final result = await uploadFile(multipartFile);
+    return result.url;
+  }
 }

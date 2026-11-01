@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:nawakes_mobile/core/network/api_client.dart';
 import 'package:nawakes_mobile/features/pharmacy/data/pharmacy_dashboard_models.dart';
@@ -40,7 +41,8 @@ class PharmacyInventoryController extends _$PharmacyInventoryController {
   @override
   FutureOr<List<PharmacyInventoryItemDto>> build() async {
     final client = ref.read(apiClientProvider);
-    return await client.getPharmacyInventory();
+    final result = await client.getPharmacyInventory();
+    return result.items;
   }
 
   Future<void> toggleStatus(String id, String currentStatus) async {
@@ -56,7 +58,7 @@ class PharmacyInventoryController extends _$PharmacyInventoryController {
   }
 
   Future<void> addItem(String name, double price,
-      {int? quantity, String? note}) async {
+      {int? quantity, String? note, String? dosageForm, String? strength}) async {
     final client = ref.read(apiClientProvider);
     final qty = quantity ?? 10;
     await client.addInventoryItem(
@@ -66,7 +68,24 @@ class PharmacyInventoryController extends _$PharmacyInventoryController {
         status: qty == 0 ? 1 : 0, // 0=InStock, 1=OutOfStock
         quantity: qty,
         patientNote: note,
+        dosageForm: dosageForm,
+        strength: strength,
       ),
+    );
+    ref.invalidateSelf();
+  }
+
+  Future<void> deleteItem(String id) async {
+    final client = ref.read(apiClientProvider);
+    await client.deleteInventoryItem(id);
+    ref.invalidateSelf();
+  }
+
+  Future<void> updateItem(String id, int quantity, double price) async {
+    final client = ref.read(apiClientProvider);
+    await client.setAvailability(
+      id,
+      SetAvailabilityRequest(quantity: quantity, price: price),
     );
     ref.invalidateSelf();
   }

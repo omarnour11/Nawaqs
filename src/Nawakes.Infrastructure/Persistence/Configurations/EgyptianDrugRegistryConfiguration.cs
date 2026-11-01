@@ -13,6 +13,8 @@ public sealed class EgyptianDrugRegistryConfiguration : IEntityTypeConfiguration
 
         builder.Property(d => d.TradeName).HasMaxLength(300).IsRequired();
         builder.Property(d => d.TradeNameNormalized).HasMaxLength(300).IsRequired();
+        builder.Property(d => d.CommercialNameAr).HasMaxLength(300);
+        builder.Property(d => d.CommercialNameArNormalized).HasMaxLength(300);
         builder.Property(d => d.ActiveIngredient).HasMaxLength(500);
         builder.Property(d => d.ActiveIngredientNormalized).HasMaxLength(500);
         builder.Property(d => d.Strength).HasMaxLength(50);
@@ -23,6 +25,10 @@ public sealed class EgyptianDrugRegistryConfiguration : IEntityTypeConfiguration
 
         // Instant exact lookup by normalized trade name
         builder.HasIndex(d => d.TradeNameNormalized);
+
+        // Fast lookup by Arabic commercial name
+        builder.HasIndex(d => d.CommercialNameArNormalized)
+            .HasFilter("[CommercialNameArNormalized] IS NOT NULL");
 
         // Deterministic substitution join (Phase 4): same ingredient + strength + form
         builder.HasIndex(d => new { d.ActiveIngredientNormalized, d.Strength, d.DosageForm })

@@ -40,7 +40,12 @@ builder.Services.AddCors(opts =>
          .AllowAnyMethod()));
 
 // ── Controllers ─────────────────────────────────────────────────────────
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(opts =>
+    {
+        opts.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+        opts.JsonSerializerOptions.DictionaryKeyPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+    });
 
 // ── JWT Authentication ──────────────────────────────────────────────────
 var jwtSettings = builder.Configuration.GetSection("Jwt");
@@ -201,6 +206,7 @@ if (!app.Environment.IsDevelopment())
 if (!app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
 
+app.UseStaticFiles();
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();

@@ -15,6 +15,7 @@ public sealed record TicketDto(
     string? Resolution,
     Guid? ReservationId,
     Guid? PharmacyId,
+    string? AttachmentUrl,
     DateTime CreatedAt);
 
 public sealed class GetMyTicketsQueryHandler(IApplicationDbContext context, ICurrentUserService currentUser)
@@ -29,7 +30,7 @@ public sealed class GetMyTicketsQueryHandler(IApplicationDbContext context, ICur
             .Select(t => new TicketDto(
                 t.Id, t.Subject, t.Description,
                 t.Category.ToString(), t.Status.ToString(), t.Resolution,
-                t.ReservationId, t.PharmacyId, t.CreatedAt))
+                t.ReservationId, t.PharmacyId, t.AttachmentUrl, t.CreatedAt))
             .ToListAsync(cancellationToken);
     }
 }

@@ -39,7 +39,7 @@ final class ProfileControllerProvider
   ProfileController create() => ProfileController();
 }
 
-String _$profileControllerHash() => r'8da2f7d422fb156913cd4e6bc1142b1f16c5ce65';
+String _$profileControllerHash() => r'd80b49697ad503071be22cf19c00a4952c36c018';
 
 /// Fetches and caches the current user's profile.
 /// Invalidated after a successful update so the UI re-fetches fresh data.

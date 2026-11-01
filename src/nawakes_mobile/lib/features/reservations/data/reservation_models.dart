@@ -25,6 +25,9 @@ class ReservationResponse {
   final DateTime expiresAt;
   final DateTime createdAt;
   final String reservationCode;
+  final String? clinicalContraindicationReason;
+  final String? recommendedAlternativeMedication;
+  final String? recommendedAlternativeItemId;
 
   ReservationResponse({
     required this.id,
@@ -37,6 +40,9 @@ class ReservationResponse {
     required this.expiresAt,
     required this.createdAt,
     required this.reservationCode,
+    this.clinicalContraindicationReason,
+    this.recommendedAlternativeMedication,
+    this.recommendedAlternativeItemId,
   });
 
   factory ReservationResponse.fromJson(Map<String, dynamic> json) =>

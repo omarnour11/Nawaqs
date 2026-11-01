@@ -32,9 +32,12 @@ public sealed class GetPatientReservationsQueryHandler(
             r.InventoryItem.Pharmacy.Phone,
             r.InventoryItem.MedicationName,
             r.Status.ToString(),
-            r.ExpiresAt,
-            r.CreatedAt,
-            r.ReservationCode
+            DateTime.SpecifyKind(r.ExpiresAt, DateTimeKind.Utc),
+            DateTime.SpecifyKind(r.CreatedAt, DateTimeKind.Utc),
+            r.ReservationCode,
+            r.ClinicalContraindicationReason,
+            r.RecommendedAlternativeMedication,
+            r.RecommendedAlternativeItemId
         )).ToList();
     }
 }

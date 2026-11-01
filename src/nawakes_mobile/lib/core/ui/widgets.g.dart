@@ -37,7 +37,7 @@ final class UnreadNotificationsCountProvider
 }
 
 String _$unreadNotificationsCountHash() =>
-    r'8d3c53de9f050cc5e5dbe6e0ab23b1abf483e9ca';
+    r'8f6f69ce6d46c02dabce60bc9d1cbbd7c094bbef';
 
 /// Live unread-notifications count for the bell badge; 0 on failure.
 

@@ -10,15 +10,24 @@ public sealed record ReservationDto(
     string Status,
     DateTime ExpiresAt,
     DateTime CreatedAt,
-    string ReservationCode
+    string ReservationCode,
+    string? ClinicalContraindicationReason = null,
+    string? RecommendedAlternativeMedication = null,
+    Guid? RecommendedAlternativeItemId = null
 );
 
 public sealed record PharmacyReservationDto(
     Guid Id,
-    string PatientDisplayName,   // Anonymized: "Patient #XXXX"
+    string PatientDisplayName,   // Anonymized: "مريض #XXXX"
     string MedicationName,
     string Status,
     DateTime ExpiresAt,
     DateTime CreatedAt,
-    string ReservationCode
+    string ReservationCode,
+    string? ChronicConditions = null,
+    string? Allergies = null,
+    bool AllowPharmacistViewActiveMedications = false,
+    IReadOnlyList<string>? ActiveMedications = null,
+    string? ClinicalContraindicationReason = null,
+    string? RecommendedAlternativeMedication = null
 );

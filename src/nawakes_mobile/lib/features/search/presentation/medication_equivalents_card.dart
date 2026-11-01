@@ -101,7 +101,7 @@ class _EquivalentRow extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text('EGP ${e.priceAtPharmacy.toStringAsFixed(0)}',
+              Text('${e.priceAtPharmacy.toStringAsFixed(0)} ج.م',
                   style: const TextStyle(
                       fontSize: 12.5, fontWeight: FontWeight.w800, color: AppColors.accentBlue)),
               const SizedBox(height: 4),

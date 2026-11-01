@@ -43,10 +43,11 @@ class AuthController extends _$AuthController {
 
   Future<void> login(String email, String password) async {
     state = const AsyncValue.loading();
-    await AsyncValue.guard(() async {
+    state = await AsyncValue.guard(() async {
       final client = ref.read(apiClientProvider);
       final response = await client.login(LoginRequest(email: email, password: password));
       await _persist(response);
+      return AuthState(status: _statusFromRole(response.role));
     });
   }
 
@@ -54,20 +55,25 @@ class AuthController extends _$AuthController {
     required String email,
     required String password,
     required String fullName,
+    String? role,
     List<String>? knownAllergies,
     List<String>? chronicIllnesses,
+    PharmacyRegistrationDto? pharmacy,
   }) async {
     state = const AsyncValue.loading();
-    await AsyncValue.guard(() async {
+    state = await AsyncValue.guard(() async {
       final client = ref.read(apiClientProvider);
       final response = await client.register(RegisterRequest(
         email: email,
         password: password,
         fullName: fullName,
+        role: role,
         knownAllergies: knownAllergies,
         chronicIllnesses: chronicIllnesses,
+        pharmacy: pharmacy,
       ));
       await _persist(response);
+      return AuthState(status: _statusFromRole(response.role));
     });
   }
 
@@ -95,8 +101,23 @@ class AuthController extends _$AuthController {
     await storage.write(key: _refreshKey, value: response.refreshToken);
     await storage.write(key: _userIdKey, value: response.userId);
     await storage.write(key: _roleKey, value: response.role);
-    state = AsyncValue.data(AuthState(status: _statusFromRole(response.role)));
     ref.invalidate(apiClientProvider);
+    await registerDeviceToken();
+  }
+
+  /// Stores (optional) and uploads the FCM token so push can reach this device.
+  Future<void> registerDeviceToken([String? token]) async {
+    final storage = ref.read(secureStorageProvider);
+    if (token != null && token.isNotEmpty) {
+      await storage.write(key: 'fcm_token', value: token);
+    }
+    final fcm = token ?? await storage.read(key: 'fcm_token');
+    if (fcm == null || fcm.isEmpty) return;
+    try {
+      await ref
+          .read(apiClientProvider)
+          .updateDeviceToken(DeviceTokenRequest(fcmToken: fcm));
+    } catch (_) {}
   }
 }
 
@@ -113,18 +134,39 @@ class AuthState {
 String describeApiError(Object error) {
   if (error is DioException) {
     final data = error.response?.data;
-    if (data is Map && data['detail'] != null) return data['detail'].toString();
-    if (data is Map && data['title'] != null) return data['title'].toString();
-    if (error.response?.statusCode == 401) return 'Invalid email or password.';
+    if (data is Map) {
+      if (data['errors'] is Map) {
+        final errMap = data['errors'] as Map;
+        final list = <String>[];
+        for (final val in errMap.values) {
+          if (val is List) {
+            list.addAll(val.map((e) => e.toString()));
+          } else if (val != null) {
+            list.add(val.toString());
+          }
+        }
+        if (list.isNotEmpty) return list.join('\n');
+      }
+      if (data['detail'] != null) return data['detail'].toString();
+      if (data['message'] != null) return data['message'].toString();
+      if (data['title'] != null &&
+          data['title'] != 'One or more validation errors occurred.') {
+        return data['title'].toString();
+      }
+    }
+    if (error.response?.statusCode == 401) return 'البريد أو كلمة المرور غير صحيحة.';
+    if (error.response?.statusCode == 403) {
+      return 'غير مسموح. صيدليتك ما زالت قيد مراجعة الإدارة ولم يتم اعتمادها بعد.';
+    }
     if (error.response?.statusCode == 409) {
-      return data is String && data.isNotEmpty ? _cleanHtml(data) : 'Already exists.';
+      return data is String && data.isNotEmpty ? _cleanHtml(data) : 'البيانات مسجلة بالفعل.';
     }
     if (error.type == DioExceptionType.connectionError ||
         error.type == DioExceptionType.connectionTimeout) {
-      return 'Cannot reach the server. Check your connection and try again.';
+      return 'تعذر الاتصال بالخادم. يرجى التأكد من اتصال الإنترنت.';
     }
     if (data is String && data.isNotEmpty) return _cleanHtml(data);
-    return 'Something went wrong. Please try again.';
+    return 'حدث خطأ في البيانات المدخلة، يرجى المراجعة والمحاولة مرة أخرى.';
   }
   return error.toString();
 }

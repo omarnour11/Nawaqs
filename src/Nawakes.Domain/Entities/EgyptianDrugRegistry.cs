@@ -12,6 +12,10 @@ public sealed class EgyptianDrugRegistry
     public string TradeName { get; set; } = string.Empty;
     public string TradeNameNormalized { get; set; } = string.Empty;
 
+    /// <summary>Arabic commercial/brand name as officially registered in EDA (e.g. بانادول, كونكور).</summary>
+    public string? CommercialNameAr { get; set; }
+    public string? CommercialNameArNormalized { get; set; }
+
     public string? ActiveIngredient { get; set; }
     public string? ActiveIngredientNormalized { get; set; }
 

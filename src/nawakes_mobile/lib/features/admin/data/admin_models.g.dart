@@ -127,9 +127,124 @@ Map<String, dynamic> _$ReviewPharmacyRequestToJson(
   'rejectionReason': instance.rejectionReason,
 };
 
+NotifyPharmacyRequest _$NotifyPharmacyRequestFromJson(
+  Map<String, dynamic> json,
+) => NotifyPharmacyRequest(
+  title: json['title'] as String,
+  message: json['message'] as String,
+);
+
+Map<String, dynamic> _$NotifyPharmacyRequestToJson(
+  NotifyPharmacyRequest instance,
+) => <String, dynamic>{'title': instance.title, 'message': instance.message};
+
+UpdatePharmacyStatusRequest _$UpdatePharmacyStatusRequestFromJson(
+  Map<String, dynamic> json,
+) => UpdatePharmacyStatusRequest(
+  status: json['status'] as String,
+  reason: json['reason'] as String?,
+);
+
+Map<String, dynamic> _$UpdatePharmacyStatusRequestToJson(
+  UpdatePharmacyStatusRequest instance,
+) => <String, dynamic>{'status': instance.status, 'reason': instance.reason};
+
 ReviewReportRequest _$ReviewReportRequestFromJson(Map<String, dynamic> json) =>
     ReviewReportRequest(confirm: json['confirm'] as bool);
 
 Map<String, dynamic> _$ReviewReportRequestToJson(
   ReviewReportRequest instance,
 ) => <String, dynamic>{'confirm': instance.confirm};
+
+PatientSummaryDto _$PatientSummaryDtoFromJson(Map<String, dynamic> json) =>
+    PatientSummaryDto(
+      id: json['id'] as String,
+      email: json['email'] as String,
+      fullName: json['fullName'] as String?,
+      phone: json['phone'] as String?,
+      registeredAt: DateTime.parse(json['registeredAt'] as String),
+      reservationCount: (json['reservationCount'] as num).toInt(),
+      complaintCount: (json['complaintCount'] as num).toInt(),
+    );
+
+Map<String, dynamic> _$PatientSummaryDtoToJson(PatientSummaryDto instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'email': instance.email,
+      'fullName': instance.fullName,
+      'phone': instance.phone,
+      'registeredAt': instance.registeredAt.toIso8601String(),
+      'reservationCount': instance.reservationCount,
+      'complaintCount': instance.complaintCount,
+    };
+
+PagedPatientsResult _$PagedPatientsResultFromJson(Map<String, dynamic> json) =>
+    PagedPatientsResult(
+      items: (json['items'] as List<dynamic>)
+          .map((e) => PatientSummaryDto.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      totalCount: (json['totalCount'] as num).toInt(),
+      pageNumber: (json['pageNumber'] as num).toInt(),
+      pageSize: (json['pageSize'] as num).toInt(),
+      totalPages: (json['totalPages'] as num).toInt(),
+    );
+
+Map<String, dynamic> _$PagedPatientsResultToJson(
+  PagedPatientsResult instance,
+) => <String, dynamic>{
+  'items': instance.items,
+  'totalCount': instance.totalCount,
+  'pageNumber': instance.pageNumber,
+  'pageSize': instance.pageSize,
+  'totalPages': instance.totalPages,
+};
+
+MedicineCatalogItemDto _$MedicineCatalogItemDtoFromJson(
+  Map<String, dynamic> json,
+) => MedicineCatalogItemDto(
+  id: json['id'] as String,
+  tradeName: json['tradeName'] as String,
+  activeIngredient: json['activeIngredient'] as String?,
+  strength: json['strength'] as String?,
+  dosageForm: json['dosageForm'] as String?,
+  officialPriceEGP: (json['officialPriceEGP'] as num?)?.toDouble(),
+  manufacturer: json['manufacturer'] as String?,
+  edaRegistrationNumber: json['edaRegistrationNumber'] as String?,
+  isChronic: json['isChronic'] as bool? ?? false,
+);
+
+Map<String, dynamic> _$MedicineCatalogItemDtoToJson(
+  MedicineCatalogItemDto instance,
+) => <String, dynamic>{
+  'id': instance.id,
+  'tradeName': instance.tradeName,
+  'activeIngredient': instance.activeIngredient,
+  'strength': instance.strength,
+  'dosageForm': instance.dosageForm,
+  'officialPriceEGP': instance.officialPriceEGP,
+  'manufacturer': instance.manufacturer,
+  'edaRegistrationNumber': instance.edaRegistrationNumber,
+  'isChronic': instance.isChronic,
+};
+
+PagedMedicineCatalogResult _$PagedMedicineCatalogResultFromJson(
+  Map<String, dynamic> json,
+) => PagedMedicineCatalogResult(
+  items: (json['items'] as List<dynamic>)
+      .map((e) => MedicineCatalogItemDto.fromJson(e as Map<String, dynamic>))
+      .toList(),
+  totalCount: (json['totalCount'] as num).toInt(),
+  pageNumber: (json['pageNumber'] as num).toInt(),
+  pageSize: (json['pageSize'] as num).toInt(),
+  totalPages: (json['totalPages'] as num).toInt(),
+);
+
+Map<String, dynamic> _$PagedMedicineCatalogResultToJson(
+  PagedMedicineCatalogResult instance,
+) => <String, dynamic>{
+  'items': instance.items,
+  'totalCount': instance.totalCount,
+  'pageNumber': instance.pageNumber,
+  'pageSize': instance.pageSize,
+  'totalPages': instance.totalPages,
+};

@@ -727,6 +727,9 @@ namespace Nawakes.Infrastructure.Persistence.Migrations
                     b.Property<DateTime?>("CancelledAt")
                         .HasColumnType("datetime2(7)");
 
+                    b.Property<string>("ClinicalContraindicationReason")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTime?>("CompletedAt")
                         .HasColumnType("datetime2(7)");
 
@@ -751,6 +754,12 @@ namespace Nawakes.Infrastructure.Persistence.Migrations
 
                     b.Property<Guid>("PharmacyId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("RecommendedAlternativeItemId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("RecommendedAlternativeMedication")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("ReservationCode")
                         .IsRequired()
@@ -952,6 +961,9 @@ namespace Nawakes.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("AssignedAdminId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("AttachmentUrl")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<byte>("Category")
                         .HasColumnType("tinyint");
 
@@ -1142,6 +1154,9 @@ namespace Nawakes.Infrastructure.Persistence.Migrations
 
                     b.Property<int>("AccessFailedCount")
                         .HasColumnType("int");
+
+                    b.Property<bool>("AllowPharmacistViewActiveMedications")
+                        .HasColumnType("bit");
 
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()

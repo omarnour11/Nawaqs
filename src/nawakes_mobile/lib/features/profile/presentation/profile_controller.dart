@@ -15,17 +15,18 @@ class ProfileController extends _$ProfileController {
   }
 
   /// Sends a PATCH with only the non-null fields provided.
-  /// [fullName], [phone], [medicalHistoryNotes] — pass null to skip a field.
   Future<void> updateProfile({
     String? fullName,
     String? phone,
     String? medicalHistoryNotes,
+    bool? allowPharmacistViewActiveMedications,
   }) async {
     final client = ref.read(apiClientProvider);
     await client.updateProfile(UpdateProfileRequest(
       fullName: fullName,
       phone: phone,
       medicalHistoryNotes: medicalHistoryNotes,
+      allowPharmacistViewActiveMedications: allowPharmacistViewActiveMedications,
     ));
     // Re-fetch so the screen shows the freshly saved data
     ref.invalidateSelf();

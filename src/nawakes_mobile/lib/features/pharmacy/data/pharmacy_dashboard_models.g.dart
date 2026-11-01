@@ -16,6 +16,17 @@ PharmacyReservationResponse _$PharmacyReservationResponseFromJson(
   expiresAt: DateTime.parse(json['expiresAt'] as String),
   createdAt: DateTime.parse(json['createdAt'] as String),
   reservationCode: json['reservationCode'] as String? ?? '',
+  chronicConditions: json['chronicConditions'] as String?,
+  allergies: json['allergies'] as String?,
+  allowPharmacistViewActiveMedications:
+      json['allowPharmacistViewActiveMedications'] as bool? ?? false,
+  activeMedications: (json['activeMedications'] as List<dynamic>?)
+      ?.map((e) => e as String)
+      .toList(),
+  clinicalContraindicationReason:
+      json['clinicalContraindicationReason'] as String?,
+  recommendedAlternativeMedication:
+      json['recommendedAlternativeMedication'] as String?,
 );
 
 Map<String, dynamic> _$PharmacyReservationResponseToJson(
@@ -28,22 +39,30 @@ Map<String, dynamic> _$PharmacyReservationResponseToJson(
   'expiresAt': instance.expiresAt.toIso8601String(),
   'createdAt': instance.createdAt.toIso8601String(),
   'reservationCode': instance.reservationCode,
+  'chronicConditions': instance.chronicConditions,
+  'allergies': instance.allergies,
+  'allowPharmacistViewActiveMedications':
+      instance.allowPharmacistViewActiveMedications,
+  'activeMedications': instance.activeMedications,
+  'clinicalContraindicationReason': instance.clinicalContraindicationReason,
+  'recommendedAlternativeMedication': instance.recommendedAlternativeMedication,
 };
 
-PharmacyInventoryItemDto _$PharmacyInventoryItemDtoFromJson(
+ClinicalRejectRequest _$ClinicalRejectRequestFromJson(
   Map<String, dynamic> json,
-) => PharmacyInventoryItemDto(
-  id: json['id'] as String,
-  medicationName: json['medicationName'] as String,
-  price: (json['price'] as num).toDouble(),
-  status: json['status'] as String,
-  quantity: (json['quantity'] as num?)?.toInt() ?? 10,
-  patientNote: json['patientNote'] as String?,
-  createdAt: DateTime.parse(json['createdAt'] as String),
-  updatedAt: json['updatedAt'] == null
-      ? null
-      : DateTime.parse(json['updatedAt'] as String),
+) => ClinicalRejectRequest(
+  reason: json['reason'] as String,
+  recommendedMedicationName: json['recommendedMedicationName'] as String,
+  recommendedInventoryItemId: json['recommendedInventoryItemId'] as String?,
 );
+
+Map<String, dynamic> _$ClinicalRejectRequestToJson(
+  ClinicalRejectRequest instance,
+) => <String, dynamic>{
+  'reason': instance.reason,
+  'recommendedMedicationName': instance.recommendedMedicationName,
+  'recommendedInventoryItemId': instance.recommendedInventoryItemId,
+};
 
 Map<String, dynamic> _$PharmacyInventoryItemDtoToJson(
   PharmacyInventoryItemDto instance,
@@ -51,11 +70,54 @@ Map<String, dynamic> _$PharmacyInventoryItemDtoToJson(
   'id': instance.id,
   'medicationName': instance.medicationName,
   'price': instance.price,
+  'quantity': instance.quantity,
   'status': instance.status,
+  'patientNote': instance.patientNote,
+  'expiryDate': instance.expiryDate?.toIso8601String(),
+  'createdAt': instance.createdAt.toIso8601String(),
+  'lastUpdatedAt': instance.lastUpdatedAt?.toIso8601String(),
+};
+
+PagedInventoryResult _$PagedInventoryResultFromJson(
+  Map<String, dynamic> json,
+) => PagedInventoryResult(
+  items: (json['items'] as List<dynamic>)
+      .map((e) => PharmacyInventoryItemDto.fromJson(e as Map<String, dynamic>))
+      .toList(),
+  totalCount: (json['totalCount'] as num).toInt(),
+  pageNumber: (json['pageNumber'] as num).toInt(),
+  pageSize: (json['pageSize'] as num).toInt(),
+  totalPages: (json['totalPages'] as num).toInt(),
+);
+
+Map<String, dynamic> _$PagedInventoryResultToJson(
+  PagedInventoryResult instance,
+) => <String, dynamic>{
+  'items': instance.items,
+  'totalCount': instance.totalCount,
+  'pageNumber': instance.pageNumber,
+  'pageSize': instance.pageSize,
+  'totalPages': instance.totalPages,
+};
+
+AddInventoryItemRequest _$AddInventoryItemRequestFromJson(
+  Map<String, dynamic> json,
+) => AddInventoryItemRequest(
+  medicationName: json['medicationName'] as String,
+  price: (json['price'] as num).toDouble(),
+  quantity: (json['quantity'] as num).toInt(),
+  patientNote: json['patientNote'] as String?,
+  status: (json['status'] as num?)?.toInt(),
+);
+
+Map<String, dynamic> _$AddInventoryItemRequestToJson(
+  AddInventoryItemRequest instance,
+) => <String, dynamic>{
+  'medicationName': instance.medicationName,
+  'price': instance.price,
   'quantity': instance.quantity,
   'patientNote': instance.patientNote,
-  'createdAt': instance.createdAt.toIso8601String(),
-  'updatedAt': instance.updatedAt?.toIso8601String(),
+  'status': instance.status,
 };
 
 ToggleStatusRequest _$ToggleStatusRequestFromJson(Map<String, dynamic> json) =>
@@ -65,22 +127,47 @@ Map<String, dynamic> _$ToggleStatusRequestToJson(
   ToggleStatusRequest instance,
 ) => <String, dynamic>{'status': instance.status};
 
-AddInventoryItemRequest _$AddInventoryItemRequestFromJson(
+SetAvailabilityRequest _$SetAvailabilityRequestFromJson(
   Map<String, dynamic> json,
-) => AddInventoryItemRequest(
-  medicationName: json['medicationName'] as String,
-  price: (json['price'] as num).toDouble(),
-  status: (json['status'] as num).toInt(),
-  quantity: (json['quantity'] as num?)?.toInt(),
+) => SetAvailabilityRequest(
+  quantity: (json['quantity'] as num).toInt(),
+  inStock: json['inStock'] as bool?,
+  price: (json['price'] as num?)?.toDouble(),
   patientNote: json['patientNote'] as String?,
 );
 
-Map<String, dynamic> _$AddInventoryItemRequestToJson(
-  AddInventoryItemRequest instance,
+Map<String, dynamic> _$SetAvailabilityRequestToJson(
+  SetAvailabilityRequest instance,
 ) => <String, dynamic>{
-  'medicationName': instance.medicationName,
-  'price': instance.price,
-  'status': instance.status,
   'quantity': instance.quantity,
+  'inStock': instance.inStock,
+  'price': instance.price,
   'patientNote': instance.patientNote,
 };
+
+BulkImportResultDto _$BulkImportResultDtoFromJson(Map<String, dynamic> json) =>
+    BulkImportResultDto(
+      importedCount: (json['importedCount'] as num?)?.toInt() ?? 0,
+      skippedCount: (json['skippedCount'] as num?)?.toInt() ?? 0,
+      errors:
+          (json['errors'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          const [],
+    );
+
+Map<String, dynamic> _$BulkImportResultDtoToJson(
+  BulkImportResultDto instance,
+) => <String, dynamic>{
+  'importedCount': instance.importedCount,
+  'skippedCount': instance.skippedCount,
+  'errors': instance.errors,
+};
+
+CancelByPharmacyRequest _$CancelByPharmacyRequestFromJson(
+  Map<String, dynamic> json,
+) => CancelByPharmacyRequest(reason: json['reason'] as String?);
+
+Map<String, dynamic> _$CancelByPharmacyRequestToJson(
+  CancelByPharmacyRequest instance,
+) => <String, dynamic>{'reason': instance.reason};

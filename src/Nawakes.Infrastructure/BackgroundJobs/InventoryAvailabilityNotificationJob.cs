@@ -10,10 +10,7 @@ namespace Nawakes.Infrastructure.BackgroundJobs;
 
 /// <summary>
 /// Fair availability queue (Phase 3): when an item becomes InStock, offers it
-/// to the first N waiting subscribers in FIFO order with a 15-minute claim
-/// window. Unclaimed offers auto-pass to the next person in line via
-/// OfferWindowExpiryJob. Durable in-app notification on day one, FCM push
-/// ready to activate when Firebase keys are configured.
+/// to waiting subscribers in FIFO order with a 15-minute claim window.
 /// </summary>
 public sealed class InventoryAvailabilityNotificationJob(
     IServiceProvider serviceProvider,
@@ -21,20 +18,12 @@ public sealed class InventoryAvailabilityNotificationJob(
 {
     private const int OfferWindowMinutes = 15;
 
-    // Maximum 3 retries, exponential backoff
     [AutomaticRetry(Attempts = 3, DelaysInSeconds = [10, 60, 300])]
     public async Task NotifyAvailabilityAsync(Guid inventoryItemId, CancellationToken cancellationToken)
     {
         await AllocateQueueSlotsAsync(inventoryItemId, cancellationToken);
     }
 
-    /// <summary>
-    /// Offers stock to waiting subscribers, up to the available quantity.
-    /// Each offer gets a 15-minute window and a scheduled expiry job.
-    /// Subscription.RowVersion makes the read-modify-write race-safe: if two
-    /// allocations run concurrently (two items going in stock, or a retry),
-    /// the loser gets DbUpdateConcurrencyException and backs out cleanly.
-    /// </summary>
     [DisableConcurrentExecution(timeoutInSeconds: 60)]
     public async Task AllocateQueueSlotsAsync(Guid inventoryItemId, CancellationToken cancellationToken)
     {
@@ -53,25 +42,54 @@ public sealed class InventoryAvailabilityNotificationJob(
             return;
         }
 
-        var tenMinsAgo = DateTime.UtcNow.AddMinutes(-10);
+        var oneMinAgo = DateTime.UtcNow.AddMinutes(-1);
+        var itemMedLower = item.MedicationName.Trim().ToLowerInvariant();
+        var itemNormLower = item.MedicationNameNormalized.Trim().ToLowerInvariant();
 
-        var waiting = await context.Subscriptions
+        // Load active waiting subscribers that match medication name via flexible contains or equality
+        var candidateSubs = await context.Subscriptions
             .Where(s => s.IsActive &&
                         s.QueueStatus == QueueStatus.Waiting &&
-                        s.MedicationNameNormalized == item.MedicationNameNormalized.ToLower() &&
-                        (s.LastNotifiedAt == null || s.LastNotifiedAt < tenMinsAgo) &&
-                        s.GeoPoint.Distance(item.Pharmacy.GeoPoint) <= (double)s.RadiusKm * 1000)
+                        (s.LastNotifiedAt == null || s.LastNotifiedAt < oneMinAgo))
             .OrderBy(s => s.QueuePosition)
             .ThenBy(s => s.CreatedAt)
             .ToListAsync(cancellationToken);
 
+        var waiting = candidateSubs.Where(s =>
+        {
+            var sNorm = (s.MedicationNameNormalized ?? string.Empty).Trim().ToLowerInvariant();
+            var sName = (s.MedicationName ?? string.Empty).Trim().ToLowerInvariant();
+
+            if (string.IsNullOrWhiteSpace(sNorm) && string.IsNullOrWhiteSpace(sName)) return false;
+
+            var matches = (sNorm.Length > 0 && itemNormLower.Length > 0 && sNorm == itemNormLower) ||
+                          (sNorm.Length > 0 && itemNormLower.Contains(sNorm)) ||
+                          (itemNormLower.Length > 0 && sNorm.Contains(itemNormLower)) ||
+                          (sName.Length > 0 && itemMedLower.Contains(sName)) ||
+                          (itemMedLower.Length > 0 && sName.Contains(itemMedLower));
+
+            if (!matches) return false;
+
+            // Geospatial check
+            if (item.Pharmacy?.GeoPoint != null && s.GeoPoint != null)
+            {
+                var distKm = HaversineDistanceKm(s.GeoPoint, item.Pharmacy.GeoPoint);
+                if (s.RadiusKm > 0 && distKm > (double)s.RadiusKm)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }).ToList();
+
         if (waiting.Count == 0)
         {
-            logger.LogInformation("No waiting subscribers for Item {ItemId}.", inventoryItemId);
+            logger.LogInformation("No waiting subscribers for Item {ItemId} ({Name}).", inventoryItemId, item.MedicationName);
             return;
         }
 
-        var offerCount = Math.Min(item.Quantity, waiting.Count);
+        var offerCount = Math.Min(Math.Max(item.Quantity, 1), waiting.Count);
         var offeredUserIds = new List<Guid>();
         var offeredSubscriptions = new List<(Domain.Entities.Subscription Sub, DateTime ExpiresAt)>();
 
@@ -88,12 +106,12 @@ public sealed class InventoryAvailabilityNotificationJob(
 
             offeredSubscriptions.Add((sub, expiresAt));
 
-            context.Notifications.Add(new Nawakes.Domain.Entities.UserNotification
+            context.Notifications.Add(new Domain.Entities.UserNotification
             {
                 UserId = sub.UserId,
                 Type = NotificationType.AvailabilityOfferSent,
-                Title = "الدواء اتاح تاني!",
-                Body = $"{item.MedicationName} متاح في {item.Pharmacy.Name} — عندك 15 دقيقة لتأكيد الحجز.",
+                Title = "الدواء الذي تتابعه أصبح متوفراً!",
+                Body = $"دواء {item.MedicationName} متوفر الآن في {item.Pharmacy?.Name ?? "الصيدلية"} — لديك 15 دقيقة لتأكيد الحجز.",
                 RelatedEntityId = sub.Id
             });
 
@@ -106,16 +124,12 @@ public sealed class InventoryAvailabilityNotificationJob(
         }
         catch (DbUpdateConcurrencyException ex)
         {
-            // Another allocation won this batch. Nothing was persisted, so no
-            // expiry jobs exist yet; just report and let the winner proceed.
             logger.LogWarning(ex,
                 "Concurrent queue allocation detected for Item {ItemId}; this run backed out.",
                 inventoryItemId);
             return;
         }
 
-        // Schedule only after the offers are durably committed: a failure here
-        // cannot leave jobs pointing at offers that were never saved.
         foreach (var (sub, expiresAt) in offeredSubscriptions)
         {
             try
@@ -126,8 +140,6 @@ public sealed class InventoryAvailabilityNotificationJob(
             }
             catch (Exception ex)
             {
-                // The offer still stands and the claim endpoint checks
-                // OfferExpiresAt, so a missing job only delays re-allocation.
                 logger.LogWarning(ex,
                     "Failed to schedule expiry job for offer {SubId}.", sub.Id);
             }
@@ -135,7 +147,7 @@ public sealed class InventoryAvailabilityNotificationJob(
 
         await context.SaveChangesAsync(cancellationToken);
 
-        // FCM push (free tier, activates when Firebase keys are configured)
+        // FCM push (if configured)
         var users = await context.Users
             .Where(u => offeredUserIds.Contains(u.Id) && u.FcmToken != null)
             .Select(u => new { u.Id, u.FcmToken })
@@ -147,8 +159,8 @@ public sealed class InventoryAvailabilityNotificationJob(
             {
                 await notificationService.SendAsync(
                     u.FcmToken!,
-                    "الدواء اتاح تاني!",
-                    $"{item.MedicationName} متاح في {item.Pharmacy.Name} — عندك 15 دقيقة لتأكيد الحجز.",
+                    "الدواء الذي تتابعه أصبح متوفراً!",
+                    $"دواء {item.MedicationName} متوفر الآن في {item.Pharmacy?.Name ?? "الصيدلية"} — لديك 15 دقيقة لتأكيد الحجز.",
                     cancellationToken: CancellationToken.None);
             }
             catch (Exception ex)
@@ -159,5 +171,20 @@ public sealed class InventoryAvailabilityNotificationJob(
 
         logger.LogInformation("Queue allocation done for Item {ItemId}: {Count} offers sent.",
             inventoryItemId, offerCount);
+    }
+
+    private static double HaversineDistanceKm(NetTopologySuite.Geometries.Point p1, NetTopologySuite.Geometries.Point p2)
+    {
+        const double R = 6371.0;
+        var lat1 = p1.Y * Math.PI / 180.0;
+        var lat2 = p2.Y * Math.PI / 180.0;
+        var dLat = (p2.Y - p1.Y) * Math.PI / 180.0;
+        var dLon = (p2.X - p1.X) * Math.PI / 180.0;
+
+        var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
+                Math.Cos(lat1) * Math.Cos(lat2) *
+                Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
+        var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+        return R * c;
     }
 }

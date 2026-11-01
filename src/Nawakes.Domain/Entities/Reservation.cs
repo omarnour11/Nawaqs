@@ -21,6 +21,11 @@ public sealed class Reservation : BaseEntity
     public DateTime? CompletedAt { get; set; }
     public DateTime? CancelledAt { get; set; }
 
+    /// <summary>Clinical contraindication reason if pharmacy rejected with alternative recommendation.</summary>
+    public string? ClinicalContraindicationReason { get; set; }
+    public string? RecommendedAlternativeMedication { get; set; }
+    public Guid? RecommendedAlternativeItemId { get; set; }
+
     // Navigation
     public InventoryItem InventoryItem { get; set; } = null!;
     public Pharmacy Pharmacy { get; set; } = null!;
