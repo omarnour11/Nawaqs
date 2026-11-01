@@ -26,18 +26,37 @@ public sealed record SafetyMedicationInput(
 /// <summary>
 /// Safety alert representing a drug-drug interaction, allergy conflict, or clinical timing advisory.
 /// </summary>
-public sealed record SafetyAlertDto(
-    string Id,
-    SafetyAlertSeverity Severity,
-    string Category,
-    string Title,
-    string Description,
-    IReadOnlyList<string> InvolvedDrugs,
-    string? Recommendation = null)
+public sealed record SafetyAlertDto
 {
+    public string Id { get; init; }
+    public SafetyAlertSeverity Severity { get; init; }
+    public string Category { get; init; }
+    public string Title { get; init; }
+    public string Description { get; init; }
+    public IReadOnlyList<string> InvolvedDrugs { get; init; }
+    public string Recommendation { get; init; }
+
+    public SafetyAlertDto(
+        string Id,
+        SafetyAlertSeverity Severity,
+        string Category,
+        string Title,
+        string Description,
+        IReadOnlyList<string> InvolvedDrugs,
+        string? Recommendation = null)
+    {
+        this.Id = Id;
+        this.Severity = Severity;
+        this.Category = Category;
+        this.Title = Title;
+        this.Description = Description;
+        this.InvolvedDrugs = InvolvedDrugs;
+        this.Recommendation = !string.IsNullOrWhiteSpace(Recommendation) ? Recommendation : Description;
+    }
+
     public string AlertCode => Id;
     public string Message => Title;
-    public string RecommendationText => Recommendation ?? Description;
+    public string RecommendationText => Recommendation;
     public IReadOnlyList<string> InteractingSubstances => InvolvedDrugs;
 }
 

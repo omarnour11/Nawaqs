@@ -156,7 +156,7 @@ class _PrescriptionScannerHudScreenState
             MaterialPageRoute(
               builder: (_) => PrescriptionBasketScreen(
                 initialItems: basketItems,
-                safetyAlerts: response.safetyAlerts,
+                safetyAlerts: response?.safetyAlerts,
               ),
             ),
           );
