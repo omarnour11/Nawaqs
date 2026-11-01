@@ -212,6 +212,104 @@ void main() {
       expect(response.candidates.first.tradeName, 'Augmentin');
       expect(response.candidates.first.activeIngredient, 'Amoxicillin / Clavulanic Acid');
     });
+
+    test('R1: ParsedMedicationResponse parses rawSig, arabicSig, priceEgp, and safetyAlerts', () {
+      final json = {
+        'resolvedName': 'Concor',
+        'strength': '5mg',
+        'rawSig': '1x1',
+        'arabicSig': 'قرص واحد - مرة واحدة يومياً',
+        'priceEgp': 40.5,
+        'confidence': 0.95,
+        'requiresDisambiguation': false,
+        'isSuccess': true,
+        'safetyAlerts': [
+          {
+            'severity': 'Critical',
+            'alertCode': 'CONTRAINDICATION_INTERACTION',
+            'message': 'تفاعل دوائي خطير',
+            'recommendation': 'تجنب الاستخدام المتزامن',
+            'interactingSubstances': ['Tizanidine', 'Ciprofloxacin']
+          }
+        ],
+        'candidates': [
+          {
+            'tradeName': 'Concor',
+            'strength': '5mg',
+            'rawSig': '1x1',
+            'arabicSig': 'قرص واحد - مرة واحدة يومياً',
+            'priceEgp': 40.5,
+            'confidence': 0.95,
+            'quantity': 1,
+            'requiresDisambiguation': false,
+          }
+        ]
+      };
+
+      final response = ParsedMedicationResponse.fromJson(json);
+      expect(response.rawSig, '1x1');
+      expect(response.arabicSig, 'قرص واحد - مرة واحدة يومياً');
+      expect(response.priceEgp, 40.5);
+      expect(response.safetyAlerts, isNotNull);
+      expect(response.safetyAlerts!.length, 1);
+      expect(response.safetyAlerts!.first.severity, 'Critical');
+      expect(response.safetyAlerts!.first.message, 'تفاعل دوائي خطير');
+      expect(response.candidates.first.rawSig, '1x1');
+      expect(response.candidates.first.priceEgp, 40.5);
+    });
+
+    testWidgets(
+        'R1: PrescriptionBasketScreen renders teal Arabic dosage instruction badge, official EGP price, and safety alert HUD banner',
+        (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      final items = [
+        PrescriptionBasketItem(
+          tradeName: 'Concor',
+          strength: '5mg',
+          dosageForm: 'أقراص',
+          activeIngredient: 'Bisoprolol Fumarate',
+          quantity: 1,
+          confidence: 0.95,
+          rawSig: '1x1',
+          arabicSig: 'قرص واحد - مرة واحدة يومياً',
+          priceEgp: 40.5,
+        ),
+      ];
+
+      final safetyAlerts = [
+        const SafetyAlertResponse(
+          severity: 'Critical',
+          alertCode: 'CONTRAINDICATION_INTERACTION',
+          message: 'تفاعل دوائي حرج: سيردالود وسيبروفلوكساسين',
+          recommendation: 'يمنع الاستخدام المتزامن بسبب هبوط الضغط الحاد',
+          interactingSubstances: ['Tizanidine', 'Ciprofloxacin'],
+        ),
+      ];
+
+      await tester.pumpWidget(
+        createTestApp(
+          child: PrescriptionBasketScreen(
+            initialItems: items,
+            safetyAlerts: safetyAlerts,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Verify Safety Alert HUD banner is rendered
+      expect(find.text('تدقيق الأمان والجرعات الدوائية'), findsOneWidget);
+      expect(find.text('تفاعل دوائي حرج: سيردالود وسيبروفلوكساسين'), findsOneWidget);
+      expect(find.text('يمنع الاستخدام المتزامن بسبب هبوط الضغط الحاد'), findsOneWidget);
+
+      // Verify Official Price EGP badge is rendered
+      expect(find.text('السعر: 40.50 ج.م'), findsOneWidget);
+
+      // Verify Teal Arabic Dosage Instruction badge is rendered
+      expect(find.text('قرص واحد - مرة واحدة يومياً'), findsOneWidget);
+    });
   });
 }
 

@@ -190,19 +190,30 @@ public sealed class GeminiPrescriptionService : IGeminiPrescriptionService
             ? "No on-device OCR hint."
             : ocrHintText.Trim();
         return $$"""
-            You are an Egyptian clinical pharmacist reading a prescription pad.
-            Read Arabic and Latin handwriting. Use official Egyptian brand names (e.g. Concor, Augmentin, Panadol, Glucophage, Cataflam, Controloc, Brufen, Antinal, etc.).
-            Strictly ignore doctor/clinic headers, physician credentials, stamps, patient demographic details, phone numbers, dates, and addresses.
-            Extract ALL prescribed medications in the Rx body.
-            On-device OCR hint (may be noisy — verify against the image):
+            You are an expert Egyptian clinical pharmacist and medical handwriting OCR specialist operating under Egyptian Personal Data Protection Law No. 151 of 2020.
+            CRITICAL PRIVACY & PII REDACTION RULES:
+            - NEVER extract, transcribe, or output any patient name, doctor/prescriber name, clinic name, hospital name, syndicate number, national ID, age, phone number, address, or Egyptian city/governorate (e.g. Cairo, Alexandria, Giza, Mansoura, Tanta, Dokki, Mohandessin, Smouha, Maadi, etc.).
+            - Strictly ignore, suppress, and redact all personal identifiable information (PII / PHI).
+            - Extract ONLY the prescribed medication lines (e.g. Concor, Augmentin, Panadol, Glucophage, Cataflam, Controloc, Brufen, Sirdalud, Plavix, etc.).
+            - Put dosage directions (e.g. 1x1, 1x2, 1x3, 1 tab PO QHS, قرص ليلا, قرص كل 12 ساعة بعد الأكل, قبل الأكل بساعة) in "rawSig".
+
+            On-device OCR hint (preliminary optical tokens — verify against image):
             ---
             {{hint}}
             ---
 
-            Output ONLY valid JSON:
+            Output ONLY valid JSON matching this schema:
             {
               "medications": [
-                {"tradeName": "string", "strength": "string or null", "dosageForm": "string or null", "quantity": 1, "confidence": 0.95}
+                {
+                  "tradeName": "string",
+                  "genericName": "string or null",
+                  "strength": "string or null",
+                  "dosageForm": "string or null",
+                  "rawSig": "string or null",
+                  "quantity": 1,
+                  "confidence": 0.95
+                }
               ]
             }
             Do not include markdown fences or any other text.
@@ -222,116 +233,162 @@ public sealed class GeminiPrescriptionService : IGeminiPrescriptionService
             return new GeminiPrescriptionResult(null, null, null, 0m, false, true);
         }
 
-        var model = string.IsNullOrWhiteSpace(_options.VisionModel)
-            ? _options.Model
-            : _options.VisionModel;
-        var url =
-            $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent";
-
         object[] parts = imagePart is null
             ? [new { text = prompt }]
             : [imagePart, new { text = prompt }];
 
-        var requestBody = new
+        var modelsToTry = new List<string>();
+        if (imagePart != null)
         {
-            contents = new[] { new { parts } },
-            generationConfig = new
+            if (!string.IsNullOrWhiteSpace(_options.VisionModel))
             {
-                temperature = 0.0,
-                responseMimeType = "application/json"
+                modelsToTry.Add(_options.VisionModel);
             }
-        };
-
-        const int maxRetries = 2;
-        HttpResponseMessage? response = null;
-
-        for (int attempt = 0; attempt <= maxRetries; attempt++)
-        {
-            try
+            if (_options.FallbackVisionModels is { Length: > 0 })
             {
-                using var request = new HttpRequestMessage(HttpMethod.Post, url)
+                foreach (var fb in _options.FallbackVisionModels)
                 {
-                    Content = JsonContent.Create(requestBody)
-                };
-                request.Headers.TryAddWithoutValidation("x-goog-api-key", _options.ApiKey);
-
-                response = await _httpClient.SendAsync(request, cancellationToken);
-
-                if (response.StatusCode is HttpStatusCode.TooManyRequests or HttpStatusCode.ServiceUnavailable)
-                {
-                    if (attempt < maxRetries)
+                    if (!modelsToTry.Contains(fb, StringComparer.OrdinalIgnoreCase))
                     {
-                        var delay = GetRetryDelay(response, attempt);
-                        _logger.LogWarning(
-                            "Gemini API returned {StatusCode}. Retrying after {Delay}ms (attempt {Attempt}/{MaxRetries}).",
-                            response.StatusCode, delay.TotalMilliseconds, attempt + 1, maxRetries);
-                        response.Dispose();
-                        response = null;
-                        await Task.Delay(delay, cancellationToken);
-                        continue;
+                        modelsToTry.Add(fb);
+                    }
+                }
+            }
+        }
+        else
+        {
+            modelsToTry.Add(string.IsNullOrWhiteSpace(_options.Model) ? "gemini-1.5-flash" : _options.Model);
+        }
+
+        if (modelsToTry.Count == 0)
+        {
+            modelsToTry.Add("gemini-1.5-flash");
+        }
+
+        for (int m = 0; m < modelsToTry.Count; m++)
+        {
+            var model = modelsToTry[m];
+            var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent";
+
+            var isThinking = model.Contains("gemini-3", StringComparison.OrdinalIgnoreCase) &&
+                             !string.IsNullOrWhiteSpace(_options.ThinkingLevel);
+
+            object genConfig = isThinking
+                ? new
+                {
+                    temperature = 0.0,
+                    responseMimeType = "application/json",
+                    thinkingConfig = new { thinkingLevel = _options.ThinkingLevel }
+                }
+                : new
+                {
+                    temperature = 0.0,
+                    responseMimeType = "application/json"
+                };
+
+            var requestBody = new
+            {
+                contents = new[] { new { parts } },
+                generationConfig = genConfig
+            };
+
+            const int maxRetries = 2;
+            HttpResponseMessage? response = null;
+
+            for (int attempt = 0; attempt <= maxRetries; attempt++)
+            {
+                try
+                {
+                    using var request = new HttpRequestMessage(HttpMethod.Post, url)
+                    {
+                        Content = JsonContent.Create(requestBody)
+                    };
+                    request.Headers.TryAddWithoutValidation("x-goog-api-key", _options.ApiKey);
+
+                    response = await _httpClient.SendAsync(request, cancellationToken);
+
+                    if (response.StatusCode is HttpStatusCode.TooManyRequests or HttpStatusCode.ServiceUnavailable)
+                    {
+                        if (attempt < maxRetries)
+                        {
+                            var delay = GetRetryDelay(response, attempt);
+                            _logger.LogWarning(
+                                "Gemini API returned {StatusCode}. Retrying after {Delay}ms (attempt {Attempt}/{MaxRetries}).",
+                                response.StatusCode, delay.TotalMilliseconds, attempt + 1, maxRetries);
+                            response.Dispose();
+                            response = null;
+                            await Task.Delay(delay, cancellationToken);
+                            continue;
+                        }
+
+                        if (m < modelsToTry.Count - 1)
+                        {
+                            _logger.LogWarning("Gemini model {Model} returned {StatusCode}. Trying next fallback model in cascade.", model, response.StatusCode);
+                            break;
+                        }
+
+                        TripCircuitBreaker($"Received HTTP {response.StatusCode} from Google Gemini after {maxRetries} retries.");
+                        return new GeminiPrescriptionResult(null, null, null, 0m, false, true);
                     }
 
-                    TripCircuitBreaker($"Received HTTP {response.StatusCode} from Google Gemini after {maxRetries} retries.");
-                    return new GeminiPrescriptionResult(null, null, null, 0m, false, true);
-                }
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        _logger.LogWarning("Gemini model {Model} failed with status {StatusCode}. Trying fallback cascade.", model, response.StatusCode);
+                        break;
+                    }
 
-                if (!response.IsSuccessStatusCode)
+                    var jsonDoc = await response.Content.ReadFromJsonAsync<JsonDocument>(cancellationToken: cancellationToken);
+                    var root = jsonDoc?.RootElement;
+
+                    var candidates = root?.GetProperty("candidates");
+                    if (candidates == null || candidates.Value.GetArrayLength() == 0)
+                    {
+                        break;
+                    }
+
+                    var textResponse = candidates.Value[0]
+                        .GetProperty("content")
+                        .GetProperty("parts")[0]
+                        .GetProperty("text")
+                        .GetString();
+
+                    if (string.IsNullOrWhiteSpace(textResponse))
+                    {
+                        break;
+                    }
+
+                    var items = ParseMedicationJson(textResponse);
+                    if (items.Count == 0)
+                    {
+                        break;
+                    }
+
+                    IncrementDailyQuota();
+
+                    var primary = items[0];
+                    return new GeminiPrescriptionResult(
+                        primary.TradeName,
+                        primary.Strength,
+                        primary.DosageForm,
+                        primary.Confidence,
+                        true,
+                        false,
+                        items);
+                }
+                catch (OperationCanceledException)
                 {
-                    _logger.LogWarning("Gemini API call failed with status {StatusCode}. Failing over to local engine.", response.StatusCode);
-                    return new GeminiPrescriptionResult(null, null, null, 0m, false, false);
+                    _logger.LogWarning("Gemini API call timed out after {Timeout}s on model {Model}.", _options.TimeoutSeconds, model);
+                    break;
                 }
-
-                var jsonDoc = await response.Content.ReadFromJsonAsync<JsonDocument>(cancellationToken: cancellationToken);
-                var root = jsonDoc?.RootElement;
-
-                var candidates = root?.GetProperty("candidates");
-                if (candidates == null || candidates.Value.GetArrayLength() == 0)
+                catch (Exception ex)
                 {
-                    return new GeminiPrescriptionResult(null, null, null, 0m, false, false);
+                    _logger.LogWarning(ex, "Unexpected error in Gemini API call for model {Model}.", model);
+                    break;
                 }
-
-                var textResponse = candidates.Value[0]
-                    .GetProperty("content")
-                    .GetProperty("parts")[0]
-                    .GetProperty("text")
-                    .GetString();
-
-                if (string.IsNullOrWhiteSpace(textResponse))
+                finally
                 {
-                    return new GeminiPrescriptionResult(null, null, null, 0m, false, false);
+                    response?.Dispose();
                 }
-
-                var items = ParseMedicationJson(textResponse);
-                if (items.Count == 0)
-                {
-                    return new GeminiPrescriptionResult(null, null, null, 0m, false, false);
-                }
-
-                IncrementDailyQuota();
-
-                var primary = items[0];
-                return new GeminiPrescriptionResult(
-                    primary.TradeName,
-                    primary.Strength,
-                    primary.DosageForm,
-                    primary.Confidence,
-                    true,
-                    false,
-                    items);
-            }
-            catch (OperationCanceledException)
-            {
-                _logger.LogWarning("Gemini API call timed out after {Timeout}s. Falling back to local engine.", _options.TimeoutSeconds);
-                return new GeminiPrescriptionResult(null, null, null, 0m, false, false);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Unexpected error in Gemini API call. Falling back to local engine.");
-                return new GeminiPrescriptionResult(null, null, null, 0m, false, false);
-            }
-            finally
-            {
-                response?.Dispose();
             }
         }
 
@@ -357,6 +414,69 @@ public sealed class GeminiPrescriptionService : IGeminiPrescriptionService
         var jitter = Random.Shared.Next(0, 300);
         var totalMs = Math.Clamp(baseMs + jitter, 500, 2500);
         return TimeSpan.FromMilliseconds(totalMs);
+    }
+
+    private static readonly HashSet<string> PiiStopwords = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "doctor", "dr", "prof", "consultant", "specialist", "clinic", "hospital", "center", "pharmacy", "patient", "name",
+        "syndicate", "phone", "tel", "rx", "address", "signature",
+        "cairo", "alexandria", "giza", "mansoura", "tanta", "asyut", "ismailia", "faiyum", "zagazig", "damietta", "aswan",
+        "minya", "damanhur", "beni suef", "hurghada", "qena", "sohag", "dokki", "mohandessin", "smouha", "maadi", "nasr city",
+        "heliopolis", "zamalek", "tagamoa", "october", "zayed", "rehab", "madinaty", "shorouk", "obour", "badr", "helwan",
+        "دكتور", "د", "أستاذ", "استشاري", "اخصائي", "عيادة", "مستشفى", "مركز", "صيدلية", "مريض", "الاسم", "السن", "العنوان", "تليفون",
+        "القاهرة", "الإسكندرية", "اسكندرية", "الجيزة", "المنصورة", "طنطا", "أسيوط", "اسيوط", "الإسماعيلية", "الفيوم", "الزقازيق",
+        "دمياط", "أسوان", "المنيا", "دمنهور", "بني سويف", "الغردقة", "قنا", "سوهاج", "الدقي", "المهندسين", "سموحة", "المعادي",
+        "مدينة نصر", "مصر الجديدة", "الزمالك", "التجمع", "أكتوبر", "الشيخ زايد", "الرحاب", "مدينتي", "الشروق", "العبور", "حلوان"
+    };
+
+    /// <summary>
+    /// Egyptian Law No. 151 of 2020 PII redaction: filters doctor, clinic, patient, syndicate,
+    /// and location lines from raw prescription OCR text, preserving only medication orders.
+    /// </summary>
+    public static string FilterPiiStopwords(string rawText)
+    {
+        if (string.IsNullOrWhiteSpace(rawText)) return string.Empty;
+
+        var lines = rawText.Split(["\r\n", "\r", "\n"], StringSplitOptions.None);
+        var filteredLines = new List<string>();
+
+        var piiLineIndicators = new[]
+        {
+            "عيادة", "مستشفى", "مركز", "clinic", "hospital", "center",
+            "دكتور", "د.", "أستاذ", "استشاري", "اخصائي", "doctor", "dr.", "prof", "consultant", "specialist",
+            "نقابة", "نقابه", "رقم القيد", "syndicate", "dea", "npi",
+            "اسم المريض", "المريض", "الاسم:", "السن:", "العنوان:", "patient", "name:", "age:", "address:",
+            "الدقي", "المهندسين", "سموحة", "المعادي", "مدينة نصر", "مصر الجديدة", "الزمالك", "التجمع",
+            "أكتوبر", "الشيخ زايد", "الرحاب", "مدينتي", "الشروق", "العبور", "حلوان",
+            "القاهرة", "الإسكندرية", "اسكندرية", "الجيزة", "المنصورة", "طنطا", "أسيوط", "اسيوط",
+            "cairo", "alexandria", "giza", "mansoura", "tanta", "dokki", "mohandessin", "smouha",
+            "تاريخ:", "تاريخ :", "date:"
+        };
+
+        foreach (var line in lines)
+        {
+            var trimmed = line.Trim();
+            if (string.IsNullOrWhiteSpace(trimmed)) continue;
+
+            var lower = trimmed.ToLowerInvariant();
+            var isPii = piiLineIndicators.Any(pii => lower.Contains(pii));
+
+            if (!isPii)
+            {
+                filteredLines.Add(trimmed);
+            }
+        }
+
+        return string.Join(Environment.NewLine, filteredLines);
+    }
+
+    private static bool IsPii(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return true;
+        var clean = name.Trim().ToLowerInvariant();
+        if (PiiStopwords.Contains(clean)) return true;
+        var words = clean.Split([' ', ',', '.', '-', '/', '\\', '#'], StringSplitOptions.RemoveEmptyEntries);
+        return words.Length > 0 && words.All(w => PiiStopwords.Contains(w));
     }
 
     private static List<GeminiMedicationItem> ParseMedicationJson(string textResponse)
@@ -386,26 +506,31 @@ public sealed class GeminiPrescriptionService : IGeminiPrescriptionService
                 var name = el.TryGetProperty("tradeName", out var tn) ? tn.GetString()
                     : (el.TryGetProperty("name", out var n) ? n.GetString() : null);
 
-                if (!string.IsNullOrWhiteSpace(name))
+                if (!string.IsNullOrWhiteSpace(name) && !IsPii(name))
                 {
                     var str = el.TryGetProperty("strength", out var s) ? s.GetString() : null;
                     var df = el.TryGetProperty("dosageForm", out var d) ? d.GetString()
                         : (el.TryGetProperty("form", out var f) ? f.GetString() : null);
                     var conf = el.TryGetProperty("confidence", out var c) && c.TryGetDecimal(out var cv) ? cv : 0.95m;
                     var qty = el.TryGetProperty("quantity", out var q) && q.TryGetInt32(out var qv) && qv > 0 ? qv : 1;
-                    items.Add(new GeminiMedicationItem(name.Trim(), str?.Trim(), df?.Trim(), conf, qty));
+                    var rawSig = el.TryGetProperty("rawSig", out var rs) ? rs.GetString() : null;
+                    var generic = el.TryGetProperty("genericName", out var gn) ? gn.GetString() : null;
+                    items.Add(new GeminiMedicationItem(name.Trim(), str?.Trim(), df?.Trim(), conf, qty, rawSig?.Trim(), generic?.Trim()));
                 }
             }
         }
         else if ((rootEl.TryGetProperty("tradeName", out var singleTn) || rootEl.TryGetProperty("name", out singleTn))
-                 && !string.IsNullOrWhiteSpace(singleTn.GetString()))
+                 && !string.IsNullOrWhiteSpace(singleTn.GetString())
+                 && !IsPii(singleTn.GetString()))
         {
             var str = rootEl.TryGetProperty("strength", out var s) ? s.GetString() : null;
             var df = rootEl.TryGetProperty("dosageForm", out var d) ? d.GetString()
                 : (rootEl.TryGetProperty("form", out var f) ? f.GetString() : null);
             var conf = rootEl.TryGetProperty("confidence", out var c) && c.TryGetDecimal(out var cv) ? cv : 0.95m;
             var qty = rootEl.TryGetProperty("quantity", out var q) && q.TryGetInt32(out var qv) && qv > 0 ? qv : 1;
-            items.Add(new GeminiMedicationItem(singleTn.GetString()!.Trim(), str?.Trim(), df?.Trim(), conf, qty));
+            var rawSig = rootEl.TryGetProperty("rawSig", out var rs) ? rs.GetString() : null;
+            var generic = rootEl.TryGetProperty("genericName", out var gn) ? gn.GetString() : null;
+            items.Add(new GeminiMedicationItem(singleTn.GetString()!.Trim(), str?.Trim(), df?.Trim(), conf, qty, rawSig?.Trim(), generic?.Trim()));
         }
 
         return items;

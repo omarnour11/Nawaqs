@@ -9,7 +9,8 @@ public sealed record ClinicalCandidateDto(
     string? DosageForm,
     decimal Confidence,
     bool IsDosageFeasible,
-    string? ActiveIngredient = null);
+    string? ActiveIngredient = null,
+    decimal? PriceEgp = null);
 
 /// <summary>
 /// Resolution result produced by the clinical prescription matcher.
@@ -21,7 +22,8 @@ public sealed record ClinicalMatchResolution(
     decimal Confidence,
     bool RequiresDisambiguation,
     IReadOnlyList<ClinicalCandidateDto> Candidates,
-    string? ActiveIngredient = null);
+    string? ActiveIngredient = null,
+    decimal? PriceEgp = null);
 
 /// <summary>
 /// Dedicated clinical prescription resolution service.

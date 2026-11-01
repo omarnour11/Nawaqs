@@ -98,6 +98,67 @@ class ParseMultimodalBody {
       };
 }
 
+class SafetyAlertResponse {
+  final String id;
+  final String severity; // critical, warning, nominal
+  final String category;
+  final String title;
+  final String description;
+  final List<String> involvedDrugs;
+
+  const SafetyAlertResponse({
+    this.id = '',
+    required this.severity,
+    this.category = '',
+    this.title = '',
+    this.description = '',
+    this.involvedDrugs = const [],
+    String? alertCode,
+    String? message,
+    String? recommendation,
+    List<String>? interactingSubstances,
+  })  : id = id.isNotEmpty ? id : (alertCode ?? ''),
+        title = title.isNotEmpty ? title : (message ?? ''),
+        description = description.isNotEmpty ? description : (recommendation ?? ''),
+        involvedDrugs = involvedDrugs.isNotEmpty ? involvedDrugs : (interactingSubstances ?? const []);
+
+  String get alertCode => id;
+  String get message => title.isNotEmpty ? title : description;
+  String get recommendation => description;
+  List<String> get interactingSubstances => involvedDrugs;
+
+  factory SafetyAlertResponse.fromJson(Map<String, dynamic> json) {
+    final rawSeverity = json['severity']?.toString() ?? 'nominal';
+    final id = json['id'] as String? ?? json['alertCode'] as String? ?? '';
+    final title = json['title'] as String? ?? json['message'] as String? ?? '';
+    final description = json['description'] as String? ?? json['recommendation'] as String? ?? '';
+    final rawDrugs = (json['involvedDrugs'] ?? json['interactingSubstances']) as List<dynamic>?;
+    final involvedDrugs = rawDrugs?.map((e) => e.toString()).toList() ?? const [];
+
+    return SafetyAlertResponse(
+      id: id,
+      severity: rawSeverity,
+      category: json['category'] as String? ?? '',
+      title: title,
+      description: description,
+      involvedDrugs: involvedDrugs,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'severity': severity,
+        'category': category,
+        'title': title,
+        'description': description,
+        'involvedDrugs': involvedDrugs,
+        'alertCode': alertCode,
+        'message': message,
+        'recommendation': recommendation,
+        'interactingSubstances': interactingSubstances,
+      };
+}
+
 @JsonSerializable()
 class ParsedMedicationResponse {
   final String resolvedName;
@@ -110,6 +171,10 @@ class ParsedMedicationResponse {
   final bool isSuccess;
   final String? errorCode;
   final String? errorMessage;
+  final String? rawSig;
+  final String? arabicSig;
+  final double? priceEgp;
+  final List<SafetyAlertResponse>? safetyAlerts;
 
   ParsedMedicationResponse({
     required this.resolvedName,
@@ -122,6 +187,10 @@ class ParsedMedicationResponse {
     this.isSuccess = true,
     this.errorCode,
     this.errorMessage,
+    this.rawSig,
+    this.arabicSig,
+    this.priceEgp,
+    this.safetyAlerts,
   });
 
   factory ParsedMedicationResponse.fromJson(Map<String, dynamic> json) =>
@@ -140,6 +209,9 @@ class ParsedCandidate {
   final String? activeIngredient;
   final bool requiresDisambiguation;
   final List<ParsedCandidate>? alternatives;
+  final String? rawSig;
+  final String? arabicSig;
+  final double? priceEgp;
 
   ParsedCandidate({
     required this.tradeName,
@@ -150,6 +222,9 @@ class ParsedCandidate {
     this.activeIngredient,
     this.requiresDisambiguation = false,
     this.alternatives,
+    this.rawSig,
+    this.arabicSig,
+    this.priceEgp,
   });
 
   factory ParsedCandidate.fromJson(Map<String, dynamic> json) =>
@@ -164,6 +239,9 @@ class ParsedCandidate {
         alternatives: (json['alternatives'] as List<dynamic>?)
             ?.map((e) => ParsedCandidate.fromJson(e as Map<String, dynamic>))
             .toList(),
+        rawSig: json['rawSig'] as String?,
+        arabicSig: json['arabicSig'] as String?,
+        priceEgp: (json['priceEgp'] as num?)?.toDouble(),
       );
 
   Map<String, dynamic> toJson() => {
@@ -176,6 +254,9 @@ class ParsedCandidate {
         'requiresDisambiguation': requiresDisambiguation,
         if (alternatives != null)
           'alternatives': alternatives!.map((e) => e.toJson()).toList(),
+        if (rawSig != null) 'rawSig': rawSig,
+        if (arabicSig != null) 'arabicSig': arabicSig,
+        if (priceEgp != null) 'priceEgp': priceEgp,
       };
 }
 

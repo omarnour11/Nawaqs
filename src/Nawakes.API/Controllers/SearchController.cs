@@ -107,7 +107,8 @@ public sealed class SearchController(ISender mediator) : ControllerBase
     public async Task<ActionResult<ParsedMedicationDto>> ParsePrescriptionImage(
         IFormFile file,
         [FromForm] string? ocrHintText,
-        CancellationToken cancellationToken)
+        [FromForm] string? patientAllergies = null,
+        CancellationToken cancellationToken = default)
     {
         if (file is null || file.Length == 0)
         {
@@ -131,7 +132,11 @@ public sealed class SearchController(ISender mediator) : ControllerBase
         await stream.CopyToAsync(ms, cancellationToken);
         var imageBytes = ms.ToArray();
 
-        var command = new ParsePrescriptionImageCommand(imageBytes, file.ContentType ?? "image/jpeg", ocrHintText);
+        var allergiesList = !string.IsNullOrWhiteSpace(patientAllergies)
+            ? patientAllergies.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList()
+            : null;
+
+        var command = new ParsePrescriptionImageCommand(imageBytes, file.ContentType ?? "image/jpeg", ocrHintText, allergiesList);
         var result = await mediator.Send(command, cancellationToken);
         return Ok(result);
     }

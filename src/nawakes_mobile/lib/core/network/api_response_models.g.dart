@@ -56,6 +56,12 @@ ParsedMedicationResponse _$ParsedMedicationResponseFromJson(
   isSuccess: json['isSuccess'] as bool? ?? true,
   errorCode: json['errorCode'] as String?,
   errorMessage: json['errorMessage'] as String?,
+  rawSig: json['rawSig'] as String?,
+  arabicSig: json['arabicSig'] as String?,
+  priceEgp: (json['priceEgp'] as num?)?.toDouble(),
+  safetyAlerts: (json['safetyAlerts'] as List<dynamic>?)
+      ?.map((e) => SafetyAlertResponse.fromJson(e as Map<String, dynamic>))
+      .toList(),
 );
 
 Map<String, dynamic> _$ParsedMedicationResponseToJson(
@@ -71,4 +77,8 @@ Map<String, dynamic> _$ParsedMedicationResponseToJson(
   'isSuccess': instance.isSuccess,
   'errorCode': instance.errorCode,
   'errorMessage': instance.errorMessage,
+  'rawSig': instance.rawSig,
+  'arabicSig': instance.arabicSig,
+  'priceEgp': instance.priceEgp,
+  'safetyAlerts': instance.safetyAlerts?.map((e) => e.toJson()).toList(),
 };

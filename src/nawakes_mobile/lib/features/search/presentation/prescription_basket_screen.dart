@@ -12,6 +12,9 @@ class PrescriptionBasketItem {
   int quantity;
   double confidence;
   String? activeIngredient;
+  String? rawSig;
+  String? arabicSig;
+  double? priceEgp;
 
   PrescriptionBasketItem({
     required this.tradeName,
@@ -20,6 +23,9 @@ class PrescriptionBasketItem {
     this.quantity = 1,
     this.confidence = 0.90,
     this.activeIngredient,
+    this.rawSig,
+    this.arabicSig,
+    this.priceEgp,
   });
 }
 
@@ -27,16 +33,22 @@ class PrescriptionBasketScreen extends HookConsumerWidget {
   const PrescriptionBasketScreen({
     super.key,
     required this.initialItems,
+    this.safetyAlerts,
   });
 
   final List<PrescriptionBasketItem> initialItems;
+  final List<SafetyAlertResponse>? safetyAlerts;
 
   static Future<void> show(
     BuildContext context, {
     required List<PrescriptionBasketItem> items,
+    List<SafetyAlertResponse>? safetyAlerts,
   }) {
     return Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => PrescriptionBasketScreen(initialItems: items),
+      builder: (_) => PrescriptionBasketScreen(
+        initialItems: items,
+        safetyAlerts: safetyAlerts,
+      ),
     ));
   }
 
@@ -207,6 +219,10 @@ class PrescriptionBasketScreen extends HookConsumerWidget {
               ),
             ),
 
+            // Safety Alerts Banner
+            if (safetyAlerts != null && safetyAlerts!.isNotEmpty)
+              _buildSafetyAlertsSection(safetyAlerts!),
+
             // Medication List
             Expanded(
               child: items.value.isEmpty
@@ -331,9 +347,11 @@ class PrescriptionBasketScreen extends HookConsumerWidget {
                                             ),
                                           ),
                                         ],
-                                        if (item.strength != null || item.dosageForm != null) ...[
+                                        if (item.strength != null || item.dosageForm != null || (item.priceEgp != null && item.priceEgp! > 0)) ...[
                                           const SizedBox(height: 4),
-                                          Row(
+                                          Wrap(
+                                            spacing: 6,
+                                            runSpacing: 4,
                                             children: [
                                               if (item.strength != null)
                                                 Container(
@@ -352,8 +370,6 @@ class PrescriptionBasketScreen extends HookConsumerWidget {
                                                     ),
                                                   ),
                                                 ),
-                                              if (item.strength != null && item.dosageForm != null)
-                                                const SizedBox(width: 6),
                                               if (item.dosageForm != null)
                                                 Container(
                                                   padding: const EdgeInsets.symmetric(
@@ -370,7 +386,68 @@ class PrescriptionBasketScreen extends HookConsumerWidget {
                                                     ),
                                                   ),
                                                 ),
+                                              if (item.priceEgp != null && item.priceEgp! > 0)
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(
+                                                      horizontal: 8, vertical: 2),
+                                                  decoration: BoxDecoration(
+                                                    color: const Color(0xFFE8F5E9),
+                                                    borderRadius: BorderRadius.circular(6),
+                                                    border: Border.all(color: const Color(0xFFA5D6A7)),
+                                                  ),
+                                                  child: Row(
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    children: [
+                                                      const Icon(Icons.sell_outlined, size: 12, color: Color(0xFF2E7D32)),
+                                                      const SizedBox(width: 4),
+                                                      Text(
+                                                        'السعر: ${item.priceEgp!.toStringAsFixed(item.priceEgp! % 1 == 0 ? 0 : 2)} ج.م',
+                                                        style: const TextStyle(
+                                                          fontSize: 11,
+                                                          fontWeight: FontWeight.w700,
+                                                          color: Color(0xFF2E7D32),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
                                             ],
+                                          ),
+                                        ],
+                                        if (item.arabicSig != null && item.arabicSig!.isNotEmpty) ...[
+                                          const SizedBox(height: 6),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFE0F2F1),
+                                              borderRadius: BorderRadius.circular(8),
+                                              border: Border.all(color: const Color(0xFF80CBC4)),
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                const Icon(Icons.access_time_rounded, size: 15, color: Color(0xFF004D40)),
+                                                const SizedBox(width: 6),
+                                                Expanded(
+                                                  child: Text(
+                                                    item.arabicSig!,
+                                                    style: const TextStyle(
+                                                      fontSize: 12,
+                                                      fontWeight: FontWeight.w600,
+                                                      color: Color(0xFF004D40),
+                                                    ),
+                                                  ),
+                                                ),
+                                                if (item.rawSig != null && item.rawSig!.isNotEmpty && item.rawSig != item.arabicSig)
+                                                  Text(
+                                                    '(${item.rawSig})',
+                                                    style: TextStyle(
+                                                      fontSize: 10,
+                                                      color: Colors.teal.shade700,
+                                                      fontFamily: 'monospace',
+                                                    ),
+                                                  ),
+                                              ],
+                                            ),
                                           ),
                                         ],
                                       ],
@@ -504,6 +581,129 @@ class PrescriptionBasketScreen extends HookConsumerWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildSafetyAlertsSection(List<SafetyAlertResponse> alerts) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.hairline),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.shield_outlined, color: AppColors.primary, size: 18),
+              const SizedBox(width: 6),
+              const Text(
+                'تدقيق الأمان والجرعات الدوائية',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textDark,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '${alerts.length} تنبيه',
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textMuted,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ...alerts.map((alert) {
+            final isCritical = alert.severity.toLowerCase() == 'critical';
+            final isWarning = alert.severity.toLowerCase() == 'warning';
+            final bgColor = isCritical
+                ? const Color(0xFFFFEBEE)
+                : isWarning
+                    ? const Color(0xFFFFF8E1)
+                    : const Color(0xFFE0F2F1);
+            final borderColor = isCritical
+                ? const Color(0xFFEF9A9A)
+                : isWarning
+                    ? const Color(0xFFFFE082)
+                    : const Color(0xFF80CBC4);
+            final iconColor = isCritical
+                ? Colors.red.shade700
+                : isWarning
+                    ? Colors.amber.shade900
+                    : Colors.teal.shade700;
+            final iconData = isCritical
+                ? Icons.warning_rounded
+                : isWarning
+                    ? Icons.report_problem_rounded
+                    : Icons.check_circle_outline_rounded;
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 6),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: bgColor,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: borderColor),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(iconData, color: iconColor, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          alert.message,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: isCritical
+                                ? Colors.red.shade900
+                                : isWarning
+                                    ? Colors.brown.shade900
+                                    : Colors.teal.shade900,
+                          ),
+                        ),
+                        if (alert.recommendation.isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            alert.recommendation,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: isCritical
+                                  ? Colors.red.shade800
+                                  : isWarning
+                                      ? Colors.brown.shade700
+                                      : Colors.teal.shade800,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
       ),
     );
   }

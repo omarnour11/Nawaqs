@@ -8,7 +8,9 @@ public sealed record GeminiMedicationItem(
     string? Strength,
     string? DosageForm,
     decimal Confidence,
-    int Quantity = 1);
+    int Quantity = 1,
+    string? RawSig = null,
+    string? GenericName = null);
 
 /// <summary>
 /// Result returned by Gemini Flash AI prescription analysis.

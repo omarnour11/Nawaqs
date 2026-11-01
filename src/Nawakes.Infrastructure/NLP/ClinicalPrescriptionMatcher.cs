@@ -102,7 +102,8 @@ public sealed class ClinicalPrescriptionMatcher : IClinicalPrescriptionMatcher
                     bestArabic.Confidence,
                     requiresDisambigArabic,
                     arabicCandidates,
-                    bestArabic.ActiveIngredient);
+                    bestArabic.ActiveIngredient,
+                    bestArabic.PriceEgp);
             }
         }
 
@@ -138,7 +139,8 @@ public sealed class ClinicalPrescriptionMatcher : IClinicalPrescriptionMatcher
             best.Confidence,
             requiresDisambiguation,
             candidates,
-            best.ActiveIngredient);
+            best.ActiveIngredient,
+            best.PriceEgp);
     }
 
     /// <inheritdoc />
@@ -174,7 +176,25 @@ public sealed class ClinicalPrescriptionMatcher : IClinicalPrescriptionMatcher
             ? DrugNameNormalizer.ApplyEgyptianPhonetics(query)
             : queryNorm;
 
-        if (cached.Entries.Count == 0) return [];
+        var queryTokens = queryNorm.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+        // Pass 0: Compound 2-Word Brand Index Match (e.g. "Panadol Extra", "Milga Advance", "Concor Plus")
+        if (queryTokens.Length >= 2)
+        {
+            var compoundQuery = $"{queryTokens[0]} {queryTokens[1]}";
+            if (cached.Compound2WordBrandMap.TryGetValue(compoundQuery, out var compoundMatches) && compoundMatches.Count > 0)
+            {
+                var scoredCompound = compoundMatches
+                    .Select(d => ScoreCandidate(d, 0.98m, targetStrength, targetDosageForm, cached.BrandStrengthMap))
+                    .OrderByDescending(m => m.Confidence)
+                    .ToList();
+
+                if (scoredCompound.Count > 0 && scoredCompound[0].Confidence >= 0.90m)
+                {
+                    return scoredCompound.Take(_options.MaxCandidatesReturned).ToList();
+                }
+            }
+        }
 
         // Pass 1: Exact normalized trade name match
         var exactMatches = cached.Entries
@@ -190,7 +210,6 @@ public sealed class ClinicalPrescriptionMatcher : IClinicalPrescriptionMatcher
         }
 
         // Pass 2: Fuzzy & Phonetic Multi-Tier Matching
-        var queryTokens = queryNorm.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         var firstQueryToken = queryTokens.Length > 0 ? queryTokens[0] : queryNorm;
         var firstQuerySkeleton = DrugNameNormalizer.ConsonantSkeleton(firstQueryToken);
         var firstQueryPhonetic = _options.EnableEgyptianPhonetics
@@ -294,7 +313,8 @@ public sealed class ClinicalPrescriptionMatcher : IClinicalPrescriptionMatcher
                     d.CommercialNameArNormalized,
                     d.ActiveIngredient,
                     d.Strength,
-                    d.DosageForm))
+                    d.DosageForm,
+                    d.OfficialPriceEGP))
                 .ToListAsync(cancellationToken);
         }
         else if (_scopeFactory != null)
@@ -310,7 +330,8 @@ public sealed class ClinicalPrescriptionMatcher : IClinicalPrescriptionMatcher
                     d.CommercialNameArNormalized,
                     d.ActiveIngredient,
                     d.Strength,
-                    d.DosageForm))
+                    d.DosageForm,
+                    d.OfficialPriceEGP))
                 .ToListAsync(cancellationToken);
         }
         else
@@ -318,9 +339,9 @@ public sealed class ClinicalPrescriptionMatcher : IClinicalPrescriptionMatcher
             entries = [];
         }
 
-        var brandMap = BuildBrandStrengthMap(entries);
+        var (brandMap, compoundMap) = BuildCatalogIndexes(entries);
 
-        var result = new CachedCatalog(entries, brandMap);
+        var result = new CachedCatalog(entries, brandMap, compoundMap);
 
         var cacheOptions = new MemoryCacheEntryOptions()
             .SetSlidingExpiration(CatalogCacheTtl)
@@ -329,8 +350,8 @@ public sealed class ClinicalPrescriptionMatcher : IClinicalPrescriptionMatcher
         _memoryCache.Set(CatalogCacheKey, result, cacheOptions);
 
         _logger.LogInformation(
-            "ClinicalPrescriptionMatcher: catalog loaded — {Count} entries, {Brands} brand roots cached for {Ttl}.",
-            entries.Count, brandMap.Count, CatalogCacheTtl);
+            "ClinicalPrescriptionMatcher: catalog loaded — {Count} entries, {Brands} brand roots, {Compounds} compound brands cached for {Ttl}.",
+            entries.Count, brandMap.Count, compoundMap.Count, CatalogCacheTtl);
 
         return result;
     }
@@ -391,7 +412,8 @@ public sealed class ClinicalPrescriptionMatcher : IClinicalPrescriptionMatcher
             entry.DosageForm,
             Math.Round(confidence, 2),
             isDosageFeasible,
-            entry.ActiveIngredient);
+            entry.ActiveIngredient,
+            entry.OfficialPriceEGP);
     }
 
     private static bool ContainsArabic(string? text)
@@ -480,9 +502,10 @@ public sealed class ClinicalPrescriptionMatcher : IClinicalPrescriptionMatcher
             .ToList();
     }
 
-    private static Dictionary<string, HashSet<string>> BuildBrandStrengthMap(IEnumerable<CatalogEntry> catalog)
+    private static (Dictionary<string, HashSet<string>> brandMap, Dictionary<string, List<CatalogEntry>> compoundMap) BuildCatalogIndexes(IEnumerable<CatalogEntry> catalog)
     {
         var map = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
+        var compoundMap = new Dictionary<string, List<CatalogEntry>>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var entry in catalog)
         {
@@ -504,9 +527,36 @@ public sealed class ClinicalPrescriptionMatcher : IClinicalPrescriptionMatcher
                     set.Add(canonical);
                 }
             }
+            // Index 2-word brand combinations (e.g. "Panadol Extra", "Milga Advance", "Concor Plus")
+            var tokens = entry.TradeNameNormalized.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (tokens.Length >= 2)
+            {
+                var compoundKey = $"{tokens[0]} {tokens[1]}";
+                if (!compoundMap.TryGetValue(compoundKey, out var list))
+                {
+                    list = new List<CatalogEntry>();
+                    compoundMap[compoundKey] = list;
+                }
+                list.Add(entry);
+
+                if (!map.TryGetValue(compoundKey, out var compoundSet))
+                {
+                    compoundSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    map[compoundKey] = compoundSet;
+                }
+                if (!string.IsNullOrWhiteSpace(entry.Strength))
+                {
+                    var canonical = DrugNameNormalizer.ExtractStrength(entry.Strength) ??
+                                    DrugNameNormalizer.NormalizeName(entry.Strength);
+                    if (!string.IsNullOrWhiteSpace(canonical))
+                    {
+                        compoundSet.Add(canonical);
+                    }
+                }
+            }
         }
 
-        return map;
+        return (map, compoundMap);
     }
 
     private static string ExtractBrandRoot(string normalizedTradeName)
@@ -523,7 +573,8 @@ public sealed class ClinicalPrescriptionMatcher : IClinicalPrescriptionMatcher
         string? CommercialNameArNormalized,
         string? ActiveIngredient,
         string? Strength,
-        string? DosageForm);
+        string? DosageForm,
+        decimal? OfficialPriceEGP);
 
     /// <summary>
     /// Bundles the full catalog entry list with its pre-built brand strength map
@@ -531,5 +582,6 @@ public sealed class ClinicalPrescriptionMatcher : IClinicalPrescriptionMatcher
     /// </summary>
     private sealed record CachedCatalog(
         List<CatalogEntry> Entries,
-        IReadOnlyDictionary<string, HashSet<string>> BrandStrengthMap);
+        IReadOnlyDictionary<string, HashSet<string>> BrandStrengthMap,
+        IReadOnlyDictionary<string, List<CatalogEntry>> Compound2WordBrandMap);
 }

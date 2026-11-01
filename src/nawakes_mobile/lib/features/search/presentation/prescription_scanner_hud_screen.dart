@@ -129,6 +129,9 @@ class _PrescriptionScannerHudScreenState
               quantity: c.quantity > 0 ? c.quantity : 1,
               confidence: c.confidence,
               activeIngredient: c.activeIngredient,
+              rawSig: c.rawSig ?? response.rawSig,
+              arabicSig: c.arabicSig ?? response.arabicSig,
+              priceEgp: c.priceEgp ?? response.priceEgp,
             ));
           }
         } else if (response.resolvedName.isNotEmpty) {
@@ -139,6 +142,9 @@ class _PrescriptionScannerHudScreenState
             quantity: 1,
             confidence: response.confidence,
             activeIngredient: response.activeIngredient,
+            rawSig: response.rawSig,
+            arabicSig: response.arabicSig,
+            priceEgp: response.priceEgp,
           ));
         }
 
@@ -148,8 +154,10 @@ class _PrescriptionScannerHudScreenState
           // Replace HUD with Basket screen
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(
-              builder: (_) =>
-                  PrescriptionBasketScreen(initialItems: basketItems),
+              builder: (_) => PrescriptionBasketScreen(
+                initialItems: basketItems,
+                safetyAlerts: response.safetyAlerts,
+              ),
             ),
           );
           return;

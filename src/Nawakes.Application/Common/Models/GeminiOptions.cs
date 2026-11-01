@@ -14,8 +14,14 @@ public sealed class GeminiOptions
     /// <summary>Gemini model for text-only requests.</summary>
     public string Model { get; set; } = "gemini-1.5-flash";
 
-    /// <summary>Model for prescription photos (vision). Free tier: gemini-1.5-flash.</summary>
-    public string VisionModel { get; set; } = "gemini-1.5-flash";
+    /// <summary>Model for prescription photos (vision). Default: gemini-3-flash-preview.</summary>
+    public string VisionModel { get; set; } = "gemini-3-flash-preview";
+
+    /// <summary>Thinking level for Gemini 3 Preview (e.g. LOW).</summary>
+    public string ThinkingLevel { get; set; } = "LOW";
+
+    /// <summary>Automatic fallback cascade vision models if the preview endpoint fails.</summary>
+    public string[] FallbackVisionModels { get; set; } = ["gemini-2.0-flash", "gemini-1.5-flash"];
 
     /// <summary>Maximum daily requests before failing over to local matching engine.</summary>
     public int DailyQuotaLimit { get; set; } = 1400;
@@ -24,5 +30,5 @@ public sealed class GeminiOptions
     public bool IsEnabled { get; set; } = true;
 
     /// <summary>HTTP timeout in seconds for Gemini API calls.</summary>
-    public int TimeoutSeconds { get; set; } = 5;
+    public int TimeoutSeconds { get; set; } = 15;
 }
