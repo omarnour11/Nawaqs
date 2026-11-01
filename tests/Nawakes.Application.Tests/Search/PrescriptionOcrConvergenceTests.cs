@@ -419,6 +419,7 @@ public sealed class PrescriptionOcrConvergenceTests
 
         alerts.Should().Contain(a =>
             a.AlertCode == "TIMING_DIRECTIVE" &&
+            a.Recommendation != null &&
             a.Recommendation.Contains("قبل الأكل بساعة"));
     }
 

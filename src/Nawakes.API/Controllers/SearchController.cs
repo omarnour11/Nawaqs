@@ -141,6 +141,16 @@ public sealed class SearchController(ISender mediator) : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>
+    /// Backward-compatible overload for tests calling ParsePrescriptionImage without patientAllergies.
+    /// </summary>
+    [NonAction]
+    public Task<ActionResult<ParsedMedicationDto>> ParsePrescriptionImage(
+        IFormFile file,
+        string? ocrHintText,
+        CancellationToken cancellationToken) =>
+        ParsePrescriptionImage(file, ocrHintText, null, cancellationToken);
+
     public sealed record ParseMultimodalRequest(
         string RawText,
         string? InputType,

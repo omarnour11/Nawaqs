@@ -54,6 +54,11 @@ public sealed class SigDecoderService : ISigDecoderService
         new("ODT", "orally disintegrating", "orally disintegrating tablet", "قرص سريع الذوبان")
     ];
 
+    /// <summary>
+    /// Direct implementation of DecodeSig alias.
+    /// </summary>
+    public DecodedSigDto DecodeSig(string rawSig) => DecodeMedicalSig(rawSig);
+
     /// <inheritdoc />
     public DecodedSigDto DecodeMedicalSig(string rawSig)
     {

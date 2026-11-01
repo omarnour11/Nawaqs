@@ -107,20 +107,20 @@ class SafetyAlertResponse {
   final List<String> involvedDrugs;
 
   const SafetyAlertResponse({
-    this.id = '',
+    String? id,
     required this.severity,
     this.category = '',
-    this.title = '',
-    this.description = '',
-    this.involvedDrugs = const [],
+    String? title,
+    String? description,
+    List<String>? involvedDrugs,
     String? alertCode,
     String? message,
     String? recommendation,
     List<String>? interactingSubstances,
-  })  : id = id.isNotEmpty ? id : (alertCode ?? ''),
-        title = title.isNotEmpty ? title : (message ?? ''),
-        description = description.isNotEmpty ? description : (recommendation ?? ''),
-        involvedDrugs = involvedDrugs.isNotEmpty ? involvedDrugs : (interactingSubstances ?? const []);
+  })  : id = id ?? alertCode ?? '',
+        title = title ?? message ?? '',
+        description = description ?? recommendation ?? '',
+        involvedDrugs = involvedDrugs ?? interactingSubstances ?? const [];
 
   String get alertCode => id;
   String get message => title.isNotEmpty ? title : description;
