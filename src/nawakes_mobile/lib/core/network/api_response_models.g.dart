@@ -80,5 +80,5 @@ Map<String, dynamic> _$ParsedMedicationResponseToJson(
   'rawSig': instance.rawSig,
   'arabicSig': instance.arabicSig,
   'priceEgp': instance.priceEgp,
-  'safetyAlerts': instance.safetyAlerts?.map((e) => e.toJson()).toList(),
+  'safetyAlerts': instance.safetyAlerts,
 };

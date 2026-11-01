@@ -198,7 +198,8 @@ public sealed class PrescriptionSafetyAuditor : IPrescriptionSafetyAuditor
     /// <inheritdoc />
     public Task<IReadOnlyList<SafetyAlertDto>> AuditPrescriptionSafetyAsync(
         IReadOnlyList<SafetyMedicationInput> medications,
-        IReadOnlyList<string>? patientAllergies = null)
+        IReadOnlyList<string>? patientAllergies = null,
+        CancellationToken cancellationToken = default)
     {
         var candidates = medications
             .Select(m => new ParsedCandidateDto(
