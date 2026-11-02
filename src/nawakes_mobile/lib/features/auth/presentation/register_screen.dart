@@ -163,7 +163,12 @@ class RegisterScreen extends HookConsumerWidget {
     }
 
     Future<void> submitPatient({bool skipHealth = false}) async {
-      if (!formKey.currentState!.validate()) return;
+      if (formKey.currentState != null && !formKey.currentState!.validate()) return;
+      if (nameCtrl.text.trim().isEmpty ||
+          emailCtrl.text.trim().isEmpty ||
+          passwordCtrl.text.isEmpty) {
+        return;
+      }
       isSubmittingPatient.value = true;
       try {
         final conditionsList = skipHealth
