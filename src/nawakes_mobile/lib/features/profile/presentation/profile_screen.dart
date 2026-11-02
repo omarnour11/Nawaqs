@@ -112,12 +112,38 @@ class _ProfileBody extends HookConsumerWidget {
     );
     final notesCtrl = useTextEditingController(text: initialFreeNotes);
 
-    // Structured health lists (parsed from the encrypted questionnaire stored
-    // at registration; profile notes act as the editable source).
-    final conditions = useState<List<String>>(
-        _parseConditions(profile.medicalHistoryNotes));
-    final allergies =
-        useState<List<String>>(_parseAllergies(profile.medicalHistoryNotes));
+    // Structured health lists (parsed from medical history notes or fallback
+    // to profile's explicit chronicConditions and knownAllergies).
+    final initialConditions = useMemoized(() {
+      final fromNotes = _parseConditions(profile.medicalHistoryNotes);
+      if (fromNotes.isNotEmpty) return fromNotes;
+      if (profile.chronicConditions != null && profile.chronicConditions!.trim().isNotEmpty) {
+        return profile.chronicConditions!
+            .split(RegExp(r'[,،\n]'))
+            .map((e) => e.trim())
+            .where((e) => e.isNotEmpty)
+            .toSet()
+            .toList();
+      }
+      return <String>[];
+    }, [profile.medicalHistoryNotes, profile.chronicConditions]);
+
+    final initialAllergies = useMemoized(() {
+      final fromNotes = _parseAllergies(profile.medicalHistoryNotes);
+      if (fromNotes.isNotEmpty) return fromNotes;
+      if (profile.knownAllergies != null && profile.knownAllergies!.trim().isNotEmpty) {
+        return profile.knownAllergies!
+            .split(RegExp(r'[,،\n]'))
+            .map((e) => e.trim())
+            .where((e) => e.isNotEmpty)
+            .toSet()
+            .toList();
+      }
+      return <String>[];
+    }, [profile.medicalHistoryNotes, profile.knownAllergies]);
+
+    final conditions = useState<List<String>>(initialConditions);
+    final allergies = useState<List<String>>(initialAllergies);
 
     final newConditionCtrl = useTextEditingController();
     final newAllergyCtrl = useTextEditingController();

@@ -38,12 +38,14 @@ class PrescriptionBasketScreen extends HookConsumerWidget {
     this.safetyAlerts,
     this.sanitizedCropBytes,
     this.sanitizedCropBase64,
+    this.promptFulfillment = false,
   });
 
   final List<PrescriptionBasketItem> initialItems;
   final List<SafetyAlertResponse>? safetyAlerts;
   final Uint8List? sanitizedCropBytes;
   final String? sanitizedCropBase64;
+  final bool promptFulfillment;
 
   static Future<void> show(
     BuildContext context, {
@@ -51,6 +53,7 @@ class PrescriptionBasketScreen extends HookConsumerWidget {
     List<SafetyAlertResponse>? safetyAlerts,
     Uint8List? sanitizedCropBytes,
     String? sanitizedCropBase64,
+    bool promptFulfillment = false,
   }) {
     return Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => PrescriptionBasketScreen(
@@ -58,6 +61,7 @@ class PrescriptionBasketScreen extends HookConsumerWidget {
         safetyAlerts: safetyAlerts,
         sanitizedCropBytes: sanitizedCropBytes,
         sanitizedCropBase64: sanitizedCropBase64,
+        promptFulfillment: promptFulfillment,
       ),
     ));
   }
@@ -571,7 +575,7 @@ class PrescriptionBasketScreen extends HookConsumerWidget {
                         builder: (_) => BatchSearchResultsScreen(
                           items: batchItems,
                           sanitizedCropBase64: sanitizedCropBase64,
-                          promptFulfillment: true,
+                          promptFulfillment: promptFulfillment,
                         ),
                       ));
                     },

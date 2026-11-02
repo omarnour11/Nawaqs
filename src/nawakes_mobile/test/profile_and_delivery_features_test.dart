@@ -106,6 +106,7 @@ class MockDeliveryApiClient implements ApiClient {
         age: 30,
         chronicConditions: 'ضغط الدم',
         knownAllergies: 'بنسلين',
+        medicalHistoryNotes: 'أمراض: ضغط الدم\nحساسية: بنسلين',
       );
 
   @override
