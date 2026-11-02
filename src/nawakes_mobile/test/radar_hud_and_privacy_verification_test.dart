@@ -296,7 +296,7 @@ void main() {
       expect(find.textContaining('يتم إرفاق صورة الروشتة المقتطعة الخالية من أي بيانات شخصية'), findsOneWidget);
 
       // 2. Perform booking
-      final reserveBtn = find.text('حجز الصيدلية');
+      final reserveBtn = find.text('احجز كل الروشتة الآن ⚡');
       expect(reserveBtn, findsOneWidget);
       await tester.tap(reserveBtn);
       await tester.pump();
@@ -419,7 +419,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Book all pharmacies in split basket
-      final bookAllBtn = find.text('حجز جميع الصيدليات');
+      final bookAllBtn = find.textContaining('احجز الكل');
       expect(bookAllBtn, findsOneWidget);
       await tester.tap(bookAllBtn);
       await tester.pump();
