@@ -104,7 +104,8 @@ public sealed class RegisterCommandHandler(
         context.RefreshTokens.Add(new Nawakes.Domain.Entities.RefreshToken
         {
             UserId = userGuid,
-            Token = refreshToken,
+            TokenHash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(
+                System.Text.Encoding.UTF8.GetBytes(refreshToken))),
             ExpiresAt = refreshExpiry,
             CreatedAt = DateTime.UtcNow
         });

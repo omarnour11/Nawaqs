@@ -136,3 +136,11 @@ class RefreshTokenRequest {
   factory RefreshTokenRequest.fromJson(Map<String, dynamic> json) => _$RefreshTokenRequestFromJson(json);
   Map<String, dynamic> toJson() => _$RefreshTokenRequestToJson(this);
 }
+
+class DeviceTokenRequest {
+  final String fcmToken;
+
+  DeviceTokenRequest({required this.fcmToken});
+
+  Map<String, dynamic> toJson() => {'fcmToken': fcmToken};
+}
