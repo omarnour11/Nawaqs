@@ -244,7 +244,10 @@ class SearchScreen extends HookConsumerWidget {
                 ))
             .toList();
         Navigator.of(context).push(MaterialPageRoute(
-          builder: (_) => BatchSearchResultsScreen(items: batchItems),
+          builder: (_) => BatchSearchResultsScreen(
+            items: batchItems,
+            promptFulfillment: true,
+          ),
         ));
       } else if (confirmResult.isOpenBasket) {
         final basketItems = resolvedItems

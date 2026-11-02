@@ -571,6 +571,7 @@ class PrescriptionBasketScreen extends HookConsumerWidget {
                         builder: (_) => BatchSearchResultsScreen(
                           items: batchItems,
                           sanitizedCropBase64: sanitizedCropBase64,
+                          promptFulfillment: true,
                         ),
                       ));
                     },

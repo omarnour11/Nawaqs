@@ -158,6 +158,8 @@ class _ProfileBody extends HookConsumerWidget {
               medicalHistoryNotes: savedNotes,
               gender: gender.value,
               age: int.tryParse(ageCtrl.text.trim()),
+              chronicConditions: distinctConditions.join('، '),
+              knownAllergies: distinctAllergies.join('، '),
             ));
         ref.invalidate(profileControllerProvider);
         editing.value = false;
