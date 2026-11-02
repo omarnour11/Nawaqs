@@ -54,7 +54,7 @@ Widget createTestApp({
       theme: AppTheme.lightTheme,
       home: Directionality(
         textDirection: TextDirection.rtl,
-        child: child,
+        child: Scaffold(body: child),
       ),
     ),
   );
@@ -156,6 +156,13 @@ void main() {
 
     testWidgets('ActiveOrdersTab renders Delivery banner and WhatsApp dispatch button',
         (tester) async {
+      tester.view.physicalSize = const Size(800, 1400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
       final client = MockDeliveryApiClient()
         ..reservations = [
           PharmacyReservationResponse(

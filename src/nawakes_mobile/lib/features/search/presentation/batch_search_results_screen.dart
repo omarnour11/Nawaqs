@@ -237,10 +237,12 @@ class BatchSearchResultsScreen extends HookConsumerWidget {
     super.key,
     required this.items,
     this.sanitizedCropBase64,
+    this.promptFulfillment = false,
   });
 
   final List<BatchSearchItemDto> items;
   final String? sanitizedCropBase64;
+  final bool promptFulfillment;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -526,8 +528,13 @@ class BatchSearchResultsScreen extends HookConsumerWidget {
     }
 
     Future<void> bookSinglePharmacy(PharmacyBasketGroup group) async {
-      final fulfillment = await promptFulfillmentDetails(group.pharmacyName);
-      if (fulfillment == null) return;
+      FulfillmentSelection? fulfillment;
+      if (promptFulfillment) {
+        fulfillment = await promptFulfillmentDetails(group.pharmacyName);
+        if (fulfillment == null) return;
+      } else {
+        fulfillment = const FulfillmentSelection(type: 'Pickup');
+      }
 
       final updated = Set<String>.from(bookedPharmacyIds.value)..add(group.pharmacyId);
       bookedPharmacyIds.value = updated;
@@ -577,8 +584,13 @@ class BatchSearchResultsScreen extends HookConsumerWidget {
     }
 
     Future<void> bookAllPharmacies(List<PharmacyBasketGroup> groups) async {
-      final fulfillment = await promptFulfillmentDetails('جميع الصيدليات');
-      if (fulfillment == null) return;
+      FulfillmentSelection? fulfillment;
+      if (promptFulfillment) {
+      fulfillment = await promptFulfillmentDetails('جميع الصيدليات');
+        if (fulfillment == null) return;
+      } else {
+        fulfillment = const FulfillmentSelection(type: 'Pickup');
+      }
 
       final allIds = groups.map((g) => g.pharmacyId).toSet();
       bookedPharmacyIds.value = allIds;
