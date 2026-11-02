@@ -59,6 +59,8 @@ public static class DependencyInjection
         var redisConn = configuration.GetConnectionString("Redis");
         if (!string.IsNullOrWhiteSpace(redisConn))
         {
+            services.AddSingleton<StackExchange.Redis.IConnectionMultiplexer>(_ =>
+                StackExchange.Redis.ConnectionMultiplexer.Connect(redisConn));
             services.AddStackExchangeRedisCache(opts =>
             {
                 opts.Configuration = redisConn;
@@ -100,11 +102,11 @@ public static class DependencyInjection
         // ── NLP / Clinical Prescription Matching ──────────────────────────────
         // ClinicalMatchingOptions: Singleton — weights don't change at runtime.
         services.AddSingleton(new Nawakes.Application.Common.Models.ClinicalMatchingOptions());
-        // EgyptianDialectNormalizerService: Scoped — accesses DbContext per request.
-        services.AddScoped<IEgyptianDialectNormalizer, EgyptianDialectNormalizerService>();
+        // EgyptianDialectNormalizerService: Singleton — stateless rule table, pure function.
+        services.AddSingleton<IEgyptianDialectNormalizer, EgyptianDialectNormalizerService>();
         // ClinicalPrescriptionMatcher: Singleton — owns the IMemoryCache catalog warm-up.
         // Uses IServiceScopeFactory internally to safely resolve the scoped DbContext
-        services.AddScoped<IClinicalPrescriptionMatcher>(sp =>
+        services.AddSingleton<IClinicalPrescriptionMatcher>(sp =>
             new ClinicalPrescriptionMatcher(
                 sp.GetRequiredService<IServiceScopeFactory>(),
                 sp.GetRequiredService<IEgyptianDialectNormalizer>(),

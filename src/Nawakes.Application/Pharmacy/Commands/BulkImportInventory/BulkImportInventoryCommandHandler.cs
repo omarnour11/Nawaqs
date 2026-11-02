@@ -193,10 +193,17 @@ public sealed class BulkImportInventoryCommandHandler(
             // Clear pharmacy inventory cache
             await cacheService.RemoveAsync($"nawakes:pharmacy:inventory:{pharmacy.Id}", cancellationToken);
 
-            // Clear search cache for all modified medications
+            // Clear search cache for all modified medications (deduplicated across patterns)
+            var invalidatedPatterns = new HashSet<string>(StringComparer.Ordinal);
             foreach (var med in modifiedMedications)
             {
-                await cacheService.RemoveByPatternAsync($"nawakes:search:{med.ToLowerInvariant()}:*", cancellationToken);
+                foreach (var pattern in Nawakes.Domain.Common.DrugNameNormalizer.GetSearchCachePatterns(med))
+                {
+                    if (invalidatedPatterns.Add(pattern))
+                    {
+                        await cacheService.RemoveByPatternAsync(pattern, cancellationToken);
+                    }
+                }
             }
 
             // Enqueue notifications

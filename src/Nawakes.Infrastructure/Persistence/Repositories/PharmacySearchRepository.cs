@@ -93,6 +93,7 @@ public sealed class PharmacySearchRepository(
                     : double.MaxValue
             })
             .Where(x => x.DistanceKm <= radiusKm)
+            .OrderBy(x => x.DistanceKm)
             .ToListAsync(cancellationToken);
 
         // Deduplicate by PharmacyId so a single pharmacy with multiple inventory rows is not counted multiple times

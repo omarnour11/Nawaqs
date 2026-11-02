@@ -28,9 +28,10 @@ public sealed class DeleteInventoryItemCommandHandler(
         if (item is null)
             throw new NotFoundException(nameof(Domain.Entities.InventoryItem), request.Id);
 
-        // Check if there are active reservations holding this item
+        // Check if there are active or ready reservations holding this item
         var hasActiveReservations = await context.Reservations
-            .AnyAsync(r => r.InventoryItemId == item.Id && r.Status == ReservationStatus.Active, cancellationToken);
+            .AnyAsync(r => r.InventoryItemId == item.Id &&
+                           (r.Status == ReservationStatus.Active || r.Status == ReservationStatus.Ready), cancellationToken);
 
         if (hasActiveReservations)
         {
@@ -47,8 +48,10 @@ public sealed class DeleteInventoryItemCommandHandler(
 
         // Invalidate caches
         await cacheService.RemoveAsync($"nawakes:pharmacy:inventory:{pharmacy.Id}", cancellationToken);
-        var medNormalized = item.MedicationName.Trim().ToLowerInvariant();
-        await cacheService.RemoveByPatternAsync($"nawakes:search:{medNormalized}:*", cancellationToken);
+        foreach (var pattern in Nawakes.Domain.Common.DrugNameNormalizer.GetSearchCachePatterns(item.MedicationName))
+        {
+            await cacheService.RemoveByPatternAsync(pattern, cancellationToken);
+        }
     }
 }
 

@@ -179,4 +179,54 @@ public sealed class CompleteReservationCommandHandlerTests
         itemInDb!.Quantity.Should().Be(0);
         itemInDb!.Status.Should().Be(InventoryStatus.OutOfStock);
     }
+
+    [Fact]
+    public async Task Handle_ReadyReservation_ShouldCompleteSuccessfully()
+    {
+        // Arrange
+        var ownerId = Guid.NewGuid();
+        _currentUserMock.Setup(u => u.UserId).Returns(ownerId);
+
+        var pharmacy = CreatePharmacy(ownerId);
+        var item = new InventoryItem
+        {
+            Status = InventoryStatus.Reserved,
+            PharmacyId = pharmacy.Id,
+            Pharmacy = pharmacy,
+            MedicationName = "Concor 5mg",
+            Quantity = 2
+        };
+        var reservation = new Reservation
+        {
+            PharmacyId = pharmacy.Id,
+            Pharmacy = pharmacy,
+            InventoryItemId = item.Id,
+            InventoryItem = item,
+            Status = ReservationStatus.Ready,
+            UserId = Guid.Parse("12345678-1234-1234-1234-123456789abc"),
+            HangfireJobId = "job-ready-1",
+            ExpiresAt = DateTime.UtcNow.AddMinutes(30)
+        };
+
+        _context.Pharmacies.Add(pharmacy);
+        _context.InventoryItems.Add(item);
+        _context.Reservations.Add(reservation);
+        await _context.SaveChangesAsync();
+
+        // Act
+        var result = await _handler.Handle(new CompleteReservationCommand(reservation.Id), CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.Status.Should().Be(nameof(ReservationStatus.Completed));
+
+        var resInDb = await _context.Reservations.FindAsync(reservation.Id);
+        resInDb!.Status.Should().Be(ReservationStatus.Completed);
+
+        var itemInDb = await _context.InventoryItems.FindAsync(item.Id);
+        itemInDb!.Quantity.Should().Be(1);
+        itemInDb!.Status.Should().Be(InventoryStatus.InStock);
+
+        _jobSchedulerMock.Verify(j => j.DeleteJob("job-ready-1"), Times.Once);
+    }
 }

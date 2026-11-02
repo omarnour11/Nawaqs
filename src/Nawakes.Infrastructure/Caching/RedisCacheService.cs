@@ -1,20 +1,24 @@
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
 using Nawakes.Application.Common.Interfaces;
+using StackExchange.Redis;
 using System.Text.Json;
 
 namespace Nawakes.Infrastructure.Caching;
 
 /// <summary>
-/// Redis-backed cache service with graceful degradation.
+/// Redis-backed cache service with graceful degradation and non-blocking SCAN + UNLINK pattern invalidation.
 /// All operations catch exceptions and log warnings — never propagate to callers.
 /// This ensures Redis unavailability never causes a 500 to the client.
 /// </summary>
 public sealed class RedisCacheService(
     IDistributedCache cache,
-    ILogger<RedisCacheService> logger)
+    ILogger<RedisCacheService> logger,
+    IConnectionMultiplexer? multiplexer = null)
     : ICacheService
 {
+    private const string InstancePrefix = "Nawakes:";
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -65,12 +69,51 @@ public sealed class RedisCacheService(
         }
     }
 
-    public Task RemoveByPatternAsync(string pattern, CancellationToken cancellationToken = default)
+    public async Task RemoveByPatternAsync(string pattern, CancellationToken cancellationToken = default)
     {
-        // Pattern-based deletion requires direct StackExchange.Redis connection
-        // for SCAN + DEL. Intentionally left as a no-op here — implement via
-        // ConnectionMultiplexer when cache invalidation by pattern is needed.
-        logger.LogWarning("RemoveByPatternAsync called with pattern {Pattern} — not implemented in this version.", pattern);
-        return Task.CompletedTask;
+        if (string.IsNullOrWhiteSpace(pattern)) return;
+
+        try
+        {
+            if (multiplexer is { IsConnected: true })
+            {
+                var db = multiplexer.GetDatabase();
+                var searchPattern = pattern.StartsWith(InstancePrefix, StringComparison.Ordinal)
+                    ? pattern
+                    : $"{InstancePrefix}{pattern}";
+
+                var batch = new List<RedisKey>(128);
+                foreach (var endpoint in multiplexer.GetEndPoints())
+                {
+                    var server = multiplexer.GetServer(endpoint);
+                    if (!server.IsConnected || server.IsReplica) continue;
+
+                    await foreach (var redisKey in server.KeysAsync(pattern: searchPattern, pageSize: 250).WithCancellation(cancellationToken))
+                    {
+                        batch.Add(redisKey);
+                        if (batch.Count >= 128)
+                        {
+                            await db.KeyDeleteAsync(batch.ToArray(), CommandFlags.FireAndForget);
+                            batch.Clear();
+                        }
+                    }
+                }
+
+                if (batch.Count > 0)
+                {
+                    await db.KeyDeleteAsync(batch.ToArray(), CommandFlags.FireAndForget);
+                }
+
+                logger.LogDebug("Redis SCAN+UNLINK completed for pattern {Pattern}", searchPattern);
+                return;
+            }
+
+            // Fallback when running with in-memory IDistributedCache without multiplexer
+            await cache.RemoveAsync(pattern.TrimEnd('*').TrimEnd(':'), cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Redis REMOVE by pattern failed for pattern {Pattern}.", pattern);
+        }
     }
 }

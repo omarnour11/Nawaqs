@@ -82,13 +82,10 @@ public sealed class AddInventoryItemCommandHandler(
         // Invalidate specific pharmacy inventory cache
         await cacheService.RemoveAsync($"nawakes:pharmacy:inventory:{pharmacy.Id}", cancellationToken);
 
-        // Invalidate relevant search cache matching this medication (both raw and underscored patterns)
-        var medLookup = DrugNameNormalizer.NormalizeLookup(request.MedicationName);
-        var medUnderscored = medLookup.Replace(' ', '_');
-        await cacheService.RemoveByPatternAsync($"nawakes:search:{medUnderscored}:*", cancellationToken);
-        if (medUnderscored != medLookup)
+        // Invalidate relevant search cache matching this medication (raw, underscored, and brand root)
+        foreach (var pattern in DrugNameNormalizer.GetSearchCachePatterns(targetItem.MedicationName))
         {
-            await cacheService.RemoveByPatternAsync($"nawakes:search:{medLookup}:*", cancellationToken);
+            await cacheService.RemoveByPatternAsync(pattern, cancellationToken);
         }
 
         if (targetItem.Status == InventoryStatus.InStock)

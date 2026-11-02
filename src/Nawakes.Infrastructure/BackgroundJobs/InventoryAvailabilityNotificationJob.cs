@@ -45,12 +45,25 @@ public sealed class InventoryAvailabilityNotificationJob(
         var oneMinAgo = DateTime.UtcNow.AddMinutes(-1);
         var itemMedLower = item.MedicationName.Trim().ToLowerInvariant();
         var itemNormLower = item.MedicationNameNormalized.Trim().ToLowerInvariant();
+        var itemNormUpper = item.MedicationNameNormalized.Trim().ToUpperInvariant();
+        var brandToken = itemNormUpper.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? itemNormUpper;
+        var brandTokenLower = itemNormLower.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? itemNormLower;
 
-        // Load active waiting subscribers that match medication name via flexible contains or equality
+        // Pre-filter active waiting subscribers in SQL before fine-grained in-memory matching
         var candidateSubs = await context.Subscriptions
             .Where(s => s.IsActive &&
                         s.QueueStatus == QueueStatus.Waiting &&
-                        (s.LastNotifiedAt == null || s.LastNotifiedAt < oneMinAgo))
+                        (s.LastNotifiedAt == null || s.LastNotifiedAt < oneMinAgo) &&
+                        ((s.MedicationNameNormalized != null &&
+                          (s.MedicationNameNormalized == itemNormUpper ||
+                           s.MedicationNameNormalized == itemNormLower ||
+                           s.MedicationNameNormalized.Contains(brandToken) ||
+                           s.MedicationNameNormalized.Contains(brandTokenLower) ||
+                           itemNormUpper.Contains(s.MedicationNameNormalized) ||
+                           itemNormLower.Contains(s.MedicationNameNormalized))) ||
+                         (s.MedicationName != null &&
+                          (s.MedicationName.Contains(item.MedicationName) ||
+                           item.MedicationName.Contains(s.MedicationName)))))
             .OrderBy(s => s.QueuePosition)
             .ThenBy(s => s.CreatedAt)
             .ToListAsync(cancellationToken);

@@ -480,7 +480,24 @@ Dio dio(Ref ref) {
   return dio;
 }
 
-Future<bool> _tryRefreshToken(FlutterSecureStorage storage, Dio dio) async {
+Future<bool>? _refreshInFlight;
+
+Future<bool> _tryRefreshToken(FlutterSecureStorage storage, Dio dio) {
+  final existing = _refreshInFlight;
+  if (existing != null) {
+    return existing;
+  }
+
+  final future = _executeRefreshToken(storage, dio);
+  _refreshInFlight = future;
+  return future.whenComplete(() {
+    if (identical(_refreshInFlight, future)) {
+      _refreshInFlight = null;
+    }
+  });
+}
+
+Future<bool> _executeRefreshToken(FlutterSecureStorage storage, Dio dio) async {
   try {
     final refresh = await storage.read(key: 'refresh_token');
     if (refresh == null || refresh.isEmpty) return false;
