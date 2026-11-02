@@ -34,9 +34,11 @@ public sealed class CreateReservationCommandHandlerTests
             NullLogger<CreateReservationCommandHandler>.Instance);
     }
 
-    private Nawakes.Domain.Entities.Pharmacy CreatePharmacy(VerificationStatus status = VerificationStatus.Approved) => new Nawakes.Domain.Entities.Pharmacy 
+    private Nawakes.Domain.Entities.Pharmacy CreatePharmacy(
+        VerificationStatus status = VerificationStatus.Approved,
+        string name = "Test Pharmacy") => new Nawakes.Domain.Entities.Pharmacy 
     { 
-        Name = "Test Pharmacy", 
+        Name = name, 
         GeoPoint = new Point(0, 0) { SRID = 4326 },
         OwnerId = Guid.NewGuid(),
         VerificationStatus = status
@@ -211,9 +213,9 @@ public sealed class CreateReservationCommandHandlerTests
         _jobSchedulerMock.Setup(j => j.ScheduleExpiryJob(It.IsAny<Guid>(), It.IsAny<DateTimeOffset>()))
             .Returns("job-multi-rx");
 
-        var p1 = CreatePharmacy("Nile Pharmacy");
-        var p2 = CreatePharmacy("Misr Pharmacy");
-        var p3 = CreatePharmacy("Amal Pharmacy");
+        var p1 = CreatePharmacy(name: "Nile Pharmacy");
+        var p2 = CreatePharmacy(name: "Misr Pharmacy");
+        var p3 = CreatePharmacy(name: "Amal Pharmacy");
 
         var item1 = new InventoryItem { PharmacyId = p1.Id, Pharmacy = p1, Status = InventoryStatus.InStock, MedicationName = "Augmentin 1g" };
         var item2 = new InventoryItem { PharmacyId = p2.Id, Pharmacy = p2, Status = InventoryStatus.InStock, MedicationName = "Concor 5mg" };

@@ -91,7 +91,12 @@ class MockVerificationApiClient implements ApiClient {
           phone: '01011111111',
           trustScore: 4.8,
           distanceKm: 1.5,
-          totalPrice: 150.0,
+          latitude: 30.033,
+          longitude: 31.200,
+          matchedCount: 2,
+          totalRequested: 2,
+          isCompleteMatch: true,
+          totalEstimatedPrice: 150.0,
           items: [
             BatchMedicationDetail(
               medication: 'Augmentin 1g',
@@ -317,7 +322,12 @@ void main() {
             phone: '01011111111',
             trustScore: 4.8,
             distanceKm: 1.0,
-            totalPrice: 90.0,
+            latitude: 30.033,
+            longitude: 31.200,
+            matchedCount: 1,
+            totalRequested: 3,
+            isCompleteMatch: false,
+            totalEstimatedPrice: 90.0,
             items: [
               BatchMedicationDetail(
                 medication: 'Augmentin 1g',
@@ -336,7 +346,12 @@ void main() {
             phone: '01022222222',
             trustScore: 4.7,
             distanceKm: 2.0,
-            totalPrice: 30.0,
+            latitude: 30.050,
+            longitude: 31.200,
+            matchedCount: 1,
+            totalRequested: 3,
+            isCompleteMatch: false,
+            totalEstimatedPrice: 30.0,
             items: [
               BatchMedicationDetail(
                 medication: 'Concor 5mg',
@@ -355,7 +370,12 @@ void main() {
             phone: '01033333333',
             trustScore: 4.9,
             distanceKm: 3.0,
-            totalPrice: 45.0,
+            latitude: 30.055,
+            longitude: 31.210,
+            matchedCount: 1,
+            totalRequested: 3,
+            isCompleteMatch: false,
+            totalEstimatedPrice: 45.0,
             items: [
               BatchMedicationDetail(
                 medication: 'Panadol Extra',
