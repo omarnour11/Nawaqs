@@ -67,18 +67,20 @@ public sealed record SafetyAlertDto
 public interface IPrescriptionSafetyAuditor
 {
     /// <summary>
-    /// Audits candidate medications in a prescription for contraindications, interactions, and allergies.
+    /// Audits candidate medications in a prescription for contraindications, interactions, duplicate active ingredients, chronic conditions, and allergies.
     /// </summary>
     IReadOnlyList<SafetyAlertDto> AuditPrescriptionSafety(
         IReadOnlyList<ParsedCandidateDto> candidates,
-        IReadOnlyList<string>? patientAllergies = null);
+        IReadOnlyList<string>? patientAllergies = null,
+        IReadOnlyList<string>? chronicConditions = null);
 
     /// <summary>
-    /// Audits input medications in a prescription for contraindications, interactions, and allergies.
+    /// Audits input medications in a prescription for contraindications, interactions, duplicate active ingredients, chronic conditions, and allergies.
     /// </summary>
     IReadOnlyList<SafetyAlertDto> AuditPrescriptionSafety(
         IReadOnlyList<SafetyMedicationInput> medications,
-        IReadOnlyList<string>? patientAllergies = null);
+        IReadOnlyList<string>? patientAllergies = null,
+        IReadOnlyList<string>? chronicConditions = null);
 
     /// <summary>
     /// Async overload for auditing medications in a prescription.
@@ -86,5 +88,7 @@ public interface IPrescriptionSafetyAuditor
     Task<IReadOnlyList<SafetyAlertDto>> AuditPrescriptionSafetyAsync(
         IReadOnlyList<SafetyMedicationInput> medications,
         IReadOnlyList<string>? patientAllergies = null,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        IReadOnlyList<string>? chronicConditions = null);
 }
+

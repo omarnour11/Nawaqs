@@ -23,7 +23,9 @@ public sealed class CreateReservationCommandHandler(
     ICurrentUserService currentUser,
     IReservationJobScheduler jobScheduler,
     ILogger<CreateReservationCommandHandler> logger,
-    IPrescriptionSanitizationService? sanitizationService = null)
+    IPrescriptionSanitizationService? sanitizationService = null,
+    IPrescriptionSafetyAuditor? safetyAuditor = null,
+    IUserDirectory? userDirectory = null)
     : IRequestHandler<CreateReservationCommand, ReservationDto>
 {
     private const int HoldDurationHours = 2;
@@ -51,6 +53,13 @@ public sealed class CreateReservationCommandHandler(
         if (item.Pharmacy is not null && item.Pharmacy.VerificationStatus != VerificationStatus.Approved)
         {
             throw new ConflictException("لا يمكن إتمام حجز جديد لأن الصيدلية معلقة أو قيد مراجعة الإدارة حالياً.");
+        }
+
+        // 2.2 Clinical Safety Shield: cross-check against patient's active regimen, allergies, and chronic conditions
+        IReadOnlyList<SafetyAlertDto>? safetyAlerts = null;
+        if (safetyAuditor is not null)
+        {
+            safetyAlerts = await EvaluatePatientSafetyAsync(item.MedicationName, cancellationToken);
         }
 
         // 3. Mutate status — EF tracks the original RowVersion automatically
@@ -116,6 +125,21 @@ public sealed class CreateReservationCommandHandler(
             RelatedEntityId = reservation.Id
         });
 
+        var criticalOrWarning = safetyAlerts?
+            .FirstOrDefault(a => a.Severity is SafetyAlertSeverity.Critical or SafetyAlertSeverity.Warning);
+
+        if (criticalOrWarning is not null)
+        {
+            context.Notifications.Add(new UserNotification
+            {
+                UserId = currentUser.UserId,
+                Type = NotificationType.ClinicalConflict,
+                Title = $"تنبيه أمان دوائي: {criticalOrWarning.Title}",
+                Body = criticalOrWarning.Description,
+                RelatedEntityId = reservation.Id
+            });
+        }
+
         // 7. Schedule Hangfire expiry job (after successful commit)
         var jobId = jobScheduler.ScheduleExpiryJob(reservation.Id, new DateTimeOffset(expiresAt, TimeSpan.Zero));
 
@@ -145,8 +169,81 @@ public sealed class CreateReservationCommandHandler(
             DeliveryLongitude: reservation.DeliveryLongitude,
             DeliveryContactPhone: reservation.DeliveryContactPhone,
             DeliveryNotes: reservation.DeliveryNotes,
-            DeliveryStatus: reservation.DeliveryStatus?.ToString());
+            DeliveryStatus: reservation.DeliveryStatus?.ToString(),
+            SafetyAlerts: safetyAlerts);
     }
+
+    private async Task<IReadOnlyList<SafetyAlertDto>> EvaluatePatientSafetyAsync(
+        string targetMedicationName,
+        CancellationToken cancellationToken)
+    {
+        var activeMeds = await context.PatientMedications
+            .AsNoTracking()
+            .Where(m => m.UserId == currentUser.UserId && m.IsActive)
+            .ToListAsync(cancellationToken);
+
+        IReadOnlyList<string>? allergies = null;
+        IReadOnlyList<string>? chronicConditions = null;
+
+        if (userDirectory is not null)
+        {
+            var summaries = await userDirectory.GetClinicalSummariesAsync([currentUser.UserId], cancellationToken);
+            if (summaries.TryGetValue(currentUser.UserId, out var summary))
+            {
+                if (!string.IsNullOrWhiteSpace(summary.KnownAllergies))
+                {
+                    allergies = summary.KnownAllergies
+                        .Split([',', '،', ';', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                }
+
+                if (!string.IsNullOrWhiteSpace(summary.ChronicConditions))
+                {
+                    chronicConditions = summary.ChronicConditions
+                        .Split([',', '،', ';', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                }
+            }
+        }
+
+        var normalizedNames = activeMeds
+            .Select(m => m.MedicationName)
+            .Append(targetMedicationName)
+            .Select(Nawakes.Domain.Common.DrugNameNormalizer.NormalizeName)
+            .Where(n => !string.IsNullOrWhiteSpace(n))
+            .Distinct()
+            .ToList();
+
+        var edaMatches = await context.EgyptianDrugRegistry
+            .AsNoTracking()
+            .Where(d => normalizedNames.Contains(d.TradeNameNormalized) ||
+                        (d.CommercialNameArNormalized != null && normalizedNames.Contains(d.CommercialNameArNormalized)))
+            .ToListAsync(cancellationToken);
+
+        string? FindActiveIngredient(string med)
+        {
+            var norm = Nawakes.Domain.Common.DrugNameNormalizer.NormalizeName(med);
+            var hit = edaMatches.FirstOrDefault(d =>
+                d.TradeNameNormalized.Equals(norm, StringComparison.OrdinalIgnoreCase) ||
+                (d.CommercialNameArNormalized != null && d.CommercialNameArNormalized.Equals(norm, StringComparison.OrdinalIgnoreCase)));
+            return hit?.ActiveIngredient;
+        }
+
+        var inputs = new List<SafetyMedicationInput>
+        {
+            new(targetMedicationName, FindActiveIngredient(targetMedicationName))
+        };
+
+        foreach (var pm in activeMeds)
+        {
+            inputs.Add(new SafetyMedicationInput(
+                pm.MedicationName,
+                FindActiveIngredient(pm.MedicationName),
+                pm.Strength,
+                pm.DoseSchedule));
+        }
+
+        return safetyAuditor!.AuditPrescriptionSafety(inputs, allergies, chronicConditions);
+    }
+
 
     /// <summary>6 hex chars from a crypto-random source — 16.7M combinations, collision risk negligible at this scale.</summary>
     private static string GenerateCode()

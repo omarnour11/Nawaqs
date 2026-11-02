@@ -1,3 +1,5 @@
+using Nawakes.Application.Common.Interfaces;
+
 namespace Nawakes.Application.Reservations.Dtos;
 
 public sealed record ReservationDto(
@@ -21,8 +23,10 @@ public sealed record ReservationDto(
     double? DeliveryLongitude = null,
     string? DeliveryContactPhone = null,
     string? DeliveryNotes = null,
-    string? DeliveryStatus = null
+    string? DeliveryStatus = null,
+    IReadOnlyList<SafetyAlertDto>? SafetyAlerts = null
 );
+
 
 public sealed record PharmacyReservationDto(
     Guid Id,
