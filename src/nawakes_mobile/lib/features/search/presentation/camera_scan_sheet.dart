@@ -173,27 +173,25 @@ class CameraScanSheet extends HookConsumerWidget {
         final image = await cam.takePicture();
         photo = File(image.path);
         if (!context.mounted) return;
-        final screenSize = MediaQuery.sizeOf(context);
-        final frameRect = PrescriptionFrameCrop.frameRectOnScreen(screenSize);
-        final cropped = await PrescriptionFrameCrop.cropCaptureToFrame(
-          source: photo,
-          controller: cam,
-          screenSize: screenSize,
-          frameRect: frameRect,
+        final rawBytes = await photo.readAsBytes();
+        final fullProcessed = PrescriptionFrameCrop.prepareFullPrescriptionImage(
+          bytes: rawBytes,
+          maxDimension: 1600,
+          quality: 82,
         );
-        if (cropped == null || cropped.isEmpty) {
-          setError('تعذر قص منطقة الروشتة. حاول تاني.');
+        if (fullProcessed.isEmpty) {
+          setError('تعذر معالجة صورة الروشتة. حاول تاني.');
           return;
         }
-        final lines = await ocr.extractFromJpegBytes(cropped);
+        final lines = await ocr.extractFromJpegBytes(fullProcessed);
         if (!context.mounted) return;
         // Non-blocking: Even if on-device ML Kit finds 0 lines in cursive handwriting,
         // we DO NOT abort! Forward the image to Tier 1 Cloud Vision AI.
         Navigator.of(context).pop();
         onScanned(CameraScanResult(
           lines: lines,
-          croppedImageBase64: base64Encode(cropped),
-          imageBytes: cropped,
+          croppedImageBase64: base64Encode(fullProcessed),
+          imageBytes: fullProcessed,
           imageFile: photo,
         ));
       } catch (_) {

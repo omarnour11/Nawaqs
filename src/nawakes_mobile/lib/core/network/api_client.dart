@@ -416,8 +416,9 @@ class MarkReadRequest {
 Dio dio(Ref ref) {
   final dio = Dio(BaseOptions(
     baseUrl: AppConfig.apiBaseUrl,
-    connectTimeout: const Duration(seconds: 4),
-    receiveTimeout: const Duration(seconds: 20),
+    connectTimeout: const Duration(seconds: 15),
+    receiveTimeout: const Duration(seconds: 60),
+    sendTimeout: const Duration(seconds: 60),
   ));
 
   final storage = ref.read(secureStorageProvider);
@@ -434,34 +435,22 @@ Dio dio(Ref ref) {
       handler.next(options);
     },
     onError: (e, handler) async {
-      // If connection failed on development endpoint, attempt alternative physical host (192.168.1.4 <-> 127.0.0.1)
+      // If connection or receive timed out on dev endpoint, automatically attempt alternative endpoint (LAN Wi-Fi 5000 <-> loopback 5001)
       if ((e.type == DioExceptionType.connectionError ||
-              e.type == DioExceptionType.connectionTimeout) &&
+              e.type == DioExceptionType.connectionTimeout ||
+              e.type == DioExceptionType.receiveTimeout) &&
           e.requestOptions.extra['host_retried'] != true &&
           !AppConfig.hasExplicitBaseUrl) {
-        final currentBase = dio.options.baseUrl;
-        String? altBase;
-        if (currentBase.contains(AppConfig.lanHost)) {
-          altBase = currentBase.replaceAll(AppConfig.lanHost, AppConfig.loopbackHost);
-        } else if (currentBase.contains(AppConfig.loopbackHost)) {
-          altBase = currentBase.replaceAll(AppConfig.loopbackHost, AppConfig.lanHost);
-        }
-
-        if (altBase != null) {
-          final opts = e.requestOptions;
-          opts.extra['host_retried'] = true;
-          opts.baseUrl = altBase;
-          try {
-            final response = await dio.fetch(opts);
-            dio.options.baseUrl = altBase;
-            if (altBase.contains(AppConfig.loopbackHost)) {
-              AppConfig.currentHost = AppConfig.loopbackHost;
-            } else if (altBase.contains(AppConfig.lanHost)) {
-              AppConfig.currentHost = AppConfig.lanHost;
-            }
-            return handler.resolve(response);
-          } catch (_) {}
-        }
+        final altBase = AppConfig.alternateApiBaseUrl;
+        final opts = e.requestOptions;
+        opts.extra['host_retried'] = true;
+        opts.baseUrl = altBase;
+        try {
+          final response = await dio.fetch(opts);
+          dio.options.baseUrl = altBase;
+          AppConfig.setActiveEndpoint(altBase);
+          return handler.resolve(response);
+        } catch (_) {}
       }
 
       // 401 → single-flight token refresh, then retry the original request

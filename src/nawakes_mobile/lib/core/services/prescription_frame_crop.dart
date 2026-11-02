@@ -58,6 +58,21 @@ class PrescriptionFrameCrop {
     return Uint8List.fromList(img.encodeJpg(resized, quality: 88));
   }
 
+  /// Prepares the full captured prescription for high-accuracy OCR scanning:
+  /// Applies EXIF orientation rotation and compresses/downsamples cleanly
+  /// WITHOUT prematurely cropping out any medications, instructions, or headers.
+  static Uint8List prepareFullPrescriptionImage({
+    required Uint8List bytes,
+    int maxDimension = 1600,
+    int quality = 82,
+  }) {
+    return downsampleAndCompress(
+      bytes: bytes,
+      maxDimension: maxDimension,
+      quality: quality,
+    );
+  }
+
   /// Downsamples and compresses image on-device (e.g. max 1600px, quality 80)
   /// to cut upload and processing latency drastically.
   static Uint8List downsampleAndCompress({

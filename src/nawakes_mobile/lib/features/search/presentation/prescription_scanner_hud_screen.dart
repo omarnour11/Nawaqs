@@ -127,17 +127,13 @@ class _PrescriptionScannerHudScreenState
         return;
       }
 
-      // 1. Single-pass image processing: downsample & Law 151 sanitize simultaneously
-      final processed = PrescriptionFrameCrop.processPrescriptionAndSanitize(
+      // 1. Prepare full prescription image without premature cropping
+      final fullFrameBytes = PrescriptionFrameCrop.prepareFullPrescriptionImage(
         bytes: rawBytes,
         maxDimension: 1600,
-        quality: 80,
-        headerRatio: 0.20,
-        footerRatio: 0.18,
+        quality: 82,
       );
-      final compressedBytes = processed.compressedBytes;
-      final sanitizedCrop = processed.sanitizedCropBytes;
-      final sanitizedBase64 = base64Encode(sanitizedCrop);
+      final compressedBytes = fullFrameBytes;
 
       // 2. Parallel on-device ML Kit OCR hint extraction (non-blocking with timeout)
       String? effectiveOcrHint = widget.ocrHintText;
@@ -205,6 +201,14 @@ class _PrescriptionScannerHudScreenState
         }
 
         if (basketItems.isNotEmpty) {
+          // Egyptian Law No. 151: Post-scan privacy crop specifically for pharmacist verification
+          final sanitizedCrop = PrescriptionFrameCrop.cropPrescriptionMedicationBody(
+            bytes: fullFrameBytes,
+            headerRatio: 0.20,
+            footerRatio: 0.18,
+          ) ?? fullFrameBytes;
+          final sanitizedBase64 = base64Encode(sanitizedCrop);
+
           await Future<void>.delayed(const Duration(milliseconds: 500));
           if (!mounted) return;
           // Replace HUD with Basket screen
@@ -230,7 +234,7 @@ class _PrescriptionScannerHudScreenState
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = 'حصل خطأ في الاتصال بالخدمة. حاول مرة أخرى.';
+        _errorMessage = 'تعذر الاتصال بالسيرفر. تأكد من تشغيل السيرفر أو الاتصال بنفس الشبكة وإعادة المحاولة.';
       });
     }
   }
@@ -456,7 +460,7 @@ class _PrescriptionScannerHudScreenState
                           ),
                         ),
                         Text(
-                          'Google Gemini 1.5 Flash • تحليل متعدد الأدوية',
+                          'Google Gemini Vision AI • تحليل متعدد الأدوية',
                           style: TextStyle(
                             color: Color(0xFF94A3B8),
                             fontSize: 11,
@@ -628,95 +632,26 @@ class FuturisticRadarSweepHudPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final center = targetRect.center;
-    final maxRadius = math.min(targetRect.width, targetRect.height) * 0.44;
-
-    // 1. Concentric radar rings
-    final ringPaint = Paint()
-      ..color = const Color(0xFF00E676).withValues(alpha: 0.22)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2;
-
-    for (int i = 1; i <= 4; i++) {
-      final r = maxRadius * (i / 4.0);
-      canvas.drawCircle(center, r, ringPaint);
-    }
-
-    // Outer border ring with subtle glow
-    final outerRingPaint = Paint()
-      ..color = const Color(0xFF00E676).withValues(alpha: 0.55)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.8;
-    canvas.drawCircle(center, maxRadius, outerRingPaint);
-
-    // Coordinate crosshairs
-    final axisPaint = Paint()
-      ..color = const Color(0xFF00E676).withValues(alpha: 0.2)
+    // 1. Sleek, clean document framing border
+    final framePaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.16)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.0;
-    canvas.drawLine(
-      Offset(center.dx - maxRadius, center.dy),
-      Offset(center.dx + maxRadius, center.dy),
-      axisPaint,
-    );
-    canvas.drawLine(
-      Offset(center.dx, center.dy - maxRadius),
-      Offset(center.dx, center.dy + maxRadius),
-      axisPaint,
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(targetRect, const Radius.circular(16)),
+      framePaint,
     );
 
-    // 2. Pulse wave ripple expanding outward
-    if (!isFinished) {
-      final pulseRadius = maxRadius * pulseValue;
-      final pulseAlpha = (1.0 - pulseValue).clamp(0.0, 1.0) * 0.4;
-      final pulsePaint = Paint()
-        ..color = const Color(0xFF00E676).withValues(alpha: pulseAlpha)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.0;
-      canvas.drawCircle(center, pulseRadius, pulsePaint);
-    }
-
-    // 3. Rotating radar sweep sector & glowing beam
-    if (!isFinished) {
-      final sweepPaint = Paint()
-        ..shader = SweepGradient(
-          center: Alignment.center,
-          startAngle: 0.0,
-          endAngle: math.pi / 2.5,
-          colors: [
-            Colors.transparent,
-            const Color(0xFF00E676).withValues(alpha: 0.04),
-            const Color(0xFF00E676).withValues(alpha: 0.32),
-          ],
-          transform: GradientRotation(sweepAngle - math.pi / 2.5),
-        ).createShader(Rect.fromCircle(center: center, radius: maxRadius))
-        ..style = PaintingStyle.fill;
-
-      canvas.drawCircle(center, maxRadius, sweepPaint);
-
-      // Leading beam line
-      final beamEnd = Offset(
-        center.dx + maxRadius * math.cos(sweepAngle),
-        center.dy + maxRadius * math.sin(sweepAngle),
-      );
-      final beamPaint = Paint()
-        ..color = const Color(0xFF00E676)
-        ..strokeWidth = 2.5
-        ..strokeCap = StrokeCap.round
-        ..maskFilter = const MaskFilter.blur(BlurStyle.solid, 4);
-      canvas.drawLine(center, beamEnd, beamPaint);
-    }
-
-    // 4. Targeting Corner Reticles around targetRect
+    // 2. High-precision medical corner reticles around targetRect
     final reticlePaint = Paint()
       ..color = isFinished
           ? const Color(0xFF00E676)
-          : const Color(0xFF00E676).withValues(alpha: 0.85)
+          : const Color(0xFF00E676).withValues(alpha: 0.95)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.0
+      ..strokeWidth = 3.5
       ..strokeCap = StrokeCap.round;
 
-    const cornerLen = 28.0;
+    const cornerLen = 32.0;
 
     // Top-Left corner
     canvas.drawLine(targetRect.topLeft,
@@ -741,22 +676,6 @@ class FuturisticRadarSweepHudPainter extends CustomPainter {
         targetRect.bottomRight + const Offset(-cornerLen, 0), reticlePaint);
     canvas.drawLine(targetRect.bottomRight,
         targetRect.bottomRight + const Offset(0, -cornerLen), reticlePaint);
-
-    // 5. Center targeting node & cardinal radar notches
-    final centerDotPaint = Paint()
-      ..color = const Color(0xFF00E676)
-      ..style = PaintingStyle.fill;
-    canvas.drawCircle(center, 3.0, centerDotPaint);
-
-    final tickPaint = Paint()
-      ..color = const Color(0xFF00E676).withValues(alpha: 0.75)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
-    const tickLen = 6.0;
-    canvas.drawLine(Offset(center.dx, center.dy - maxRadius - tickLen), Offset(center.dx, center.dy - maxRadius + tickLen), tickPaint);
-    canvas.drawLine(Offset(center.dx, center.dy + maxRadius - tickLen), Offset(center.dx, center.dy + maxRadius + tickLen), tickPaint);
-    canvas.drawLine(Offset(center.dx - maxRadius - tickLen, center.dy), Offset(center.dx - maxRadius + tickLen, center.dy), tickPaint);
-    canvas.drawLine(Offset(center.dx + maxRadius - tickLen, center.dy), Offset(center.dx + maxRadius + tickLen, center.dy), tickPaint);
   }
 
   @override
