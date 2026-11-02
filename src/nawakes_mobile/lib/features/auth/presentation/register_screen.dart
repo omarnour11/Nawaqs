@@ -3,9 +3,28 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:nawakes_mobile/core/network/api_client.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
 import 'package:nawakes_mobile/features/auth/data/auth_models.dart';
 import 'package:nawakes_mobile/features/auth/presentation/auth_controller.dart';
+
+const List<String> _patientCommonConditions = [
+  'ضغط الدم',
+  'السكري',
+  'حساسية الصدر',
+  'الربو',
+  'أمراض القلب',
+  'قصور الكلى',
+];
+
+const List<String> _patientCommonAllergies = [
+  'بنسلين',
+  'سلفا',
+  'أسبرين',
+  'مسكنات NSAIDs',
+  'حساسية الصدر',
+  'أكزيما',
+];
 
 class RegisterScreen extends HookConsumerWidget {
   const RegisterScreen({super.key});
@@ -17,7 +36,6 @@ class RegisterScreen extends HookConsumerWidget {
     final isPharmacy = useState(false); // false = Patient, true = PharmacyOwner
     final step = useState(0); // 0 = account info, 1 = details (health or pharmacy)
     final authState = ref.watch(authControllerProvider);
-    final isLoading = authState.isLoading;
 
     // Account controllers
     final nameCtrl = useTextEditingController();
@@ -27,9 +45,18 @@ class RegisterScreen extends HookConsumerWidget {
     final confirmCtrl = useTextEditingController();
     final obscure = useState(true);
 
+    // Patient demographics & clinical attributes
+    final selectedGender = useState('ذكر');
+    final ageCtrl = useTextEditingController();
+    final selectedAllergies = useState<Set<String>>({});
+    final selectedConditions = useState<Set<String>>({});
+    final isSubmittingPatient = useState(false);
+
     // Patient health controllers
     final allergiesCtrl = useTextEditingController();
     final conditionsCtrl = useTextEditingController();
+
+    final isLoading = authState.isLoading || isSubmittingPatient.value;
 
     // Pharmacy controllers
     final pharmacyNameCtrl = useTextEditingController();
@@ -102,28 +129,84 @@ class RegisterScreen extends HookConsumerWidget {
       }
     });
 
-    List<String> splitList(String raw) => raw
-        .split(',')
-        .map((e) => e.trim())
-        .where((e) => e.isNotEmpty)
-        .toList();
+    void toggleCondition(String cond) {
+      final updated = Set<String>.from(selectedConditions.value);
+      if (updated.contains(cond)) {
+        updated.remove(cond);
+      } else {
+        updated.add(cond);
+      }
+      selectedConditions.value = updated;
+    }
 
-    Future<void> submitPatient() async {
+    void toggleAllergy(String allergy) {
+      final updated = Set<String>.from(selectedAllergies.value);
+      if (updated.contains(allergy)) {
+        updated.remove(allergy);
+      } else {
+        updated.add(allergy);
+      }
+      selectedAllergies.value = updated;
+    }
+
+    List<String> combineItems(Set<String> selectedChips, String raw) {
+      final items = <String>{...selectedChips};
+      if (raw.trim().isNotEmpty) {
+        items.addAll(
+          raw
+              .split(RegExp(r'[,،\n]'))
+              .map((e) => e.trim())
+              .where((e) => e.isNotEmpty),
+        );
+      }
+      return items.toList();
+    }
+
+    Future<void> submitPatient({bool skipHealth = false}) async {
       if (!formKey.currentState!.validate()) return;
-      await ref.read(authControllerProvider.notifier).register(
-            email: emailCtrl.text.trim(),
-            password: passwordCtrl.text,
-            fullName: nameCtrl.text.trim(),
-            role: 'Patient',
-            knownAllergies: splitList(allergiesCtrl.text),
-            chronicIllnesses: splitList(conditionsCtrl.text),
+      isSubmittingPatient.value = true;
+      try {
+        final conditionsList = skipHealth
+            ? <String>[]
+            : combineItems(selectedConditions.value, conditionsCtrl.text);
+        final allergiesList = skipHealth
+            ? <String>[]
+            : combineItems(selectedAllergies.value, allergiesCtrl.text);
+
+        final req = RegisterRequest(
+          email: emailCtrl.text.trim(),
+          password: passwordCtrl.text,
+          fullName: nameCtrl.text.trim(),
+          role: 'Patient',
+          gender: selectedGender.value,
+          age: int.tryParse(ageCtrl.text.trim()),
+          chronicConditions:
+              conditionsList.isNotEmpty ? conditionsList.join('، ') : null,
+          knownAllergies:
+              allergiesList.isNotEmpty ? allergiesList : null,
+          chronicIllnesses:
+              conditionsList.isNotEmpty ? conditionsList : null,
+        );
+
+        await ref.read(apiClientProvider).register(req);
+        await ref.read(authControllerProvider.notifier).login(
+              emailCtrl.text.trim(),
+              passwordCtrl.text,
+            );
+        if (!context.mounted) return;
+        final err = ref.read(authControllerProvider).error;
+        if (err != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(describeApiError(err))),
           );
-      if (!context.mounted) return;
-      final err = ref.read(authControllerProvider).error;
-      if (err != null) {
+        }
+      } catch (err) {
+        if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(describeApiError(err))),
         );
+      } finally {
+        isSubmittingPatient.value = false;
       }
     }
 
@@ -305,7 +388,7 @@ class RegisterScreen extends HookConsumerWidget {
                             : 'الخطوة 2 من 2 · بيانات الصيدلية والترخيص')
                         : (step.value == 0
                             ? 'الخطوة 1 من 2 · بيانات الحساب'
-                            : 'الخطوة 2 من 2 · ملفك الطبي (اختياري)'),
+                            : 'الخطوة 2 من 2 · البيانات الشخصية والملف الطبي (اختياري)'),
                     style: const TextStyle(
                         fontSize: 12.5, color: AppColors.textSecondary),
                   ),
@@ -367,15 +450,23 @@ class RegisterScreen extends HookConsumerWidget {
                           emailCtrl: emailCtrl,
                           passwordCtrl: passwordCtrl,
                           confirmCtrl: confirmCtrl,
-                          allergiesCtrl: allergiesCtrl,
+                          gender: selectedGender.value,
+                          onGenderChanged: (val) => selectedGender.value = val,
+                          ageCtrl: ageCtrl,
+                          selectedConditions: selectedConditions.value,
+                          onToggleCondition: toggleCondition,
                           conditionsCtrl: conditionsCtrl,
+                          selectedAllergies: selectedAllergies.value,
+                          onToggleAllergy: toggleAllergy,
+                          allergiesCtrl: allergiesCtrl,
                           obscure: obscure,
                           onNext: () {
                             if (formKey.currentState!.validate()) {
                               step.value = 1;
                             }
                           },
-                          onSubmit: submitPatient,
+                          onSubmit: () => submitPatient(skipHealth: false),
+                          onSkip: () => submitPatient(skipHealth: true),
                         ),
                 ),
 
@@ -416,11 +507,19 @@ class _PatientRegistrationForm extends StatelessWidget {
   final TextEditingController emailCtrl;
   final TextEditingController passwordCtrl;
   final TextEditingController confirmCtrl;
-  final TextEditingController allergiesCtrl;
+  final String gender;
+  final ValueChanged<String> onGenderChanged;
+  final TextEditingController ageCtrl;
+  final Set<String> selectedConditions;
+  final ValueChanged<String> onToggleCondition;
   final TextEditingController conditionsCtrl;
+  final Set<String> selectedAllergies;
+  final ValueChanged<String> onToggleAllergy;
+  final TextEditingController allergiesCtrl;
   final ValueNotifier<bool> obscure;
   final VoidCallback onNext;
   final VoidCallback onSubmit;
+  final VoidCallback onSkip;
 
   const _PatientRegistrationForm({
     required this.formKey,
@@ -430,11 +529,19 @@ class _PatientRegistrationForm extends StatelessWidget {
     required this.emailCtrl,
     required this.passwordCtrl,
     required this.confirmCtrl,
-    required this.allergiesCtrl,
+    required this.gender,
+    required this.onGenderChanged,
+    required this.ageCtrl,
+    required this.selectedConditions,
+    required this.onToggleCondition,
     required this.conditionsCtrl,
+    required this.selectedAllergies,
+    required this.onToggleAllergy,
+    required this.allergiesCtrl,
     required this.obscure,
     required this.onNext,
     required this.onSubmit,
+    required this.onSkip,
   });
 
   @override
@@ -446,6 +553,7 @@ class _PatientRegistrationForm extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             TextFormField(
+              key: const Key('register_name_field'),
               controller: nameCtrl,
               textCapitalization: TextCapitalization.words,
               decoration: const InputDecoration(labelText: 'الاسم بالكامل'),
@@ -454,6 +562,7 @@ class _PatientRegistrationForm extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             TextFormField(
+              key: const Key('register_email_field'),
               controller: emailCtrl,
               keyboardType: TextInputType.emailAddress,
               decoration:
@@ -466,6 +575,7 @@ class _PatientRegistrationForm extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             TextFormField(
+              key: const Key('register_password_field'),
               controller: passwordCtrl,
               obscureText: obscure.value,
               decoration: InputDecoration(
@@ -489,6 +599,7 @@ class _PatientRegistrationForm extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             TextFormField(
+              key: const Key('register_confirm_password_field'),
               controller: confirmCtrl,
               obscureText: obscure.value,
               onFieldSubmitted: (_) => onNext(),
@@ -498,6 +609,7 @@ class _PatientRegistrationForm extends StatelessWidget {
             ),
             const SizedBox(height: 18),
             FilledButton(
+              key: const Key('register_next_button'),
               onPressed: onNext,
               style: FilledButton.styleFrom(
                 shape: RoundedRectangleBorder(
@@ -527,7 +639,7 @@ class _PatientRegistrationForm extends StatelessWidget {
               SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'البيانات دي مشفرة وبتساعد الصيدلي يخدمك بأمان وتجنب التداخلات الدوائية.',
+                  'البيانات دي مشفرة وبتساعد الصيدلي يخدمك بأمان وتجنب التداخلات الدوائية والتوصيات المناسبة.',
                   style: TextStyle(
                       fontSize: 11.5,
                       color: AppColors.accentBlue,
@@ -537,26 +649,272 @@ class _PatientRegistrationForm extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
+
+        // Demographics Card (Gender & Age)
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8F9FA),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.hairline),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'البيانات الحيوية (للأمان والجرعات والتوصيات)',
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'النوع',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: InkWell(
+                                key: const Key('gender_male_chip'),
+                                onTap: () => onGenderChanged('ذكر'),
+                                borderRadius: BorderRadius.circular(8),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: gender == 'ذكر'
+                                        ? AppColors.brand900
+                                        : Colors.white,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: gender == 'ذكر'
+                                          ? AppColors.brand900
+                                          : AppColors.hairline,
+                                    ),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    'ذكر 👨',
+                                    style: TextStyle(
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: gender == 'ذكر'
+                                          ? Colors.white
+                                          : AppColors.textPrimary,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: InkWell(
+                                key: const Key('gender_female_chip'),
+                                onTap: () => onGenderChanged('أنثى'),
+                                borderRadius: BorderRadius.circular(8),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: gender == 'أنثى'
+                                        ? AppColors.brand900
+                                        : Colors.white,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: gender == 'أنثى'
+                                          ? AppColors.brand900
+                                          : AppColors.hairline,
+                                    ),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    'أنثى 👩',
+                                    style: TextStyle(
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: gender == 'أنثى'
+                                          ? Colors.white
+                                          : AppColors.textPrimary,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 2,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'العمر بالسنين',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        TextFormField(
+                          key: const Key('register_age_field'),
+                          controller: ageCtrl,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            hintText: 'مثال: 30',
+                            isDense: true,
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 10,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+
+        // Chronic conditions
+        const Text(
+          'الأمراض المزمنة (اختياري)',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'اضغط لاختيار الأمراض الشائعة أو اكتب في الحقل أدناه:',
+          style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: _patientCommonConditions.map((cond) {
+            final isSelected = selectedConditions.contains(cond);
+            return FilterChip(
+              key: Key('condition_chip_$cond'),
+              label: Text(cond),
+              selected: isSelected,
+              onSelected: (_) => onToggleCondition(cond),
+              selectedColor: AppColors.brand700.withValues(alpha: 0.15),
+              checkmarkColor: AppColors.brand700,
+              labelStyle: TextStyle(
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                color: isSelected ? AppColors.brand700 : AppColors.textPrimary,
+              ),
+              backgroundColor: const Color(0xFFF1F3F5),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+                side: BorderSide(
+                  color: isSelected ? AppColors.brand700 : AppColors.hairline,
+                ),
+              ),
+              showCheckmark: true,
+              visualDensity: VisualDensity.compact,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 8),
         TextFormField(
+          key: const Key('register_conditions_field'),
           controller: conditionsCtrl,
           textCapitalization: TextCapitalization.words,
           decoration: const InputDecoration(
-            labelText: 'الأمراض المزمنة (اختياري)',
+            labelText: 'أمراض مزمنة أخرى',
             hintText: 'سكري، ضغط الدم (فصل بفاصلة)',
+            isDense: true,
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 14),
+
+        // Allergies
+        const Text(
+          'الحساسية الدوائية (اختياري)',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'اضغط لاختيار مسببات الحساسية الشائعة أو اكتب مسببات إضافية:',
+          style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: _patientCommonAllergies.map((allergy) {
+            final isSelected = selectedAllergies.contains(allergy);
+            return FilterChip(
+              key: Key('allergy_chip_$allergy'),
+              label: Text(allergy),
+              selected: isSelected,
+              onSelected: (_) => onToggleAllergy(allergy),
+              selectedColor: AppColors.warningBg,
+              checkmarkColor: AppColors.warningText,
+              labelStyle: TextStyle(
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                color: isSelected ? AppColors.warningText : AppColors.textPrimary,
+              ),
+              backgroundColor: const Color(0xFFF1F3F5),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+                side: BorderSide(
+                  color: isSelected ? AppColors.warningIcon : AppColors.hairline,
+                ),
+              ),
+              showCheckmark: true,
+              visualDensity: VisualDensity.compact,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 8),
         TextFormField(
+          key: const Key('register_allergies_field'),
           controller: allergiesCtrl,
           textCapitalization: TextCapitalization.words,
           decoration: const InputDecoration(
-            labelText: 'الحساسية الدوائية (اختياري)',
+            labelText: 'حساسية دوائية أخرى',
             hintText: 'بنسلين، سلفا (فصل بفاصلة)',
+            isDense: true,
           ),
         ),
         const SizedBox(height: 18),
         FilledButton(
+          key: const Key('submit_patient_button'),
           onPressed: isLoading ? null : onSubmit,
           style: FilledButton.styleFrom(
             backgroundColor: AppColors.brand900,
@@ -577,7 +935,8 @@ class _PatientRegistrationForm extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         TextButton(
-          onPressed: isLoading ? null : onSubmit,
+          key: const Key('skip_patient_step_button'),
+          onPressed: isLoading ? null : onSkip,
           child: const Text('تخطي هذه الخطوة'),
         ),
       ],

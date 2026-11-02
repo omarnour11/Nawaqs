@@ -21,6 +21,31 @@ void main() {
       expect(json['pharmacy'], isNull);
     });
 
+    test('Patient registration serializes gender, age, chronicConditions, and knownAllergies', () {
+      final req = RegisterRequest(
+        email: 'patient2@test.com',
+        password: 'Password123',
+        fullName: 'Sara Ahmed',
+        role: 'Patient',
+        gender: 'أنثى',
+        age: 28,
+        chronicConditions: 'السكري، الربو',
+        knownAllergies: ['بنسلين', 'سلفا'],
+        chronicIllnesses: ['السكري', 'الربو'],
+      );
+
+      final json = req.toJson();
+      expect(json['email'], 'patient2@test.com');
+      expect(json['role'], 'Patient');
+      expect(json['gender'], 'أنثى');
+      expect(json['age'], 28);
+      expect(json['chronicConditions'], 'السكري، الربو');
+      expect(json['knownAllergies'], 'بنسلين، سلفا');
+      expect(json['healthQuestionnaire'], isNotNull);
+      expect(json['healthQuestionnaire']['knownAllergies'], ['بنسلين', 'سلفا']);
+      expect(json['healthQuestionnaire']['chronicIllnesses'], ['السكري', 'الربو']);
+    });
+
     test('Pharmacy registration serializes role PharmacyOwner and pharmacy payload', () {
       final req = RegisterRequest(
         email: 'pharmacist@test.com',
