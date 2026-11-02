@@ -201,4 +201,45 @@ public sealed class CreateReservationCommandHandlerTests
         reservationInDb!.PrescriptionCropUrl.Should().Be(expectedCropUrl);
         reservationInDb.PrescriptionCropBytes.Should().Equal(expectedCropBytes);
     }
+
+    [Fact]
+    public async Task Handle_MultiMedicationBasketAcrossThreePharmacies_AttachesSanitizedCropToAllReservations()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        _currentUserMock.Setup(u => u.UserId).Returns(userId);
+        _jobSchedulerMock.Setup(j => j.ScheduleExpiryJob(It.IsAny<Guid>(), It.IsAny<DateTimeOffset>()))
+            .Returns("job-multi-rx");
+
+        var p1 = CreatePharmacy("Nile Pharmacy");
+        var p2 = CreatePharmacy("Misr Pharmacy");
+        var p3 = CreatePharmacy("Amal Pharmacy");
+
+        var item1 = new InventoryItem { PharmacyId = p1.Id, Pharmacy = p1, Status = InventoryStatus.InStock, MedicationName = "Augmentin 1g" };
+        var item2 = new InventoryItem { PharmacyId = p2.Id, Pharmacy = p2, Status = InventoryStatus.InStock, MedicationName = "Concor 5mg" };
+        var item3 = new InventoryItem { PharmacyId = p3.Id, Pharmacy = p3, Status = InventoryStatus.InStock, MedicationName = "Panadol Extra" };
+
+        _context.Pharmacies.AddRange(p1, p2, p3);
+        _context.InventoryItems.AddRange(item1, item2, item3);
+        await _context.SaveChangesAsync();
+
+        const string sanitizedBase64 = "dGVzdF9jcm9wXzEyMw==";
+        var sanitizedCropUrl = $"data:image/jpeg;base64,{sanitizedBase64}";
+        var cropBytes = Convert.FromBase64String(sanitizedBase64);
+
+        // Act: fulfill prescription basket across all 3 pharmacies
+        var res1 = await _handler.Handle(new CreateReservationCommand(item1.Id, sanitizedCropUrl, cropBytes), CancellationToken.None);
+        var res2 = await _handler.Handle(new CreateReservationCommand(item2.Id, sanitizedCropUrl, cropBytes), CancellationToken.None);
+        var res3 = await _handler.Handle(new CreateReservationCommand(item3.Id, sanitizedCropUrl, cropBytes), CancellationToken.None);
+
+        // Assert: all 3 reservations are created at their distinct respective pharmacies with sanitized crop attached
+        res1.PharmacyId.Should().Be(p1.Id);
+        res2.PharmacyId.Should().Be(p2.Id);
+        res3.PharmacyId.Should().Be(p3.Id);
+
+        var allReservations = await _context.Reservations.Where(r => r.UserId == userId).ToListAsync();
+        allReservations.Should().HaveCount(3);
+        allReservations.Should().OnlyContain(r => r.PrescriptionCropUrl == sanitizedCropUrl);
+        allReservations.Should().OnlyContain(r => r.PrescriptionCropBytes != null && r.PrescriptionCropBytes.SequenceEqual(cropBytes));
+    }
 }

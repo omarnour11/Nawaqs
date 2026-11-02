@@ -22,7 +22,8 @@ public sealed class CreateReservationCommandHandler(
     IApplicationDbContext context,
     ICurrentUserService currentUser,
     IReservationJobScheduler jobScheduler,
-    ILogger<CreateReservationCommandHandler> logger)
+    ILogger<CreateReservationCommandHandler> logger,
+    IPrescriptionSanitizationService? sanitizationService = null)
     : IRequestHandler<CreateReservationCommand, ReservationDto>
 {
     private const int HoldDurationHours = 2;
@@ -57,10 +58,18 @@ public sealed class CreateReservationCommandHandler(
 
         // 4. Create the reservation record with a unique pickup code
         var expiresAt = DateTime.UtcNow.AddHours(HoldDurationHours);
-        var cropUrl = request.PrescriptionCropUrl;
-        if (string.IsNullOrWhiteSpace(cropUrl) && request.PrescriptionCropBytes is { Length: > 0 })
+
+        var cropBytes = request.PrescriptionCropBytes;
+        if (cropBytes is { Length: > 0 } && sanitizationService != null)
         {
-            cropUrl = $"data:image/jpeg;base64,{Convert.ToBase64String(request.PrescriptionCropBytes)}";
+            var sanitization = sanitizationService.SanitizePrescription(cropBytes);
+            cropBytes = sanitization.SanitizedImageBytes;
+        }
+
+        var cropUrl = request.PrescriptionCropUrl;
+        if (string.IsNullOrWhiteSpace(cropUrl) && cropBytes is { Length: > 0 })
+        {
+            cropUrl = $"data:image/jpeg;base64,{Convert.ToBase64String(cropBytes)}";
         }
 
         var reservation = new Reservation
@@ -72,7 +81,7 @@ public sealed class CreateReservationCommandHandler(
             ExpiresAt             = expiresAt,
             ReservationCode       = GenerateCode(),
             PrescriptionCropUrl   = cropUrl,
-            PrescriptionCropBytes = request.PrescriptionCropBytes
+            PrescriptionCropBytes = cropBytes
         };
         context.Reservations.Add(reservation);
 

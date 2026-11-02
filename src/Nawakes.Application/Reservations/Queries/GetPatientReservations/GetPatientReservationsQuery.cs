@@ -24,20 +24,30 @@ public sealed class GetPatientReservationsQueryHandler(
             .OrderByDescending(r => r.CreatedAt)
             .ToListAsync(cancellationToken);
 
-        return reservations.Select(r => new ReservationDto(
-            r.Id,
-            r.InventoryItemId,
-            r.InventoryItem.PharmacyId,
-            r.InventoryItem.Pharmacy.Name,
-            r.InventoryItem.Pharmacy.Phone,
-            r.InventoryItem.MedicationName,
-            r.Status.ToString(),
-            DateTime.SpecifyKind(r.ExpiresAt, DateTimeKind.Utc),
-            DateTime.SpecifyKind(r.CreatedAt, DateTimeKind.Utc),
-            r.ReservationCode,
-            r.ClinicalContraindicationReason,
-            r.RecommendedAlternativeMedication,
-            r.RecommendedAlternativeItemId
-        )).ToList();
+        return reservations.Select(r =>
+        {
+            var crop = r.PrescriptionCropUrl;
+            if (string.IsNullOrWhiteSpace(crop) && r.PrescriptionCropBytes is { Length: > 0 })
+            {
+                crop = $"data:image/jpeg;base64,{Convert.ToBase64String(r.PrescriptionCropBytes)}";
+            }
+
+            return new ReservationDto(
+                r.Id,
+                r.InventoryItemId,
+                r.InventoryItem.PharmacyId,
+                r.InventoryItem.Pharmacy.Name,
+                r.InventoryItem.Pharmacy.Phone,
+                r.InventoryItem.MedicationName,
+                r.Status.ToString(),
+                DateTime.SpecifyKind(r.ExpiresAt, DateTimeKind.Utc),
+                DateTime.SpecifyKind(r.CreatedAt, DateTimeKind.Utc),
+                r.ReservationCode,
+                r.ClinicalContraindicationReason,
+                r.RecommendedAlternativeMedication,
+                r.RecommendedAlternativeItemId,
+                crop
+            );
+        }).ToList();
     }
 }

@@ -26,6 +26,7 @@ class MockVerificationApiClient implements ApiClient {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 
   Completer<ParsedMedicationResponse>? parseCompleter;
+  BatchSearchResponse? batchSearchOverride;
   final List<CreateReservationRequest> capturedReservationRequests = [];
 
   @override
@@ -63,7 +64,22 @@ class MockVerificationApiClient implements ApiClient {
   }
 
   @override
+  Future<ParsedMedicationResponse> parsePrescriptionImageBytes(
+    Uint8List bytes, {
+    String filename = 'prescription.jpg',
+    String? ocrHintText,
+  }) {
+    if (parseCompleter != null) {
+      return parseCompleter!.future;
+    }
+    return parsePrescriptionImage(null, ocrHintText);
+  }
+
+  @override
   Future<BatchSearchResponse> batchSearch(BatchSearchRequest request) async {
+    if (batchSearchOverride != null) {
+      return batchSearchOverride!;
+    }
     return BatchSearchResponse(
       totalRequestedItems: 2,
       radiusKm: 15.0,
@@ -282,6 +298,117 @@ void main() {
       for (final req in mockApi.capturedReservationRequests) {
         expect(req.prescriptionCropBase64, equals(testCropBase64));
       }
+    });
+
+    testWidgets('attaches sanitized prescription crop to all reservations when split across 3 distinct pharmacies', (tester) async {
+      final mockApi = MockVerificationApiClient();
+      const testCropBase64 = 'dGhyZWVfcGhhcm1hY2llc19jcm9w';
+
+      // Mock returning 3 partial pharmacies, each having 1 medication
+      mockApi.batchSearchOverride = BatchSearchResponse(
+        totalRequestedItems: 3,
+        radiusKm: 15.0,
+        completePharmacies: [],
+        partialPharmacies: [
+          BatchPharmacyResult(
+            pharmacyId: 'pharm-1',
+            pharmacyName: 'صيدلية النيل',
+            addressLine: 'الدقي',
+            phone: '01011111111',
+            trustScore: 4.8,
+            distanceKm: 1.0,
+            totalPrice: 90.0,
+            items: [
+              BatchMedicationDetail(
+                medication: 'Augmentin 1g',
+                requestedQuantity: 1,
+                inStock: true,
+                price: 90.0,
+                availableQuantity: 5,
+                inventoryItemId: 'inv-item-1',
+              ),
+            ],
+          ),
+          BatchPharmacyResult(
+            pharmacyId: 'pharm-2',
+            pharmacyName: 'صيدلية مصر',
+            addressLine: 'المهندسين',
+            phone: '01022222222',
+            trustScore: 4.7,
+            distanceKm: 2.0,
+            totalPrice: 30.0,
+            items: [
+              BatchMedicationDetail(
+                medication: 'Concor 5mg',
+                requestedQuantity: 1,
+                inStock: true,
+                price: 30.0,
+                availableQuantity: 4,
+                inventoryItemId: 'inv-item-2',
+              ),
+            ],
+          ),
+          BatchPharmacyResult(
+            pharmacyId: 'pharm-3',
+            pharmacyName: 'صيدلية الأمل',
+            addressLine: 'العجوزة',
+            phone: '01033333333',
+            trustScore: 4.9,
+            distanceKm: 3.0,
+            totalPrice: 45.0,
+            items: [
+              BatchMedicationDetail(
+                medication: 'Panadol Extra',
+                requestedQuantity: 2,
+                inStock: true,
+                price: 45.0,
+                availableQuantity: 8,
+                inventoryItemId: 'inv-item-3',
+              ),
+            ],
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            apiClientProvider.overrideWithValue(mockApi),
+          ],
+          child: MaterialApp(
+            home: BatchSearchResultsScreen(
+              items: [
+                BatchSearchItemDto(medication: 'Augmentin 1g', quantity: 1),
+                BatchSearchItemDto(medication: 'Concor 5mg', quantity: 1),
+                BatchSearchItemDto(medication: 'Panadol Extra', quantity: 2),
+              ],
+              sanitizedCropBase64: testCropBase64,
+            ),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pumpAndSettle();
+
+      // Book all pharmacies in split basket
+      final bookAllBtn = find.text('حجز جميع الصيدليات');
+      expect(bookAllBtn, findsOneWidget);
+      await tester.tap(bookAllBtn);
+      await tester.pumpAndSettle();
+
+      // Verify Law No. 151 reassurance statement is displayed in confirmation dialog
+      expect(find.textContaining('تم إرفاق جزء الأدوية فقط من الروشتة لكل صيدلية للتحقق الطبي'), findsOneWidget);
+      expect(find.textContaining('حجب اسم الطبيب وبياناتك الشخصية تماماً'), findsOneWidget);
+
+      // Verify that createReservation was called for each of the 3 items across all 3 pharmacies with sanitized crop
+      expect(mockApi.capturedReservationRequests.length, 3);
+      for (final req in mockApi.capturedReservationRequests) {
+        expect(req.prescriptionCropBase64, equals(testCropBase64));
+      }
+      final bookedItemIds = mockApi.capturedReservationRequests.map((r) => r.inventoryItemId).toSet();
+      expect(bookedItemIds, containsAll(['inv-item-1', 'inv-item-2', 'inv-item-3']));
     });
   });
 }

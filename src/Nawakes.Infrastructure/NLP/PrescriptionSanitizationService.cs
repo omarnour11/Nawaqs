@@ -18,12 +18,14 @@ public sealed class PrescriptionSanitizationService : IPrescriptionSanitizationS
         "عيادة", "مستشفى", "مركز", "clinic", "hospital", "center",
         "دكتور", "د.", "د/ ", "أستاذ", "استشاري", "اخصائي", "doctor", "dr.", "prof", "consultant", "specialist",
         "نقابة", "نقابه", "رقم القيد", "syndicate", "dea", "npi",
-        "اسم المريض", "المريض", "الاسم:", "السن:", "العنوان:", "patient", "name:", "age:", "address:",
+        "اسم المريض", "المريض", "الاسم:", "السن:", "العنوان:", "عنوان", "patient", "name:", "age:", "address:",
+        "تليفون", "هاتف", "موبايل", "ت:", "phone", "tel", "mobile",
+        "توقيع", "signature", "sign:", "ختم", "stamp", "تاريخ", "date:",
         "الدقي", "المهندسين", "سموحة", "المعادي", "مدينة نصر", "مصر الجديدة", "الزمالك", "التجمع",
-        "أكتوبر", "الشيخ زايد", "الرحاب", "مدينتي", "الشروق", "العبور", "حلوان",
+        "أكتوبر", "الشيخ زايد", "الرحاب", "مدينتي", "الشروق", "العبور", "حلوان", "العجوزة",
         "القاهرة", "الإسكندرية", "اسكندرية", "الجيزة", "المنصورة", "طنطا", "أسيوط", "اسيوط",
         "cairo", "alexandria", "giza", "mansoura", "tanta", "asyut", "dokki", "mohandessin", "smouha", "maadi",
-        "nasr city", "heliopolis", "zamalek", "tagamoa", "october", "zayed"
+        "nasr city", "heliopolis", "zamalek", "tagamoa", "october", "zayed", "agouza"
     ];
 
     public PrescriptionSanitizationService(ILogger<PrescriptionSanitizationService> logger)
@@ -35,8 +37,11 @@ public sealed class PrescriptionSanitizationService : IPrescriptionSanitizationS
         byte[] imageBytes,
         string contentType = "image/jpeg",
         double headerRatio = 0.20,
-        double footerRatio = 0.18)
+        double footerRatio = 0.18,
+        string? ocrText = null)
     {
+        var redactedText = !string.IsNullOrWhiteSpace(ocrText) ? RedactPii(ocrText) : null;
+
         if (imageBytes is null || imageBytes.Length == 0)
         {
             return new PrescriptionSanitizationResult(
@@ -48,7 +53,8 @@ public sealed class PrescriptionSanitizationService : IPrescriptionSanitizationS
                 CropY: 0,
                 CropWidth: 0,
                 CropHeight: 0,
-                IsCompliantWithLaw151: false);
+                IsCompliantWithLaw151: false,
+                RedactedOcrText: redactedText);
         }
 
         var (width, height) = TryReadDimensions(imageBytes, contentType);
@@ -79,7 +85,8 @@ public sealed class PrescriptionSanitizationService : IPrescriptionSanitizationS
             CropY: cropTop,
             CropWidth: cropWidth,
             CropHeight: cropHeight,
-            IsCompliantWithLaw151: true);
+            IsCompliantWithLaw151: true,
+            RedactedOcrText: redactedText);
     }
 
     public bool ContainsPii(string text)
@@ -92,15 +99,15 @@ public sealed class PrescriptionSanitizationService : IPrescriptionSanitizationS
             return true;
         }
 
-        // Phone numbers (8+ digits)
-        var digitsOnly = Regex.Replace(text, @"[\s\-\(\)\+]", "");
-        if (Regex.IsMatch(digitsOnly, @"\d{8,}"))
+        // Phone numbers (7+ digits including Arabic-Indic numerals)
+        var digitsOnly = Regex.Replace(text, @"[^\d\u0660-\u0669]", "");
+        if (digitsOnly.Length >= 7)
         {
             return true;
         }
 
-        // Doctor abbreviations e.g. Dr. or د.
-        if (Regex.IsMatch(lower, @"(^|[^a-z\u0600-\u06FF])(dr\.?|prof\.?|د\.?)([^a-z\u0600-\u06FF]|$)"))
+        // Doctor abbreviations e.g. Dr. or د. or د/
+        if (Regex.IsMatch(lower, @"(^|[^a-z\u0600-\u06FF])(dr\.?|prof\.?|د\.?|د\/)([^a-z\u0600-\u06FF]|$)"))
         {
             return true;
         }
@@ -112,7 +119,21 @@ public sealed class PrescriptionSanitizationService : IPrescriptionSanitizationS
     {
         if (string.IsNullOrWhiteSpace(text)) return string.Empty;
 
-        return GeminiPrescriptionService.FilterPiiStopwords(text);
+        var lines = text.Split(["\r\n", "\r", "\n"], StringSplitOptions.None);
+        var filteredLines = new List<string>();
+
+        foreach (var line in lines)
+        {
+            var trimmed = line.Trim();
+            if (string.IsNullOrWhiteSpace(trimmed)) continue;
+
+            if (!ContainsPii(trimmed))
+            {
+                filteredLines.Add(trimmed);
+            }
+        }
+
+        return string.Join(Environment.NewLine, filteredLines);
     }
 
     private static (int width, int height) TryReadDimensions(byte[] bytes, string contentType)
@@ -140,9 +161,21 @@ public sealed class PrescriptionSanitizationService : IPrescriptionSanitizationS
                         continue;
                     }
 
+                    // Skip consecutive 0xFF padding bytes
+                    while (i < bytes.Length - 1 && bytes[i + 1] == 0xFF)
+                    {
+                        i++;
+                    }
+
+                    if (i >= bytes.Length - 8) break;
+
                     var marker = bytes[i + 1];
-                    // SOF0 (0xC0), SOF1 (0xC1), SOF2 (0xC2)
-                    if (marker is 0xC0 or 0xC1 or 0xC2)
+
+                    // End of Image marker
+                    if (marker == 0xD9) break;
+
+                    // SOF0 (0xC0), SOF1 (0xC1), SOF2 (0xC2), SOF3 (0xC3), SOF5..SOF7, SOF9..SOF11
+                    if (marker is 0xC0 or 0xC1 or 0xC2 or 0xC3 or 0xC5 or 0xC6 or 0xC7 or 0xC9 or 0xCA or 0xCB)
                     {
                         var h = (bytes[i + 5] << 8) | bytes[i + 6];
                         var w = (bytes[i + 7] << 8) | bytes[i + 8];
@@ -150,6 +183,7 @@ public sealed class PrescriptionSanitizationService : IPrescriptionSanitizationS
                     }
 
                     var segmentLength = (bytes[i + 2] << 8) | bytes[i + 3];
+                    if (segmentLength < 2) break;
                     i += 2 + segmentLength;
                 }
             }

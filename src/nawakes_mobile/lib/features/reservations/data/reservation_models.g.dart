@@ -18,10 +18,8 @@ Map<String, dynamic> _$CreateReservationRequestToJson(
   CreateReservationRequest instance,
 ) => <String, dynamic>{
   'inventoryItemId': instance.inventoryItemId,
-  if (instance.prescriptionCropBase64 != null)
-    'prescriptionCropBase64': instance.prescriptionCropBase64,
-  if (instance.prescriptionCropUrl != null)
-    'prescriptionCropUrl': instance.prescriptionCropUrl,
+  'prescriptionCropBase64': instance.prescriptionCropBase64,
+  'prescriptionCropUrl': instance.prescriptionCropUrl,
 };
 
 ReservationResponse _$ReservationResponseFromJson(Map<String, dynamic> json) =>

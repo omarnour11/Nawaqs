@@ -21,6 +21,7 @@ public sealed class ParsePrescriptionImageCommandHandler : IRequestHandler<Parse
     private readonly IClinicalPrescriptionMatcher _prescriptionMatcher;
     private readonly ISigDecoderService _sigDecoderService;
     private readonly IPrescriptionSafetyAuditor _safetyAuditor;
+    private readonly IPrescriptionSanitizationService? _sanitizationService;
     private readonly ILogger<ParsePrescriptionImageCommandHandler> _logger;
 
     [ActivatorUtilitiesConstructor]
@@ -30,7 +31,8 @@ public sealed class ParsePrescriptionImageCommandHandler : IRequestHandler<Parse
         IClinicalPrescriptionMatcher prescriptionMatcher,
         ISigDecoderService sigDecoderService,
         IPrescriptionSafetyAuditor safetyAuditor,
-        ILogger<ParsePrescriptionImageCommandHandler> logger)
+        ILogger<ParsePrescriptionImageCommandHandler> logger,
+        IPrescriptionSanitizationService? sanitizationService = null)
     {
         _geminiService = geminiService;
         _secondaryOcrService = secondaryOcrService;
@@ -38,6 +40,7 @@ public sealed class ParsePrescriptionImageCommandHandler : IRequestHandler<Parse
         _sigDecoderService = sigDecoderService;
         _safetyAuditor = safetyAuditor;
         _logger = logger;
+        _sanitizationService = sanitizationService;
     }
 
     /// <summary>
@@ -77,6 +80,11 @@ public sealed class ParsePrescriptionImageCommandHandler : IRequestHandler<Parse
                 ErrorMessage: "صورة الروشتة غير صالحة أو فارغة.");
         }
 
+        // Egyptian Law No. 151 of 2020: Redact PII from OCR hint text if sanitization service is available
+        var effectiveOcrHint = _sanitizationService != null && !string.IsNullOrWhiteSpace(request.OcrHintText)
+            ? _sanitizationService.RedactPii(request.OcrHintText)
+            : request.OcrHintText;
+
         // ── Tier 1: Google Gemini Flash Vision AI ─────────────────────────────
         var isAiQuotaAvailable = _geminiService.IsDailyQuotaAvailable();
         if (isAiQuotaAvailable)
@@ -87,7 +95,7 @@ public sealed class ParsePrescriptionImageCommandHandler : IRequestHandler<Parse
                 var aiResult = await _geminiService.ParsePrescriptionFromImageBytesAsync(
                     request.ImageBytes,
                     request.ContentType,
-                    request.OcrHintText,
+                    effectiveOcrHint,
                     cancellationToken);
 
                 var items = aiResult.Medications is { Count: > 0 }
@@ -271,10 +279,10 @@ public sealed class ParsePrescriptionImageCommandHandler : IRequestHandler<Parse
         }
 
         // ── Tier 3: In-Process Fallback via OCR Hint Text ──────────────────────
-        if (!string.IsNullOrWhiteSpace(request.OcrHintText))
+        if (!string.IsNullOrWhiteSpace(effectiveOcrHint))
         {
             _logger.LogInformation("Falling back to Tier 3 in-process OCR hint text matching.");
-            var hintLines = request.OcrHintText.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            var hintLines = effectiveOcrHint.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             var validHintLines = hintLines.Where(l => l.Length >= 3).ToList();
 
             var matchTasks = validHintLines.Select(async line =>

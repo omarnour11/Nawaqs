@@ -436,6 +436,29 @@ class BatchSearchResultsScreen extends HookConsumerWidget {
                 'تم إرسال طلبات الحجز إلى ${groups.length} صيدليات بنجاح. مدة صلاحية الحجز ساعتان.',
                 style: const TextStyle(fontSize: 14, height: 1.4),
               ),
+              if (sanitizedCropBase64 != null) ...[
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF0FDF4),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFF86EFAC)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.shield_rounded, color: Color(0xFF16A34A), size: 18),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'تم إرفاق جزء الأدوية فقط من الروشتة لكل صيدلية للتحقق الطبي، مع حجب اسم الطبيب وبياناتك الشخصية تماماً لحمايتك وفقاً للقانون رقم 151.',
+                          style: TextStyle(fontSize: 11.5, color: Color(0xFF14532D), height: 1.3),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 12),
               ...groups.map((g) => Padding(
                     padding: const EdgeInsets.only(bottom: 6),

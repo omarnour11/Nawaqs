@@ -83,6 +83,58 @@ class PrescriptionFrameCrop {
     }
   }
 
+  /// Single-pass image processing for minimum latency and zero memory thrashing:
+  /// Decodes image once and returns both:
+  /// - [compressedBytes]: Downsampled full prescription (max 1600px, quality 80)
+  /// - [sanitizedCropBytes]: Law No. 151 medication-only crop (omitting doctor header and patient footer)
+  static ({Uint8List compressedBytes, Uint8List sanitizedCropBytes}) processPrescriptionAndSanitize({
+    required Uint8List bytes,
+    int maxDimension = 1600,
+    int quality = 80,
+    double headerRatio = 0.20,
+    double footerRatio = 0.18,
+  }) {
+    try {
+      final decoded = img.decodeImage(bytes);
+      if (decoded == null) {
+        return (compressedBytes: bytes, sanitizedCropBytes: bytes);
+      }
+      final oriented = _applyExifOrientation(decoded);
+
+      // 1. Resized full image
+      img.Image resized = oriented;
+      if (oriented.width > maxDimension || oriented.height > maxDimension) {
+        if (oriented.width >= oriented.height) {
+          resized = img.copyResize(oriented, width: maxDimension);
+        } else {
+          resized = img.copyResize(oriented, height: maxDimension);
+        }
+      }
+      final compressed = Uint8List.fromList(img.encodeJpg(resized, quality: quality));
+
+      // 2. Crop medication body from resized image
+      final clampedHeader = headerRatio.clamp(0.10, 0.35);
+      final clampedFooter = footerRatio.clamp(0.10, 0.35);
+
+      final cropTop = (resized.height * clampedHeader).round().clamp(0, resized.height - 1);
+      final cropBottom = (resized.height * (1.0 - clampedFooter)).round().clamp(cropTop + 1, resized.height);
+      final cropHeight = cropBottom - cropTop;
+
+      final cropped = img.copyCrop(
+        resized,
+        x: 0,
+        y: cropTop,
+        width: resized.width,
+        height: cropHeight,
+      );
+
+      final cropBytes = Uint8List.fromList(img.encodeJpg(cropped, quality: quality));
+      return (compressedBytes: compressed, sanitizedCropBytes: cropBytes);
+    } catch (_) {
+      return (compressedBytes: bytes, sanitizedCropBytes: bytes);
+    }
+  }
+
   /// Crops out clinic/doctor header (top ~20%) and patient footer (bottom ~18%)
   /// under Egyptian Personal Data Protection Law No. 151 of 2020.
   /// Preserves only the middle medication body for safe pharmacy verification.

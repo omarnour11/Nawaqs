@@ -30,7 +30,8 @@ public interface IPrescriptionSanitizationService
         byte[] imageBytes,
         string contentType = "image/jpeg",
         double headerRatio = 0.20,
-        double footerRatio = 0.18);
+        double footerRatio = 0.18,
+        string? ocrText = null);
 
     /// <summary>
     /// Determines whether the given text contains Egyptian PII / PHI (doctor names, clinics, syndicate numbers, patient info, Egyptian addresses).

@@ -128,34 +128,36 @@ class _PrescriptionScannerHudScreenState
         return;
       }
 
-      // 1. Downsample and compress on-device (e.g. 1600px max dimension, quality 80)
-      final compressedBytes = PrescriptionFrameCrop.downsampleAndCompress(
+      // 1. Single-pass image processing: downsample & Law 151 sanitize simultaneously
+      final processed = PrescriptionFrameCrop.processPrescriptionAndSanitize(
         bytes: rawBytes,
         maxDimension: 1600,
         quality: 80,
-      );
-
-      // 2. Crop prescription medication body under Law No. 151
-      final sanitizedCrop = PrescriptionFrameCrop.cropPrescriptionMedicationBody(
-        bytes: compressedBytes,
         headerRatio: 0.20,
         footerRatio: 0.18,
-        maxDimension: 1600,
-        quality: 80,
-      ) ?? compressedBytes;
-
+      );
+      final compressedBytes = processed.compressedBytes;
+      final sanitizedCrop = processed.sanitizedCropBytes;
       final sanitizedBase64 = base64Encode(sanitizedCrop);
 
-      // 3. Parallel OCR & upload
+      // 2. Parallel on-device ML Kit OCR hint extraction (non-blocking with timeout)
       String? effectiveOcrHint = widget.ocrHintText;
       if (effectiveOcrHint == null || effectiveOcrHint.isEmpty) {
         try {
-          final ocr = OnDeviceOcrService();
-          final lines = await ocr.extractFromJpegBytes(compressedBytes);
-          if (lines.isNotEmpty) {
-            effectiveOcrHint = lines.join('\n');
-          }
-          await ocr.dispose();
+          final ocrTask = () async {
+            final ocr = OnDeviceOcrService();
+            try {
+              final lines = await ocr.extractFromJpegBytes(compressedBytes);
+              return lines.isNotEmpty ? lines.join('\n') : null;
+            } finally {
+              await ocr.dispose();
+            }
+          }();
+
+          effectiveOcrHint = await ocrTask.timeout(
+            const Duration(milliseconds: 1200),
+            onTimeout: () => null,
+          );
         } catch (_) {}
       }
 
@@ -740,6 +742,22 @@ class FuturisticRadarSweepHudPainter extends CustomPainter {
         targetRect.bottomRight + const Offset(-cornerLen, 0), reticlePaint);
     canvas.drawLine(targetRect.bottomRight,
         targetRect.bottomRight + const Offset(0, -cornerLen), reticlePaint);
+
+    // 5. Center targeting node & cardinal radar notches
+    final centerDotPaint = Paint()
+      ..color = const Color(0xFF00E676)
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(center, 3.0, centerDotPaint);
+
+    final tickPaint = Paint()
+      ..color = const Color(0xFF00E676).withValues(alpha: 0.75)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+    const tickLen = 6.0;
+    canvas.drawLine(Offset(center.dx, center.dy - maxRadius - tickLen), Offset(center.dx, center.dy - maxRadius + tickLen), tickPaint);
+    canvas.drawLine(Offset(center.dx, center.dy + maxRadius - tickLen), Offset(center.dx, center.dy + maxRadius + tickLen), tickPaint);
+    canvas.drawLine(Offset(center.dx - maxRadius - tickLen, center.dy), Offset(center.dx - maxRadius + tickLen, center.dy), tickPaint);
+    canvas.drawLine(Offset(center.dx + maxRadius - tickLen, center.dy), Offset(center.dx + maxRadius + tickLen, center.dy), tickPaint);
   }
 
   @override

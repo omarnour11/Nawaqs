@@ -103,6 +103,50 @@ public sealed class PrescriptionSanitizationServiceTests
     }
 
     [Fact]
+    public void SanitizePrescription_JpegImage_ShouldCalculateCorrectMedicationCropWindow()
+    {
+        // Arrange: Valid JPEG with APP0 and SOF0 marker (1200x1600)
+        var jpeg = new byte[32];
+        jpeg[0] = 0xFF; jpeg[1] = 0xD8; // SOI
+        jpeg[2] = 0xFF; jpeg[3] = 0xE0; // APP0
+        jpeg[4] = 0x00; jpeg[5] = 0x06; // Length = 6
+        jpeg[6] = 0x00; jpeg[7] = 0x00; jpeg[8] = 0x00; jpeg[9] = 0x00;
+        jpeg[10] = 0xFF; jpeg[11] = 0xC0; // SOF0
+        jpeg[12] = 0x00; jpeg[13] = 0x0B; // Length = 11
+        jpeg[14] = 0x08; // Precision 8
+        jpeg[15] = 0x06; jpeg[16] = 0x40; // Height = 1600 (0x0640)
+        jpeg[17] = 0x04; jpeg[18] = 0xB0; // Width = 1200 (0x04B0)
+
+        // Act
+        var result = _sanitizer.SanitizePrescription(jpeg, "image/jpeg", headerRatio: 0.20, footerRatio: 0.18);
+
+        // Assert
+        result.IsCompliantWithLaw151.Should().BeTrue();
+        result.OriginalWidth.Should().Be(1200);
+        result.OriginalHeight.Should().Be(1600);
+        result.CropX.Should().Be(0);
+        result.CropY.Should().Be(320); // 1600 * 0.20
+        result.CropHeight.Should().Be(992); // 1600 * (1 - 0.20 - 0.18) = 992
+        result.CropWidth.Should().Be(1200);
+    }
+
+    [Fact]
+    public void SanitizePrescription_WithOcrText_ShouldPopulateRedactedOcrText()
+    {
+        // Arrange
+        const string rawOcr = "عيادة دكتور أحمد\nConcor 5mg\nتليفون: 01012345678";
+
+        // Act
+        var result = _sanitizer.SanitizePrescription([], "image/jpeg", ocrText: rawOcr);
+
+        // Assert
+        result.RedactedOcrText.Should().NotBeNull();
+        result.RedactedOcrText.Should().Contain("Concor 5mg");
+        result.RedactedOcrText.Should().NotContain("دكتور أحمد");
+        result.RedactedOcrText.Should().NotContain("01012345678");
+    }
+
+    [Fact]
     public void SanitizePrescription_EmptyBytes_ShouldReturnNonCompliant()
     {
         // Act

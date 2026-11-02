@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -443,13 +443,15 @@ public sealed class GeminiPrescriptionService : IGeminiPrescriptionService
         var piiLineIndicators = new[]
         {
             "عيادة", "مستشفى", "مركز", "clinic", "hospital", "center",
-            "دكتور", "د.", "أستاذ", "استشاري", "اخصائي", "doctor", "dr.", "prof", "consultant", "specialist",
+            "دكتور", "د.", "د/ ", "أستاذ", "استشاري", "اخصائي", "طبيب", "الطبيب", "doctor", "dr.", "prof", "consultant", "specialist",
             "نقابة", "نقابه", "رقم القيد", "syndicate", "dea", "npi",
-            "اسم المريض", "المريض", "الاسم:", "السن:", "العنوان:", "patient", "name:", "age:", "address:",
+            "اسم المريض", "المريض", "الاسم:", "الاسم", "السن:", "السن", "العنوان:", "العنوان", "patient", "name:", "age:", "address:",
+            "تليفون", "هاتف", "موبايل", "ت:", "فكس", "phone", "tel", "mobile", "cell", "fax", "contact",
+            "توقيع", "signature", "sign:", "ختم", "stamp",
             "الدقي", "المهندسين", "سموحة", "المعادي", "مدينة نصر", "مصر الجديدة", "الزمالك", "التجمع",
-            "أكتوبر", "الشيخ زايد", "الرحاب", "مدينتي", "الشروق", "العبور", "حلوان",
+            "أكتوبر", "الشيخ زايد", "الرحاب", "مدينتي", "الشروق", "العبور", "حلوان", "العجوزة",
             "القاهرة", "الإسكندرية", "اسكندرية", "الجيزة", "المنصورة", "طنطا", "أسيوط", "اسيوط",
-            "cairo", "alexandria", "giza", "mansoura", "tanta", "dokki", "mohandessin", "smouha",
+            "cairo", "alexandria", "giza", "mansoura", "tanta", "dokki", "mohandessin", "smouha", "agouza",
             "تاريخ:", "تاريخ :", "date:"
         };
 
@@ -460,6 +462,16 @@ public sealed class GeminiPrescriptionService : IGeminiPrescriptionService
 
             var lower = trimmed.ToLowerInvariant();
             var isPii = piiLineIndicators.Any(pii => lower.Contains(pii));
+
+            // Law No. 151: Check for phone numbers (7+ digits including Arabic-Indic numerals)
+            if (!isPii)
+            {
+                var digits = System.Text.RegularExpressions.Regex.Replace(trimmed, @"[^\d\u0660-\u0669]", "");
+                if (digits.Length >= 7)
+                {
+                    isPii = true;
+                }
+            }
 
             if (!isPii)
             {
