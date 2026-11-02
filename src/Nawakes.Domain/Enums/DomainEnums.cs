@@ -28,8 +28,10 @@ public enum VerificationStatus : byte
 public enum ReportType : byte
 {
     Inaccurate = 0,
-    Found = 1
+    Found = 1,
+    PriceGouging = 2
 }
+
 
 public enum ReportStatus : byte
 {
