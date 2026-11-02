@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -63,7 +62,6 @@ class MockVerificationApiClient implements ApiClient {
     ));
   }
 
-  @override
   Future<ParsedMedicationResponse> parsePrescriptionImageBytes(
     Uint8List bytes, {
     String filename = 'prescription.jpg',

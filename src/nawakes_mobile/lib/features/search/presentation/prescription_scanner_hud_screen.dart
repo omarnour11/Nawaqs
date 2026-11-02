@@ -7,7 +7,6 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nawakes_mobile/core/network/api_client.dart';
-import 'package:nawakes_mobile/core/network/api_response_models.dart';
 import 'package:nawakes_mobile/core/services/on_device_ocr_service.dart';
 import 'package:nawakes_mobile/core/services/prescription_frame_crop.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
@@ -168,7 +167,7 @@ class _PrescriptionScannerHudScreenState
 
       if (!mounted) return;
 
-      if (response != null && response.isSuccess) {
+      if (response.isSuccess) {
         setState(() {
           _isFinished = true;
           _currentStage = 3;
@@ -213,7 +212,7 @@ class _PrescriptionScannerHudScreenState
             MaterialPageRoute(
               builder: (_) => PrescriptionBasketScreen(
                 initialItems: basketItems,
-                safetyAlerts: response?.safetyAlerts,
+                safetyAlerts: response.safetyAlerts,
                 sanitizedCropBytes: sanitizedCrop,
                 sanitizedCropBase64: sanitizedBase64,
               ),
@@ -225,7 +224,7 @@ class _PrescriptionScannerHudScreenState
 
       // If no medication recognized
       setState(() {
-        _errorMessage = response?.errorMessage ??
+        _errorMessage = response.errorMessage ??
             'تعذر قراءة أدوية الروشتة بدقة. تأكد من إضاءة الصورة ووضوح خط الطبيب.';
       });
     } catch (e) {
