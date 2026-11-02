@@ -152,7 +152,7 @@ class _ProfileBody extends HookConsumerWidget {
         }
 
         final savedNotes = buf.toString().trim();
-        await ref.read(profileControllerProvider.notifier).updateProfile(
+        await ref.read(profileControllerProvider.notifier).updateClinicalProfile(
               fullName: nameCtrl.text.trim().isEmpty ? null : nameCtrl.text.trim(),
               phone: phoneCtrl.text.trim().isEmpty ? null : phoneCtrl.text.trim(),
               medicalHistoryNotes: savedNotes,

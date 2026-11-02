@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part 'pharmacy_dashboard_models.dart';
+part of 'pharmacy_dashboard_models.dart';
 
 // **************************************************************************
 // JsonSerializableGenerator
