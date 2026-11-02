@@ -4,6 +4,9 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:image/image.dart' as img;
+import 'package:nawakes_mobile/core/location/location_service.dart';
 import 'package:nawakes_mobile/core/network/api_client.dart';
 import 'package:nawakes_mobile/core/network/api_response_models.dart';
 import 'package:nawakes_mobile/core/services/prescription_frame_crop.dart';
@@ -12,13 +15,15 @@ import 'package:nawakes_mobile/features/search/presentation/batch_search_results
 import 'package:nawakes_mobile/features/search/presentation/prescription_basket_screen.dart';
 import 'package:nawakes_mobile/features/search/presentation/prescription_scanner_hud_screen.dart';
 
-// Minimal 1x1 valid PNG
-final Uint8List kTestImagePng = Uint8List.fromList([
-  137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 1,
-  0, 0, 0, 1, 8, 6, 0, 0, 0, 31, 21, 196, 137, 0, 0, 0, 10, 73, 68, 65, 84,
-  120, 156, 99, 0, 1, 0, 0, 5, 0, 1, 13, 10, 45, 180, 0, 0, 0, 0, 73, 69, 78,
-  22, 174, 66, 96, 130
-]);
+// Valid 200x200 JPEG for image downsample and cropping tests
+final Uint8List kTestImagePng = Uint8List.fromList(
+  img.encodeJpg(img.Image(width: 200, height: 200)),
+);
+
+class FakeTestLocationService extends LocationService {
+  @override
+  Future<Position?> getCurrentLocation() async => null;
+}
 
 class MockVerificationApiClient implements ApiClient {
   @override
@@ -267,6 +272,7 @@ void main() {
         ProviderScope(
           overrides: [
             apiClientProvider.overrideWithValue(mockApi),
+            locationServiceProvider.overrideWithValue(FakeTestLocationService()),
           ],
           child: MaterialApp(
             home: BatchSearchResultsScreen(
@@ -293,7 +299,8 @@ void main() {
       final reserveBtn = find.text('حجز الصيدلية');
       expect(reserveBtn, findsOneWidget);
       await tester.tap(reserveBtn);
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
 
       // 3. Verify that createReservation was called for each assigned item with sanitized crop attached!
       expect(mockApi.capturedReservationRequests, isNotEmpty);
@@ -392,6 +399,7 @@ void main() {
         ProviderScope(
           overrides: [
             apiClientProvider.overrideWithValue(mockApi),
+            locationServiceProvider.overrideWithValue(FakeTestLocationService()),
           ],
           child: MaterialApp(
             home: BatchSearchResultsScreen(
@@ -414,7 +422,8 @@ void main() {
       final bookAllBtn = find.text('حجز جميع الصيدليات');
       expect(bookAllBtn, findsOneWidget);
       await tester.tap(bookAllBtn);
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
 
       // Verify Law No. 151 reassurance statement is displayed in confirmation dialog
       expect(find.textContaining('تم إرفاق جزء الأدوية فقط من الروشتة لكل صيدلية للتحقق الطبي'), findsOneWidget);

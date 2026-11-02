@@ -688,7 +688,7 @@ void main() {
       expect(find.text('أدوية الروشتة المفروزة'), findsOneWidget);
       expect(find.text('Panadol Extra'), findsOneWidget);
       expect(find.text('Concor 5mg'), findsOneWidget);
-      expect(find.text('Augmentin 1g'), findsOneWidget);
+      expect(find.text('Augmentin 1g', skipOffstage: false), findsOneWidget);
     });
   });
 }
