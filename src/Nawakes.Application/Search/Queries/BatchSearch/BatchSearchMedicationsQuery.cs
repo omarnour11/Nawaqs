@@ -10,7 +10,8 @@ public sealed record BatchSearchMedicationsQuery(
     IReadOnlyList<BatchSearchItemRequest> Items,
     double Lat,
     double Lng,
-    decimal RadiusKm = 10m) : IRequest<BatchSearchMedicationsResponse>;
+    decimal RadiusKm = 10m,
+    string OptimizationStrategy = "Balanced") : IRequest<BatchSearchMedicationsResponse>;
 
 public sealed record BatchSearchMedicationItemDto(
     string Medication,
@@ -35,8 +36,35 @@ public sealed record BatchPharmacyResultDto(
     decimal TotalEstimatedPrice,
     IReadOnlyList<BatchSearchMedicationItemDto> Items);
 
+public sealed record SplitBasketStopDto(
+    Guid PharmacyId,
+    string PharmacyName,
+    string AddressLine,
+    string Phone,
+    decimal TrustScore,
+    double DistanceFromUserKm,
+    double Latitude,
+    double Longitude,
+    decimal SubtotalPrice,
+    IReadOnlyList<BatchSearchMedicationItemDto> AssignedItems);
+
+public sealed record SplitBasketPlanDto(
+    string PlanType,
+    string ArabicLabel,
+    int CoveredItemsCount,
+    int TotalRequestedItems,
+    bool IsFullCoverage,
+    decimal CombinedTotalPrice,
+    double TotalRouteDistanceKm,
+    double InterPharmacyDistanceKm,
+    decimal AverageTrustScore,
+    decimal SavingsVsSinglePharmacyEgp,
+    IReadOnlyList<SplitBasketStopDto> Stops);
+
 public sealed record BatchSearchMedicationsResponse(
     IReadOnlyList<BatchPharmacyResultDto> CompletePharmacies,
     IReadOnlyList<BatchPharmacyResultDto> PartialPharmacies,
     int TotalRequestedItems,
-    decimal RadiusKm);
+    decimal RadiusKm,
+    IReadOnlyList<SplitBasketPlanDto>? OptimalSplitPlans = null);
+

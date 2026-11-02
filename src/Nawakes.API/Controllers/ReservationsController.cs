@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Nawakes.Application.Reservations.Commands.CancelReservation;
+using Nawakes.Application.Reservations.Commands.CreateBatchReservation;
 using Nawakes.Application.Reservations.Commands.CreateReservation;
 using Nawakes.Application.Reservations.Commands.ReserveAlternative;
 using Nawakes.Application.Reservations.Dtos;
@@ -69,6 +70,44 @@ public sealed class ReservationsController(ISender mediator) : ControllerBase
         return CreatedAtAction(nameof(Create), new { id = dto.Id }, ToResponse(dto));
     }
 
+    /// <summary>
+    /// Places coordinated 2-hour holds across multiple inventory items (single-stop or 2-pharmacy split basket).
+    /// </summary>
+    [HttpPost("batch")]
+    [ProducesResponseType(typeof(BatchReservationResultDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<BatchReservationResultDto>> CreateBatch(
+        [FromBody] CreateBatchReservationRequest request,
+        CancellationToken cancellationToken)
+    {
+        byte[]? cropBytes = null;
+        if (!string.IsNullOrWhiteSpace(request.PrescriptionCropBase64))
+        {
+            try
+            {
+                cropBytes = Convert.FromBase64String(request.PrescriptionCropBase64);
+            }
+            catch {}
+        }
+
+        var items = request.Items.Select(i => new BatchReservationStopItem(
+            i.InventoryItemId,
+            string.Equals(i.FulfillmentType, "Delivery", StringComparison.OrdinalIgnoreCase)
+                ? Nawakes.Domain.Enums.FulfillmentType.Delivery
+                : Nawakes.Domain.Enums.FulfillmentType.Pickup,
+            i.DeliveryAddress,
+            i.DeliveryLatitude,
+            i.DeliveryLongitude,
+            i.DeliveryContactPhone,
+            i.DeliveryNotes)).ToList();
+
+        var result = await mediator.Send(
+            new CreateBatchReservationCommand(items, request.PrescriptionCropUrl, cropBytes),
+            cancellationToken);
+
+        return Ok(result);
+    }
+
     /// <summary>Reserve recommended alternative medication from a previous reservation in 1-click.</summary>
     /// <param name="id">Prior Reservation GUID.</param>
     [HttpPost("{id:guid}/reserve-alternative")]
@@ -99,6 +138,7 @@ public sealed class ReservationsController(ISender mediator) : ControllerBase
         return NoContent();
     }
 
+
     private static ReservationResponse ToResponse(ReservationDto dto) => new(
         dto.Id, dto.InventoryItemId, dto.PharmacyId,
         dto.PharmacyName, dto.MedicationName,
@@ -126,6 +166,20 @@ public sealed record CreateReservationRequest(
     string? DeliveryContactPhone = null,
     string? DeliveryNotes = null);
 
+public sealed record CreateBatchReservationItemRequest(
+    Guid InventoryItemId,
+    string? FulfillmentType = "Pickup",
+    string? DeliveryAddress = null,
+    double? DeliveryLatitude = null,
+    double? DeliveryLongitude = null,
+    string? DeliveryContactPhone = null,
+    string? DeliveryNotes = null);
+
+public sealed record CreateBatchReservationRequest(
+    IReadOnlyList<CreateBatchReservationItemRequest> Items,
+    string? PrescriptionCropUrl = null,
+    string? PrescriptionCropBase64 = null);
+
 public sealed record ReservationResponse(
     Guid Id,
     Guid InventoryItemId,
@@ -144,3 +198,4 @@ public sealed record ReservationResponse(
     string? DeliveryContactPhone = null,
     string? DeliveryNotes = null,
     string? DeliveryStatus = null);
+

@@ -177,7 +177,7 @@ public sealed class SearchController(ISender mediator) : ControllerBase
     /// <summary>
     /// Multi-medication batch search across nearby pharmacies.
     /// Prioritizes pharmacies that have ALL items in stock first (Priority #1),
-    /// followed by partial fulfillments sorted by matched item count.
+    /// followed by partial fulfillments and smart 2-pharmacy split-basket plans.
     /// </summary>
     [HttpPost("batch")]
     [EnableRateLimiting("search")]
@@ -188,16 +188,36 @@ public sealed class SearchController(ISender mediator) : ControllerBase
         CancellationToken cancellationToken)
     {
         var items = request.Items.Select(i => new BatchSearchItemRequest(i.Medication, i.Quantity > 0 ? i.Quantity : 1)).ToList();
-        var query = new BatchSearchMedicationsQuery(items, request.Lat, request.Lng, request.RadiusKm > 0 ? request.RadiusKm : 10m);
+        var query = new BatchSearchMedicationsQuery(
+            items,
+            request.Lat,
+            request.Lng,
+            request.RadiusKm > 0 ? request.RadiusKm : 10m,
+            request.OptimizationStrategy ?? "Balanced");
         var result = await mediator.Send(query, cancellationToken);
         return Ok(result);
     }
+
+    /// <summary>
+    /// Computes optimal single-stop vs 2-pharmacy split-basket combinations
+    /// ranked by ShortestRoute, LowestCost, and HighestTrust.
+    /// </summary>
+    [HttpPost("optimize-basket")]
+    [EnableRateLimiting("search")]
+    [ProducesResponseType(typeof(BatchSearchMedicationsResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<BatchSearchMedicationsResponse>> OptimizeBasket(
+        [FromBody] BatchSearchRequest request,
+        CancellationToken cancellationToken)
+        => await BatchSearch(request, cancellationToken);
 
     public sealed record BatchSearchRequest(
         IReadOnlyList<BatchSearchItemDto> Items,
         double Lat,
         double Lng,
-        decimal RadiusKm = 10m);
+        decimal RadiusKm = 10m,
+        string? OptimizationStrategy = "Balanced");
 
     public sealed record BatchSearchItemDto(string Medication, int Quantity = 1);
 }
+
