@@ -160,4 +160,45 @@ public sealed class CreateReservationCommandHandlerTests
 
         _jobSchedulerMock.Verify(j => j.ScheduleExpiryJob(reservationInDb.Id, It.IsAny<DateTimeOffset>()), Times.Once);
     }
+
+    [Fact]
+    public async Task Handle_Success_WithPrescriptionCrop_ShouldStoreSanitizedCropUrlAndBytes()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        _currentUserMock.Setup(u => u.UserId).Returns(userId);
+
+        var pharmacy = CreatePharmacy();
+        var item = new InventoryItem 
+        { 
+            PharmacyId = pharmacy.Id, 
+            Status = InventoryStatus.InStock, 
+            Pharmacy = pharmacy,
+            MedicationName = "Augmentin 1g"
+        };
+        
+        _context.Pharmacies.Add(pharmacy);
+        _context.InventoryItems.Add(item);
+        await _context.SaveChangesAsync();
+
+        _jobSchedulerMock.Setup(j => j.ScheduleExpiryJob(It.IsAny<Guid>(), It.IsAny<DateTimeOffset>()))
+            .Returns("job-rx-verify");
+
+        const string expectedCropUrl = "https://cdn.nawakes.app/prescriptions/crop_123.jpg";
+        var expectedCropBytes = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0, 0x01, 0x02 };
+
+        var command = new CreateReservationCommand(item.Id, expectedCropUrl, expectedCropBytes);
+
+        // Act
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.PrescriptionCropUrl.Should().Be(expectedCropUrl);
+
+        var reservationInDb = await _context.Reservations.FirstOrDefaultAsync(r => r.Id == result.Id);
+        reservationInDb.Should().NotBeNull();
+        reservationInDb!.PrescriptionCropUrl.Should().Be(expectedCropUrl);
+        reservationInDb.PrescriptionCropBytes.Should().Equal(expectedCropBytes);
+    }
 }

@@ -114,6 +114,7 @@ public static class DependencyInjection
         // Bilingual Sig Decoder & Clinical Safety Auditor
         services.AddSingleton<ISigDecoderService, SigDecoderService>();
         services.AddSingleton<IPrescriptionSafetyAuditor, PrescriptionSafetyAuditor>();
+        services.AddSingleton<IPrescriptionSanitizationService, PrescriptionSanitizationService>();
 
         // ── Gemini Flash AI (High Accuracy Prescription Parsing with 1400 Daily Quota) ─
         services.Configure<Nawakes.Application.Common.Models.GeminiOptions>(

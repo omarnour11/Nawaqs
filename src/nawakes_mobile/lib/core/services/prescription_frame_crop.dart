@@ -58,6 +58,76 @@ class PrescriptionFrameCrop {
     return Uint8List.fromList(img.encodeJpg(resized, quality: 88));
   }
 
+  /// Downsamples and compresses image on-device (e.g. max 1600px, quality 80)
+  /// to cut upload and processing latency drastically.
+  static Uint8List downsampleAndCompress({
+    required Uint8List bytes,
+    int maxDimension = 1600,
+    int quality = 80,
+  }) {
+    try {
+      final decoded = img.decodeImage(bytes);
+      if (decoded == null) return bytes;
+      final oriented = _applyExifOrientation(decoded);
+      img.Image resized = oriented;
+      if (oriented.width > maxDimension || oriented.height > maxDimension) {
+        if (oriented.width >= oriented.height) {
+          resized = img.copyResize(oriented, width: maxDimension);
+        } else {
+          resized = img.copyResize(oriented, height: maxDimension);
+        }
+      }
+      return Uint8List.fromList(img.encodeJpg(resized, quality: quality));
+    } catch (_) {
+      return bytes;
+    }
+  }
+
+  /// Crops out clinic/doctor header (top ~20%) and patient footer (bottom ~18%)
+  /// under Egyptian Personal Data Protection Law No. 151 of 2020.
+  /// Preserves only the middle medication body for safe pharmacy verification.
+  static Uint8List? cropPrescriptionMedicationBody({
+    required Uint8List bytes,
+    double headerRatio = 0.20,
+    double footerRatio = 0.18,
+    int maxDimension = 1600,
+    int quality = 80,
+  }) {
+    try {
+      final decoded = img.decodeImage(bytes);
+      if (decoded == null) return null;
+      final oriented = _applyExifOrientation(decoded);
+
+      final clampedHeader = headerRatio.clamp(0.10, 0.35);
+      final clampedFooter = footerRatio.clamp(0.10, 0.35);
+
+      final cropTop = (oriented.height * clampedHeader).round().clamp(0, oriented.height - 1);
+      final cropBottom = (oriented.height * (1.0 - clampedFooter)).round().clamp(cropTop + 1, oriented.height);
+      final cropHeight = cropBottom - cropTop;
+
+      final cropped = img.copyCrop(
+        oriented,
+        x: 0,
+        y: cropTop,
+        width: oriented.width,
+        height: cropHeight,
+      );
+
+      img.Image resized = cropped;
+      if (cropped.width > maxDimension || cropped.height > maxDimension) {
+        if (cropped.width >= cropped.height) {
+          resized = img.copyResize(cropped, width: maxDimension);
+        } else {
+          resized = img.copyResize(cropped, height: maxDimension);
+        }
+      }
+
+      return Uint8List.fromList(img.encodeJpg(resized, quality: quality));
+    } catch (_) {
+      return null;
+    }
+  }
+
   static img.Image _applyExifOrientation(img.Image image) {
     try {
       switch (image.exif.imageIfd.orientation) {

@@ -106,6 +106,7 @@ public sealed class ReservationConfiguration : IEntityTypeConfiguration<Reservat
         builder.Property(r => r.CreatedAt).HasColumnType("datetime2(7)");
         builder.Property(r => r.UpdatedAt).HasColumnType("datetime2(7)");
         builder.Property(r => r.DeletedAt).HasColumnType("datetime2(7)");
+        builder.Property(r => r.PrescriptionCropUrl).IsUnicode(true);
 
         // FK to ApplicationUser (patient) — no navigation on Domain entity
         builder.HasOne<ApplicationUser>()

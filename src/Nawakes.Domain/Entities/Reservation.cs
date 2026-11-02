@@ -26,6 +26,12 @@ public sealed class Reservation : BaseEntity
     public string? RecommendedAlternativeMedication { get; set; }
     public Guid? RecommendedAlternativeItemId { get; set; }
 
+    /// <summary>Sanitized prescription image crop URL or base64 data (strictly no PII) for pharmacy safety verification.</summary>
+    public string? PrescriptionCropUrl { get; set; }
+
+    /// <summary>Raw bytes of sanitized prescription image crop if stored directly.</summary>
+    public byte[]? PrescriptionCropBytes { get; set; }
+
     // Navigation
     public InventoryItem InventoryItem { get; set; } = null!;
     public Pharmacy Pharmacy { get; set; } = null!;

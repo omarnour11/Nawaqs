@@ -10,11 +10,19 @@ CreateReservationRequest _$CreateReservationRequestFromJson(
   Map<String, dynamic> json,
 ) => CreateReservationRequest(
   inventoryItemId: json['inventoryItemId'] as String,
+  prescriptionCropBase64: json['prescriptionCropBase64'] as String?,
+  prescriptionCropUrl: json['prescriptionCropUrl'] as String?,
 );
 
 Map<String, dynamic> _$CreateReservationRequestToJson(
   CreateReservationRequest instance,
-) => <String, dynamic>{'inventoryItemId': instance.inventoryItemId};
+) => <String, dynamic>{
+  'inventoryItemId': instance.inventoryItemId,
+  if (instance.prescriptionCropBase64 != null)
+    'prescriptionCropBase64': instance.prescriptionCropBase64,
+  if (instance.prescriptionCropUrl != null)
+    'prescriptionCropUrl': instance.prescriptionCropUrl,
+};
 
 ReservationResponse _$ReservationResponseFromJson(Map<String, dynamic> json) =>
     ReservationResponse(
@@ -34,6 +42,7 @@ ReservationResponse _$ReservationResponseFromJson(Map<String, dynamic> json) =>
           json['recommendedAlternativeMedication'] as String?,
       recommendedAlternativeItemId:
           json['recommendedAlternativeItemId'] as String?,
+      prescriptionCropUrl: json['prescriptionCropUrl'] as String?,
     );
 
 Map<String, dynamic> _$ReservationResponseToJson(
@@ -52,4 +61,5 @@ Map<String, dynamic> _$ReservationResponseToJson(
   'clinicalContraindicationReason': instance.clinicalContraindicationReason,
   'recommendedAlternativeMedication': instance.recommendedAlternativeMedication,
   'recommendedAlternativeItemId': instance.recommendedAlternativeItemId,
+  'prescriptionCropUrl': instance.prescriptionCropUrl,
 };

@@ -57,14 +57,22 @@ public sealed class CreateReservationCommandHandler(
 
         // 4. Create the reservation record with a unique pickup code
         var expiresAt = DateTime.UtcNow.AddHours(HoldDurationHours);
+        var cropUrl = request.PrescriptionCropUrl;
+        if (string.IsNullOrWhiteSpace(cropUrl) && request.PrescriptionCropBytes is { Length: > 0 })
+        {
+            cropUrl = $"data:image/jpeg;base64,{Convert.ToBase64String(request.PrescriptionCropBytes)}";
+        }
+
         var reservation = new Reservation
         {
-            UserId          = currentUser.UserId,
-            InventoryItemId = item.Id,
-            PharmacyId      = item.PharmacyId,
-            Status          = ReservationStatus.Active,
-            ExpiresAt       = expiresAt,
-            ReservationCode = GenerateCode()
+            UserId                = currentUser.UserId,
+            InventoryItemId       = item.Id,
+            PharmacyId            = item.PharmacyId,
+            Status                = ReservationStatus.Active,
+            ExpiresAt             = expiresAt,
+            ReservationCode       = GenerateCode(),
+            PrescriptionCropUrl   = cropUrl,
+            PrescriptionCropBytes = request.PrescriptionCropBytes
         };
         context.Reservations.Add(reservation);
 
@@ -113,7 +121,8 @@ public sealed class CreateReservationCommandHandler(
             nameof(ReservationStatus.Active),
             expiresAt,
             reservation.CreatedAt,
-            reservation.ReservationCode);
+            reservation.ReservationCode,
+            PrescriptionCropUrl: reservation.PrescriptionCropUrl);
     }
 
     /// <summary>6 hex chars from a crypto-random source — 16.7M combinations, collision risk negligible at this scale.</summary>

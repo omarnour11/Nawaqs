@@ -5,8 +5,14 @@ part 'reservation_models.g.dart';
 @JsonSerializable()
 class CreateReservationRequest {
   final String inventoryItemId;
+  final String? prescriptionCropBase64;
+  final String? prescriptionCropUrl;
 
-  CreateReservationRequest({required this.inventoryItemId});
+  CreateReservationRequest({
+    required this.inventoryItemId,
+    this.prescriptionCropBase64,
+    this.prescriptionCropUrl,
+  });
 
   factory CreateReservationRequest.fromJson(Map<String, dynamic> json) =>
       _$CreateReservationRequestFromJson(json);
@@ -28,6 +34,7 @@ class ReservationResponse {
   final String? clinicalContraindicationReason;
   final String? recommendedAlternativeMedication;
   final String? recommendedAlternativeItemId;
+  final String? prescriptionCropUrl;
 
   ReservationResponse({
     required this.id,
@@ -43,6 +50,7 @@ class ReservationResponse {
     this.clinicalContraindicationReason,
     this.recommendedAlternativeMedication,
     this.recommendedAlternativeItemId,
+    this.prescriptionCropUrl,
   });
 
   factory ReservationResponse.fromJson(Map<String, dynamic> json) =>

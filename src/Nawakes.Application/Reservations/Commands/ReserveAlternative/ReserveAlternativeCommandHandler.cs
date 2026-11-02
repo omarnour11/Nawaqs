@@ -92,12 +92,14 @@ public sealed class ReserveAlternativeCommandHandler(
         var expiresAt = DateTime.UtcNow.AddHours(HoldDurationHours);
         var reservation = new Reservation
         {
-            UserId          = currentUser.UserId,
-            InventoryItemId = item.Id,
-            PharmacyId      = item.PharmacyId,
-            Status          = ReservationStatus.Active,
-            ExpiresAt       = expiresAt,
-            ReservationCode = GenerateCode()
+            UserId                = currentUser.UserId,
+            InventoryItemId       = item.Id,
+            PharmacyId            = item.PharmacyId,
+            Status                = ReservationStatus.Active,
+            ExpiresAt             = expiresAt,
+            ReservationCode       = GenerateCode(),
+            PrescriptionCropUrl   = prior.PrescriptionCropUrl,
+            PrescriptionCropBytes = prior.PrescriptionCropBytes
         };
         context.Reservations.Add(reservation);
 
@@ -144,7 +146,8 @@ public sealed class ReserveAlternativeCommandHandler(
             nameof(ReservationStatus.Active),
             expiresAt,
             reservation.CreatedAt,
-            reservation.ReservationCode);
+            reservation.ReservationCode,
+            PrescriptionCropUrl: reservation.PrescriptionCropUrl);
     }
 
     private static string GenerateCode()

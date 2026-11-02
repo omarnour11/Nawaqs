@@ -218,9 +218,11 @@ class BatchSearchResultsScreen extends HookConsumerWidget {
   const BatchSearchResultsScreen({
     super.key,
     required this.items,
+    this.sanitizedCropBase64,
   });
 
   final List<BatchSearchItemDto> items;
+  final String? sanitizedCropBase64;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -361,7 +363,10 @@ class BatchSearchResultsScreen extends HookConsumerWidget {
         if (it.inventoryItemId != null && it.inventoryItemId!.isNotEmpty) {
           try {
             await ref.read(apiClientProvider).createReservation(
-                  CreateReservationRequest(inventoryItemId: it.inventoryItemId!),
+                  CreateReservationRequest(
+                    inventoryItemId: it.inventoryItemId!,
+                    prescriptionCropBase64: sanitizedCropBase64,
+                  ),
                 );
           } catch (_) {}
         }
@@ -401,7 +406,10 @@ class BatchSearchResultsScreen extends HookConsumerWidget {
           if (it.inventoryItemId != null && it.inventoryItemId!.isNotEmpty) {
             try {
               await ref.read(apiClientProvider).createReservation(
-                    CreateReservationRequest(inventoryItemId: it.inventoryItemId!),
+                    CreateReservationRequest(
+                      inventoryItemId: it.inventoryItemId!,
+                      prescriptionCropBase64: sanitizedCropBase64,
+                    ),
                   );
             } catch (_) {}
           }
@@ -658,6 +666,34 @@ class BatchSearchResultsScreen extends HookConsumerWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        if (sanitizedCropBase64 != null)
+          Container(
+            key: const ValueKey('batch_sanitized_rx_badge'),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            margin: const EdgeInsets.only(bottom: 14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF0FDF4),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFF86EFAC)),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.shield_outlined, color: Color(0xFF16A34A), size: 20),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    '🔒 يتم إرفاق صورة الروشتة المقتطعة الخالية من أي بيانات شخصية أو أسماء أطباء لكل صيدلية للتحقق من سلامة وصرف الدواء.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF14532D),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
         // Status banner
         if (isSingle)
           Container(

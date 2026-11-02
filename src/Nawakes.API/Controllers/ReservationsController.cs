@@ -41,7 +41,19 @@ public sealed class ReservationsController(ISender mediator) : ControllerBase
         [FromBody] CreateReservationRequest request,
         CancellationToken cancellationToken)
     {
-        var dto = await mediator.Send(new CreateReservationCommand(request.InventoryItemId), cancellationToken);
+        byte[]? cropBytes = null;
+        if (!string.IsNullOrWhiteSpace(request.PrescriptionCropBase64))
+        {
+            try
+            {
+                cropBytes = Convert.FromBase64String(request.PrescriptionCropBase64);
+            }
+            catch {}
+        }
+
+        var dto = await mediator.Send(
+            new CreateReservationCommand(request.InventoryItemId, request.PrescriptionCropUrl, cropBytes),
+            cancellationToken);
         return CreatedAtAction(nameof(Create), new { id = dto.Id }, ToResponse(dto));
     }
 
@@ -78,12 +90,16 @@ public sealed class ReservationsController(ISender mediator) : ControllerBase
     private static ReservationResponse ToResponse(ReservationDto dto) => new(
         dto.Id, dto.InventoryItemId, dto.PharmacyId,
         dto.PharmacyName, dto.MedicationName,
-        dto.Status, dto.ExpiresAt, dto.CreatedAt, dto.ReservationCode);
+        dto.Status, dto.ExpiresAt, dto.CreatedAt, dto.ReservationCode,
+        dto.PrescriptionCropUrl);
 }
 
 // ── API-layer DTOs ─────────────────────────────────────────────────────────────
 
-public sealed record CreateReservationRequest(Guid InventoryItemId);
+public sealed record CreateReservationRequest(
+    Guid InventoryItemId,
+    string? PrescriptionCropUrl = null,
+    string? PrescriptionCropBase64 = null);
 
 public sealed record ReservationResponse(
     Guid Id,
@@ -94,4 +110,6 @@ public sealed record ReservationResponse(
     string Status,
     DateTime ExpiresAt,
     DateTime CreatedAt,
-    string ReservationCode);
+    string ReservationCode,
+    string? PrescriptionCropUrl = null);
+

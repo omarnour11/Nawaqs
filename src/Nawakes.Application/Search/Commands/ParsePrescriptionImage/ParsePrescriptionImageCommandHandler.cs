@@ -98,8 +98,7 @@ public sealed class ParsePrescriptionImageCommandHandler : IRequestHandler<Parse
 
                 if (aiResult.IsSuccess && items is { Count: > 0 })
                 {
-                    var verifiedCandidates = new List<ParsedCandidateDto>();
-                    foreach (var item in items)
+                    var matchTasks = items.Select(async item =>
                     {
                         var match = await _prescriptionMatcher.MatchPrescriptionAsync(
                             item.TradeName, item.Strength, item.DosageForm, cancellationToken);
@@ -137,7 +136,7 @@ public sealed class ParsePrescriptionImageCommandHandler : IRequestHandler<Parse
                                 c.PriceEgp))
                             .ToList();
 
-                        verifiedCandidates.Add(new ParsedCandidateDto(
+                        return new ParsedCandidateDto(
                             effectiveTrade,
                             effectiveStrength,
                             effectiveForm,
@@ -148,8 +147,10 @@ public sealed class ParsePrescriptionImageCommandHandler : IRequestHandler<Parse
                             alternatives.Count > 0 ? alternatives : null,
                             rawSig,
                             decodedSig.ArabicInstruction,
-                            price));
-                    }
+                            price);
+                    });
+
+                    var verifiedCandidates = (await Task.WhenAll(matchTasks)).ToList();
 
                     if (verifiedCandidates.Count > 0)
                     {
@@ -202,10 +203,9 @@ public sealed class ParsePrescriptionImageCommandHandler : IRequestHandler<Parse
 
                 if (lines.Count > 0)
                 {
-                    var tier2Candidates = new List<ParsedCandidateDto>();
-                    foreach (var line in lines)
+                    var validLines = lines.Where(l => !string.IsNullOrWhiteSpace(l) && l.Trim().Length >= 3).ToList();
+                    var matchTasks = validLines.Select(async line =>
                     {
-                        if (string.IsNullOrWhiteSpace(line) || line.Trim().Length < 3) continue;
                         var match = await _prescriptionMatcher.MatchPrescriptionAsync(line, null, null, cancellationToken);
                         if (!string.IsNullOrWhiteSpace(match.ResolvedName) && match.Confidence >= 0.70m)
                         {
@@ -220,7 +220,7 @@ public sealed class ParsePrescriptionImageCommandHandler : IRequestHandler<Parse
                                     c.TradeName, c.Strength, c.DosageForm, c.Confidence, 1, c.ActiveIngredient, false, null, rawSig, decodedSig.ArabicInstruction, c.PriceEgp))
                                 .ToList();
 
-                            tier2Candidates.Add(new ParsedCandidateDto(
+                            return new ParsedCandidateDto(
                                 match.ResolvedName,
                                 match.Strength,
                                 match.DosageForm,
@@ -231,9 +231,13 @@ public sealed class ParsePrescriptionImageCommandHandler : IRequestHandler<Parse
                                 Alternatives: alts.Count > 0 ? alts : null,
                                 RawSig: rawSig,
                                 ArabicSig: decodedSig.ArabicInstruction,
-                                PriceEgp: price));
+                                PriceEgp: price);
                         }
-                    }
+                        return null;
+                    });
+
+                    var candidateResults = await Task.WhenAll(matchTasks);
+                    var tier2Candidates = candidateResults.Where(c => c != null).Select(c => c!).ToList();
 
                     if (tier2Candidates.Count > 0)
                     {
@@ -271,11 +275,10 @@ public sealed class ParsePrescriptionImageCommandHandler : IRequestHandler<Parse
         {
             _logger.LogInformation("Falling back to Tier 3 in-process OCR hint text matching.");
             var hintLines = request.OcrHintText.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            var tier3Candidates = new List<ParsedCandidateDto>();
+            var validHintLines = hintLines.Where(l => l.Length >= 3).ToList();
 
-            foreach (var line in hintLines)
+            var matchTasks = validHintLines.Select(async line =>
             {
-                if (line.Length < 3) continue;
                 var match = await _prescriptionMatcher.MatchPrescriptionAsync(line, null, null, cancellationToken);
                 if (!string.IsNullOrWhiteSpace(match.ResolvedName) && match.Confidence >= 0.65m)
                 {
@@ -290,7 +293,7 @@ public sealed class ParsePrescriptionImageCommandHandler : IRequestHandler<Parse
                             c.TradeName, c.Strength, c.DosageForm, c.Confidence, 1, c.ActiveIngredient, false, null, rawSig, decodedSig.ArabicInstruction, c.PriceEgp))
                         .ToList();
 
-                    tier3Candidates.Add(new ParsedCandidateDto(
+                    return new ParsedCandidateDto(
                         match.ResolvedName,
                         match.Strength,
                         match.DosageForm,
@@ -301,9 +304,13 @@ public sealed class ParsePrescriptionImageCommandHandler : IRequestHandler<Parse
                         Alternatives: alts.Count > 0 ? alts : null,
                         RawSig: rawSig,
                         ArabicSig: decodedSig.ArabicInstruction,
-                        PriceEgp: price));
+                        PriceEgp: price);
                 }
-            }
+                return null;
+            });
+
+            var candidateResults = await Task.WhenAll(matchTasks);
+            var tier3Candidates = candidateResults.Where(c => c != null).Select(c => c!).ToList();
 
             if (tier3Candidates.Count > 0)
             {

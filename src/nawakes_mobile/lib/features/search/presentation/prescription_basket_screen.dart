@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -34,20 +36,28 @@ class PrescriptionBasketScreen extends HookConsumerWidget {
     super.key,
     required this.initialItems,
     this.safetyAlerts,
+    this.sanitizedCropBytes,
+    this.sanitizedCropBase64,
   });
 
   final List<PrescriptionBasketItem> initialItems;
   final List<SafetyAlertResponse>? safetyAlerts;
+  final Uint8List? sanitizedCropBytes;
+  final String? sanitizedCropBase64;
 
   static Future<void> show(
     BuildContext context, {
     required List<PrescriptionBasketItem> items,
     List<SafetyAlertResponse>? safetyAlerts,
+    Uint8List? sanitizedCropBytes,
+    String? sanitizedCropBase64,
   }) {
     return Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => PrescriptionBasketScreen(
         initialItems: items,
         safetyAlerts: safetyAlerts,
+        sanitizedCropBytes: sanitizedCropBytes,
+        sanitizedCropBase64: sanitizedCropBase64,
       ),
     ));
   }
@@ -218,6 +228,9 @@ class PrescriptionBasketScreen extends HookConsumerWidget {
                 ],
               ),
             ),
+
+            // Privacy Assurance Banner (Egyptian Law No. 151 compliance)
+            _buildPrivacyAssuranceBanner(),
 
             // Safety Alerts Banner
             if (safetyAlerts != null && safetyAlerts!.isNotEmpty)
@@ -555,7 +568,10 @@ class PrescriptionBasketScreen extends HookConsumerWidget {
                           .toList();
 
                       Navigator.of(context).push(MaterialPageRoute(
-                        builder: (_) => BatchSearchResultsScreen(items: batchItems),
+                        builder: (_) => BatchSearchResultsScreen(
+                          items: batchItems,
+                          sanitizedCropBase64: sanitizedCropBase64,
+                        ),
                       ));
                     },
               child: Row(
@@ -703,6 +719,65 @@ class PrescriptionBasketScreen extends HookConsumerWidget {
               ),
             );
           }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPrivacyAssuranceBanner() {
+    return Container(
+      key: const ValueKey('prescription_privacy_assurance_banner'),
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0FDF4),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF86EFAC)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.green.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF16A34A),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.verified_user_rounded, color: Colors.white, size: 20),
+          ),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'ضمان الخصوصية والتحقق الآمن (قانون رقم 151)',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF14532D),
+                  ),
+                ),
+                SizedBox(height: 3),
+                Text(
+                  'لحماية بياناتك، يتم إرسال الجزء المخصص للأدوية فقط للصيدليات المنفذة للتأكد من مطابقة الروشتة، مع حجب اسم الطبيب والعيادة وبيانات المريض الشخصية تماماً.',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    color: Color(0xFF166534),
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );

@@ -66,6 +66,12 @@ public sealed class GetActiveReservationsQueryHandler(
             var allowMeds = patient?.AllowPharmacistViewActiveMedications ?? true;
             IReadOnlyList<string>? activeMeds = allowMeds ? medsByUser.GetValueOrDefault(r.UserId) : null;
 
+            var crop = r.PrescriptionCropUrl;
+            if (string.IsNullOrWhiteSpace(crop) && r.PrescriptionCropBytes is { Length: > 0 })
+            {
+                crop = $"data:image/jpeg;base64,{Convert.ToBase64String(r.PrescriptionCropBytes)}";
+            }
+
             result.Add(new PharmacyReservationDto(
                 r.Id,
                 $"مريض #{r.UserId.ToString().Substring(r.UserId.ToString().Length - 4).ToUpper()}",
@@ -79,7 +85,8 @@ public sealed class GetActiveReservationsQueryHandler(
                 allowMeds,
                 activeMeds,
                 r.ClinicalContraindicationReason,
-                r.RecommendedAlternativeMedication));
+                r.RecommendedAlternativeMedication,
+                crop));
         }
 
         return result;

@@ -188,7 +188,8 @@ public sealed class PharmacyReservationsController(ISender mediator) : Controlle
         dto.AllowPharmacistViewActiveMedications,
         dto.ActiveMedications,
         dto.ClinicalContraindicationReason,
-        dto.RecommendedAlternativeMedication);
+        dto.RecommendedAlternativeMedication,
+        dto.PrescriptionCropUrl);
 }
 
 // ── API-layer response & request models ─────────────────────────────────────────
@@ -206,7 +207,8 @@ public sealed record PharmacyReservationResponse(
     bool AllowPharmacistViewActiveMedications = false,
     IReadOnlyList<string>? ActiveMedications = null,
     string? ClinicalContraindicationReason = null,
-    string? RecommendedAlternativeMedication = null);
+    string? RecommendedAlternativeMedication = null,
+    string? PrescriptionCropUrl = null);
 
 public sealed record CancelByPharmacyRequest(string? Reason);
 

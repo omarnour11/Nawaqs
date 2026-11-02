@@ -283,9 +283,57 @@ public sealed class ReserveAlternativeCommandHandlerTests
 
         var command = new ReserveAlternativeCommand(prior.Id);
         var result = await _handler.Handle(command, CancellationToken.None);
-
         result.Should().NotBeNull();
         result.Status.Should().Be(nameof(ReservationStatus.Active));
+    }
+
+    [Fact]
+    public async Task Handle_PriorReservationHasPrescriptionCrop_PropagatesCropToAlternativeReservation()
+    {
+        var userId = Guid.NewGuid();
+        _currentUserMock.Setup(u => u.UserId).Returns(userId);
+        _jobSchedulerMock.Setup(j => j.ScheduleExpiryJob(It.IsAny<Guid>(), It.IsAny<DateTimeOffset>()))
+            .Returns("job-alt-crop");
+
+        var pharmacy = CreatePharmacy("Verification Pharmacy");
+        var altItem = new InventoryItem
+        {
+            Status = InventoryStatus.InStock,
+            Pharmacy = pharmacy,
+            PharmacyId = pharmacy.Id,
+            MedicationName = "Concor 10mg"
+        };
+        const string cropUrl = "data:image/jpeg;base64,/9j/4AAQSkZJRg==";
+        var cropBytes = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 };
+
+        var prior = new Reservation
+        {
+            UserId = userId,
+            PharmacyId = pharmacy.Id,
+            Pharmacy = pharmacy,
+            Status = ReservationStatus.Cancelled,
+            ReservationCode = "NWQ-CROP",
+            RecommendedAlternativeMedication = "Concor 10mg",
+            RecommendedAlternativeItemId = altItem.Id,
+            PrescriptionCropUrl = cropUrl,
+            PrescriptionCropBytes = cropBytes
+        };
+
+        _context.Pharmacies.Add(pharmacy);
+        _context.InventoryItems.Add(altItem);
+        _context.Reservations.Add(prior);
+        await _context.SaveChangesAsync();
+
+        var command = new ReserveAlternativeCommand(prior.Id);
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        result.Should().NotBeNull();
+        result.PrescriptionCropUrl.Should().Be(cropUrl);
+
+        var altReservationInDb = await _context.Reservations.FirstOrDefaultAsync(r => r.Id == result.Id);
+        altReservationInDb.Should().NotBeNull();
+        altReservationInDb!.PrescriptionCropUrl.Should().Be(cropUrl);
+        altReservationInDb.PrescriptionCropBytes.Should().Equal(cropBytes);
     }
 }
 

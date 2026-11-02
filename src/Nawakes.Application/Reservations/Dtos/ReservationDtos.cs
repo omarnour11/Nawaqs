@@ -13,7 +13,8 @@ public sealed record ReservationDto(
     string ReservationCode,
     string? ClinicalContraindicationReason = null,
     string? RecommendedAlternativeMedication = null,
-    Guid? RecommendedAlternativeItemId = null
+    Guid? RecommendedAlternativeItemId = null,
+    string? PrescriptionCropUrl = null
 );
 
 public sealed record PharmacyReservationDto(
@@ -29,5 +30,7 @@ public sealed record PharmacyReservationDto(
     bool AllowPharmacistViewActiveMedications = false,
     IReadOnlyList<string>? ActiveMedications = null,
     string? ClinicalContraindicationReason = null,
-    string? RecommendedAlternativeMedication = null
+    string? RecommendedAlternativeMedication = null,
+    string? PrescriptionCropUrl = null
 );
+

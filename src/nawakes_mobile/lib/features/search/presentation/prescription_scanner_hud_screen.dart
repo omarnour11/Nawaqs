@@ -1,11 +1,15 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nawakes_mobile/core/network/api_client.dart';
 import 'package:nawakes_mobile/core/network/api_response_models.dart';
+import 'package:nawakes_mobile/core/services/on_device_ocr_service.dart';
+import 'package:nawakes_mobile/core/services/prescription_frame_crop.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
 import 'package:nawakes_mobile/features/search/presentation/prescription_basket_screen.dart';
 
@@ -48,9 +52,10 @@ class PrescriptionScannerHudScreen extends ConsumerStatefulWidget {
 
 class _PrescriptionScannerHudScreenState
     extends ConsumerState<PrescriptionScannerHudScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late final AnimationController _laserCtrl;
   late final Animation<double> _laserAnim;
+  late final AnimationController _radarCtrl;
 
   int _currentStage = 0;
   Timer? _stageTimer;
@@ -64,6 +69,13 @@ class _PrescriptionScannerHudScreenState
     'تجهيز سلة الروشتة الذكية...',
   ];
 
+  final List<String> _hudMicrocopy = [
+    'جاري تثبيت زوايا الروشتة...',
+    'المستشعر الذكي يقرأ خط الطبيب...',
+    'تحليل مكونات الروشتة ومطابقة الدليل الدوائي...',
+    'تم رصد الأدوية بنجاح ✓',
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -73,6 +85,11 @@ class _PrescriptionScannerHudScreenState
     )..repeat(reverse: true);
 
     _laserAnim = CurvedAnimation(parent: _laserCtrl, curve: Curves.easeInOut);
+
+    _radarCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 3200),
+    )..repeat();
 
     _stageTimer = Timer.periodic(const Duration(milliseconds: 950), (timer) {
       if (!mounted) return;
@@ -87,6 +104,7 @@ class _PrescriptionScannerHudScreenState
   @override
   void dispose() {
     _laserCtrl.dispose();
+    _radarCtrl.dispose();
     _stageTimer?.cancel();
     super.dispose();
   }
@@ -95,19 +113,56 @@ class _PrescriptionScannerHudScreenState
     final apiClient = ref.read(apiClientProvider);
 
     try {
-      ParsedMedicationResponse? response;
-
-      if (widget.imageBytes != null && widget.imageBytes!.isNotEmpty) {
-        response = await apiClient.parsePrescriptionImageBytes(
-          widget.imageBytes!,
-          ocrHintText: widget.ocrHintText,
-        );
-      } else if (widget.imageFile != null) {
-        response = await apiClient.parsePrescriptionImageFilePath(
-          widget.imageFile!.path,
-          ocrHintText: widget.ocrHintText,
-        );
+      Uint8List? rawBytes = widget.imageBytes;
+      if ((rawBytes == null || rawBytes.isEmpty) && widget.imageFile != null) {
+        try {
+          rawBytes = await widget.imageFile!.readAsBytes();
+        } catch (_) {}
       }
+
+      if (rawBytes == null || rawBytes.isEmpty) {
+        if (!mounted) return;
+        setState(() {
+          _errorMessage = 'صورة الروشتة غير صالحة أو فارغة.';
+        });
+        return;
+      }
+
+      // 1. Downsample and compress on-device (e.g. 1600px max dimension, quality 80)
+      final compressedBytes = PrescriptionFrameCrop.downsampleAndCompress(
+        bytes: rawBytes,
+        maxDimension: 1600,
+        quality: 80,
+      );
+
+      // 2. Crop prescription medication body under Law No. 151
+      final sanitizedCrop = PrescriptionFrameCrop.cropPrescriptionMedicationBody(
+        bytes: compressedBytes,
+        headerRatio: 0.20,
+        footerRatio: 0.18,
+        maxDimension: 1600,
+        quality: 80,
+      ) ?? compressedBytes;
+
+      final sanitizedBase64 = base64Encode(sanitizedCrop);
+
+      // 3. Parallel OCR & upload
+      String? effectiveOcrHint = widget.ocrHintText;
+      if (effectiveOcrHint == null || effectiveOcrHint.isEmpty) {
+        try {
+          final ocr = OnDeviceOcrService();
+          final lines = await ocr.extractFromJpegBytes(compressedBytes);
+          if (lines.isNotEmpty) {
+            effectiveOcrHint = lines.join('\n');
+          }
+          await ocr.dispose();
+        } catch (_) {}
+      }
+
+      final response = await apiClient.parsePrescriptionImageBytes(
+        compressedBytes,
+        ocrHintText: effectiveOcrHint,
+      );
 
       if (!mounted) return;
 
@@ -157,6 +212,8 @@ class _PrescriptionScannerHudScreenState
               builder: (_) => PrescriptionBasketScreen(
                 initialItems: basketItems,
                 safetyAlerts: response?.safetyAlerts,
+                sanitizedCropBytes: sanitizedCrop,
+                sanitizedCropBase64: sanitizedBase64,
               ),
             ),
           );
@@ -267,23 +324,94 @@ class _PrescriptionScannerHudScreenState
               },
             ),
 
-          // 4. Scanner Viewfinder Reticle Corners
-          Positioned(
-            top: size.height * 0.15,
-            left: 24,
-            right: 24,
-            height: size.height * 0.55,
-            child: IgnorePointer(
-              child: Container(
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color: const Color(0xFF00E676).withValues(alpha: 0.35),
-                    width: 1.5,
+          // 4. Futuristic CustomPainter Radar Sweep HUD (concentric radar rings, animated sweep angle, targeting reticles, pulse waves)
+          AnimatedBuilder(
+            animation: _radarCtrl,
+            builder: (context, _) {
+              final targetRect = Rect.fromLTWH(
+                24,
+                size.height * 0.15,
+                size.width - 48,
+                size.height * 0.55,
+              );
+              return Stack(
+                children: [
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: CustomPaint(
+                        painter: FuturisticRadarSweepHudPainter(
+                          sweepAngle: _radarCtrl.value * 2 * math.pi,
+                          pulseValue: (_radarCtrl.value * 2) % 1.0,
+                          targetRect: targetRect,
+                          statusText: _hudMicrocopy[_currentStage],
+                          isFinished: _isFinished,
+                        ),
+                      ),
+                    ),
                   ),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-            ),
+                  // Dynamic Arabic Microcopy Status Badge
+                  Positioned(
+                    top: (size.height * 0.15) - 34,
+                    left: 28,
+                    right: 28,
+                    child: Center(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0F172A).withValues(alpha: 0.88),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: const Color(0xFF00E676).withValues(alpha: 0.65),
+                            width: 1.2,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF00E676).withValues(alpha: 0.25),
+                              blurRadius: 10,
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: _isFinished
+                                    ? const Color(0xFF00E676)
+                                    : const Color(0xFF00E676).withValues(
+                                        alpha: 0.8 +
+                                            0.2 *
+                                                math.sin(
+                                                    _radarCtrl.value * 2 * math.pi),
+                                      ),
+                                boxShadow: const [
+                                  BoxShadow(
+                                    color: Color(0xFF00E676),
+                                    blurRadius: 6,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              _hudMicrocopy[_currentStage],
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
 
           // 5. Header Bar (Radar + Title + Close)
@@ -475,4 +603,145 @@ class _PrescriptionScannerHudScreenState
       ),
     );
   }
+}
+
+/// CustomPainter rendering futuristic HUD:
+/// - Concentric radar rings
+/// - Animated glowing sweep angle with gradient bloom
+/// - Targeting corner reticles
+/// - Radial pulse wave ripples
+class FuturisticRadarSweepHudPainter extends CustomPainter {
+  final double sweepAngle;
+  final double pulseValue;
+  final Rect targetRect;
+  final String statusText;
+  final bool isFinished;
+
+  FuturisticRadarSweepHudPainter({
+    required this.sweepAngle,
+    required this.pulseValue,
+    required this.targetRect,
+    required this.statusText,
+    this.isFinished = false,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = targetRect.center;
+    final maxRadius = math.min(targetRect.width, targetRect.height) * 0.44;
+
+    // 1. Concentric radar rings
+    final ringPaint = Paint()
+      ..color = const Color(0xFF00E676).withValues(alpha: 0.22)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2;
+
+    for (int i = 1; i <= 4; i++) {
+      final r = maxRadius * (i / 4.0);
+      canvas.drawCircle(center, r, ringPaint);
+    }
+
+    // Outer border ring with subtle glow
+    final outerRingPaint = Paint()
+      ..color = const Color(0xFF00E676).withValues(alpha: 0.55)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.8;
+    canvas.drawCircle(center, maxRadius, outerRingPaint);
+
+    // Coordinate crosshairs
+    final axisPaint = Paint()
+      ..color = const Color(0xFF00E676).withValues(alpha: 0.2)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
+    canvas.drawLine(
+      Offset(center.dx - maxRadius, center.dy),
+      Offset(center.dx + maxRadius, center.dy),
+      axisPaint,
+    );
+    canvas.drawLine(
+      Offset(center.dx, center.dy - maxRadius),
+      Offset(center.dx, center.dy + maxRadius),
+      axisPaint,
+    );
+
+    // 2. Pulse wave ripple expanding outward
+    if (!isFinished) {
+      final pulseRadius = maxRadius * pulseValue;
+      final pulseAlpha = (1.0 - pulseValue).clamp(0.0, 1.0) * 0.4;
+      final pulsePaint = Paint()
+        ..color = const Color(0xFF00E676).withValues(alpha: pulseAlpha)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.0;
+      canvas.drawCircle(center, pulseRadius, pulsePaint);
+    }
+
+    // 3. Rotating radar sweep sector & glowing beam
+    if (!isFinished) {
+      final sweepPaint = Paint()
+        ..shader = SweepGradient(
+          center: Alignment.center,
+          startAngle: 0.0,
+          endAngle: math.pi / 2.5,
+          colors: [
+            Colors.transparent,
+            const Color(0xFF00E676).withValues(alpha: 0.04),
+            const Color(0xFF00E676).withValues(alpha: 0.32),
+          ],
+          transform: GradientRotation(sweepAngle - math.pi / 2.5),
+        ).createShader(Rect.fromCircle(center: center, radius: maxRadius))
+        ..style = PaintingStyle.fill;
+
+      canvas.drawCircle(center, maxRadius, sweepPaint);
+
+      // Leading beam line
+      final beamEnd = Offset(
+        center.dx + maxRadius * math.cos(sweepAngle),
+        center.dy + maxRadius * math.sin(sweepAngle),
+      );
+      final beamPaint = Paint()
+        ..color = const Color(0xFF00E676)
+        ..strokeWidth = 2.5
+        ..strokeCap = StrokeCap.round
+        ..maskFilter = const MaskFilter.blur(BlurStyle.solid, 4);
+      canvas.drawLine(center, beamEnd, beamPaint);
+    }
+
+    // 4. Targeting Corner Reticles around targetRect
+    final reticlePaint = Paint()
+      ..color = isFinished
+          ? const Color(0xFF00E676)
+          : const Color(0xFF00E676).withValues(alpha: 0.85)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.0
+      ..strokeCap = StrokeCap.round;
+
+    const cornerLen = 28.0;
+
+    // Top-Left corner
+    canvas.drawLine(targetRect.topLeft,
+        targetRect.topLeft + const Offset(cornerLen, 0), reticlePaint);
+    canvas.drawLine(targetRect.topLeft,
+        targetRect.topLeft + const Offset(0, cornerLen), reticlePaint);
+
+    // Top-Right corner
+    canvas.drawLine(targetRect.topRight,
+        targetRect.topRight + const Offset(-cornerLen, 0), reticlePaint);
+    canvas.drawLine(targetRect.topRight,
+        targetRect.topRight + const Offset(0, cornerLen), reticlePaint);
+
+    // Bottom-Left corner
+    canvas.drawLine(targetRect.bottomLeft,
+        targetRect.bottomLeft + const Offset(cornerLen, 0), reticlePaint);
+    canvas.drawLine(targetRect.bottomLeft,
+        targetRect.bottomLeft + const Offset(0, -cornerLen), reticlePaint);
+
+    // Bottom-Right corner
+    canvas.drawLine(targetRect.bottomRight,
+        targetRect.bottomRight + const Offset(-cornerLen, 0), reticlePaint);
+    canvas.drawLine(targetRect.bottomRight,
+        targetRect.bottomRight + const Offset(0, -cornerLen), reticlePaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant FuturisticRadarSweepHudPainter oldDelegate) => true;
 }
