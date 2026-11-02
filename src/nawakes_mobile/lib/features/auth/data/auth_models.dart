@@ -57,22 +57,25 @@ class RegisterRequest {
           .toList();
     }
 
-    return {
+    final data = <String, dynamic>{
       'email': email,
       'password': password,
       'fullName': fullName,
-      if (role != null) 'role': role,
-      if (gender != null) 'gender': gender,
-      if (age != null) 'age': age,
-      if (chronicConditions != null) 'chronicConditions': chronicConditions,
-      if (allergiesStr != null) 'knownAllergies': allergiesStr,
-      if (allergiesList != null || chronicIllnesses != null)
-        'healthQuestionnaire': {
-          if (allergiesList != null) 'knownAllergies': allergiesList,
-          if (chronicIllnesses != null) 'chronicIllnesses': chronicIllnesses,
-        },
-      if (pharmacy != null) 'pharmacy': pharmacy!.toJson(),
     };
+    if (role != null) data['role'] = role;
+    if (gender != null) data['gender'] = gender;
+    if (age != null) data['age'] = age;
+    if (chronicConditions != null) data['chronicConditions'] = chronicConditions;
+    if (allergiesStr != null) data['knownAllergies'] = allergiesStr;
+    if (allergiesList != null || chronicIllnesses != null) {
+      final hq = <String, dynamic>{};
+      if (allergiesList != null) hq['knownAllergies'] = allergiesList;
+      if (chronicIllnesses != null) hq['chronicIllnesses'] = chronicIllnesses;
+      data['healthQuestionnaire'] = hq;
+    }
+    if (pharmacy != null) data['pharmacy'] = pharmacy!.toJson();
+
+    return data;
   }
 }
 
