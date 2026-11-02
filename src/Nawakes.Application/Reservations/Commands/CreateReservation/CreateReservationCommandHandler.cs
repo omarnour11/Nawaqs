@@ -23,7 +23,8 @@ public sealed class CreateReservationCommandHandler(
     ICurrentUserService currentUser,
     IReservationJobScheduler jobScheduler,
     ILogger<CreateReservationCommandHandler> logger,
-    IPrescriptionSanitizationService? sanitizationService = null)
+    IPrescriptionSanitizationService? sanitizationService = null,
+    IRealtimeReservationNotifier? realtimeNotifier = null)
     : IRequestHandler<CreateReservationCommand, ReservationDto>
 {
     private const int HoldDurationHours = 2;
@@ -123,6 +124,22 @@ public sealed class CreateReservationCommandHandler(
         reservation.HangfireJobId = jobId;
         await context.SaveChangesAsync(cancellationToken);
 
+        if (realtimeNotifier is not null)
+        {
+            await realtimeNotifier.NotifyReservationUpdatedAsync(
+                new ReservationStatusUpdatedEvent(
+                    reservation.Id,
+                    reservation.UserId,
+                    reservation.PharmacyId,
+                    item.Pharmacy?.Name ?? string.Empty,
+                    item.MedicationName,
+                    nameof(ReservationStatus.Active),
+                    reservation.DeliveryStatus?.ToString(),
+                    reservation.ReservationCode,
+                    expiresAt),
+                cancellationToken);
+        }
+
         logger.LogInformation(
             "Reservation {ReservationId} created for Item {ItemId}, expires at {ExpiresAt}, HangfireJob={JobId}",
             reservation.Id, item.Id, expiresAt, jobId);
@@ -147,6 +164,7 @@ public sealed class CreateReservationCommandHandler(
             DeliveryNotes: reservation.DeliveryNotes,
             DeliveryStatus: reservation.DeliveryStatus?.ToString());
     }
+
 
     /// <summary>6 hex chars from a crypto-random source — 16.7M combinations, collision risk negligible at this scale.</summary>
     private static string GenerateCode()

@@ -14,7 +14,8 @@ public sealed record MarkReservationReadyCommand(Guid ReservationId) : IRequest<
 
 public sealed class MarkReservationReadyCommandHandler(
     IApplicationDbContext context,
-    ICurrentUserService currentUser)
+    ICurrentUserService currentUser,
+    IRealtimeReservationNotifier? realtimeNotifier = null)
     : IRequestHandler<MarkReservationReadyCommand, PharmacyReservationDto>
 {
     public async Task<PharmacyReservationDto> Handle(
@@ -45,6 +46,22 @@ public sealed class MarkReservationReadyCommandHandler(
 
         await context.SaveChangesAsync(cancellationToken);
 
+        if (realtimeNotifier is not null)
+        {
+            await realtimeNotifier.NotifyReservationUpdatedAsync(
+                new ReservationStatusUpdatedEvent(
+                    reservation.Id,
+                    reservation.UserId,
+                    reservation.PharmacyId,
+                    reservation.Pharmacy.Name ?? string.Empty,
+                    reservation.InventoryItem.MedicationName,
+                    nameof(ReservationStatus.Ready),
+                    reservation.DeliveryStatus?.ToString(),
+                    reservation.ReservationCode,
+                    reservation.ExpiresAt),
+                cancellationToken);
+        }
+
         var displayName = $"مريض #{reservation.UserId.ToString()[^4..].ToUpperInvariant()}";
         return new PharmacyReservationDto(
             reservation.Id,
@@ -56,3 +73,4 @@ public sealed class MarkReservationReadyCommandHandler(
             reservation.ReservationCode);
     }
 }
+
