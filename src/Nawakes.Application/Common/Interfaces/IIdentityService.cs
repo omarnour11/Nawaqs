@@ -11,6 +11,10 @@ public interface IIdentityService
         string? fcmToken,
         string? encryptedHealthJson,
         string role = "Patient",
+        string? gender = null,
+        int? age = null,
+        string? chronicConditions = null,
+        string? knownAllergies = null,
         CancellationToken cancellationToken = default);
 
     Task<(bool Success, string? UserId, string? Role, string? Error)> ValidateCredentialsAsync(
@@ -34,6 +38,10 @@ public interface IIdentityService
         string? phone,
         string? medicalHistoryNotes,
         bool? allowPharmacistViewActiveMedications = null,
+        string? gender = null,
+        int? age = null,
+        string? chronicConditions = null,
+        string? knownAllergies = null,
         CancellationToken cancellationToken = default);
 
     Task<(string Role, string Email)> GetRoleAndEmailAsync(Guid userId, CancellationToken cancellationToken = default);

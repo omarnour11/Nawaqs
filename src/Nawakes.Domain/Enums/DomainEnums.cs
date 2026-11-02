@@ -99,3 +99,16 @@ public enum QueueStatus : byte
     Fulfilled = 4,
     Cancelled = 5
 }
+
+public enum FulfillmentType : byte
+{
+    Pickup = 0,
+    Delivery = 1
+}
+
+public enum DeliveryStatus : byte
+{
+    Pending = 0,
+    Dispatched = 1,
+    Delivered = 2
+}

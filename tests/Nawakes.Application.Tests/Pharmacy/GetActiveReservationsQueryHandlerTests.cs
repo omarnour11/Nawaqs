@@ -129,4 +129,67 @@ public sealed class GetActiveReservationsQueryHandlerTests
         result.Should().HaveCount(1);
         result.Single().ReservationCode.Should().Be("FRESH");
     }
+
+    [Fact]
+    public async Task Handle_WithClinicalProfileAndDelivery_MapsAllFieldsToDto()
+    {
+        var ownerId = Guid.NewGuid();
+        var patientId = Guid.NewGuid();
+        _currentUserMock.Setup(u => u.UserId).Returns(ownerId);
+
+        var pharmacy = CreatePharmacy(ownerId);
+        _context.Pharmacies.Add(pharmacy);
+
+        var item = new InventoryItem { PharmacyId = pharmacy.Id, MedicationName = "Glucophage 1000mg", MedicationNameNormalized = "GLUCOPHAGE 1000MG", Price = 75, Quantity = 5, Status = InventoryStatus.InStock };
+        _context.InventoryItems.Add(item);
+
+        var deliveryReservation = new Reservation
+        {
+            PharmacyId = pharmacy.Id,
+            InventoryItemId = item.Id,
+            UserId = patientId,
+            Status = ReservationStatus.Active,
+            ExpiresAt = DateTime.UtcNow.AddMinutes(45),
+            CreatedAt = DateTime.UtcNow,
+            ReservationCode = "DELIV-001",
+            FulfillmentType = FulfillmentType.Delivery,
+            DeliveryAddress = "المعادي - شارع 9",
+            DeliveryLatitude = 29.96,
+            DeliveryLongitude = 31.26,
+            DeliveryContactPhone = "01123456789",
+            DeliveryNotes = "الدور الخامس",
+            DeliveryStatus = DeliveryStatus.Pending
+        };
+        _context.Reservations.Add(deliveryReservation);
+        await _context.SaveChangesAsync();
+
+        var clinicalDict = new Dictionary<Guid, PatientClinicalSummaryDto>
+        {
+            [patientId] = new PatientClinicalSummaryDto(
+                patientId,
+                "ملاحظات سابقة",
+                true,
+                "ذكر",
+                45,
+                "السكري، ضغط الدم",
+                "البنسلين")
+        };
+        _userDirectoryMock.Setup(u => u.GetClinicalSummariesAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(clinicalDict);
+
+        var result = await _handler.Handle(new GetActiveReservationsQuery(), CancellationToken.None);
+
+        result.Should().HaveCount(1);
+        var dto = result.Single();
+        dto.ReservationCode.Should().Be("DELIV-001");
+        dto.FulfillmentType.Should().Be("Delivery");
+        dto.DeliveryAddress.Should().Be("المعادي - شارع 9");
+        dto.DeliveryContactPhone.Should().Be("01123456789");
+        dto.DeliveryNotes.Should().Be("الدور الخامس");
+        dto.DeliveryStatus.Should().Be("Pending");
+        dto.PatientGender.Should().Be("ذكر");
+        dto.PatientAge.Should().Be(45);
+        dto.ChronicConditions.Should().Be("السكري، ضغط الدم");
+        dto.Allergies.Should().Be("البنسلين");
+    }
 }

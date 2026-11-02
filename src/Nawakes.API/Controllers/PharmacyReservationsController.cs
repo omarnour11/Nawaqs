@@ -189,7 +189,16 @@ public sealed class PharmacyReservationsController(ISender mediator) : Controlle
         dto.ActiveMedications,
         dto.ClinicalContraindicationReason,
         dto.RecommendedAlternativeMedication,
-        dto.PrescriptionCropUrl);
+        dto.PrescriptionCropUrl,
+        dto.FulfillmentType,
+        dto.DeliveryAddress,
+        dto.DeliveryLatitude,
+        dto.DeliveryLongitude,
+        dto.DeliveryContactPhone,
+        dto.DeliveryNotes,
+        dto.DeliveryStatus,
+        dto.PatientGender,
+        dto.PatientAge);
 }
 
 // ── API-layer response & request models ─────────────────────────────────────────
@@ -208,7 +217,16 @@ public sealed record PharmacyReservationResponse(
     IReadOnlyList<string>? ActiveMedications = null,
     string? ClinicalContraindicationReason = null,
     string? RecommendedAlternativeMedication = null,
-    string? PrescriptionCropUrl = null);
+    string? PrescriptionCropUrl = null,
+    string? FulfillmentType = "Pickup",
+    string? DeliveryAddress = null,
+    double? DeliveryLatitude = null,
+    double? DeliveryLongitude = null,
+    string? DeliveryContactPhone = null,
+    string? DeliveryNotes = null,
+    string? DeliveryStatus = null,
+    string? PatientGender = null,
+    int? PatientAge = null);
 
 public sealed record CancelByPharmacyRequest(string? Reason);
 

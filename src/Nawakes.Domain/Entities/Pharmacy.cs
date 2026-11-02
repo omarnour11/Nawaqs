@@ -17,6 +17,15 @@ public sealed class Pharmacy : BaseEntity
     public string City { get; set; } = string.Empty;
     public string Phone { get; set; } = string.Empty;
 
+    /// <summary>Indicates whether this pharmacy provides local delivery to patients.</summary>
+    public bool OffersDelivery { get; set; } = true;
+
+    /// <summary>Optional delivery fee in EGP charged by this pharmacy (null or 0 means free/included).</summary>
+    public decimal? DeliveryFee { get; set; } = 0m;
+
+    /// <summary>Dedicated phone number for delivery runner / dispatch if different from main phone.</summary>
+    public string? DeliveryPhone { get; set; }
+
     /// <summary>SQL Server geography column via NetTopologySuite. SRID must be 4326.</summary>
     public Point GeoPoint { get; set; } = null!;
 

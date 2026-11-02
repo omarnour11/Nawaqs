@@ -81,7 +81,14 @@ public sealed class CreateReservationCommandHandler(
             ExpiresAt             = expiresAt,
             ReservationCode       = GenerateCode(),
             PrescriptionCropUrl   = cropUrl,
-            PrescriptionCropBytes = cropBytes
+            PrescriptionCropBytes = cropBytes,
+            FulfillmentType       = request.FulfillmentType,
+            DeliveryAddress       = request.DeliveryAddress,
+            DeliveryLatitude      = request.DeliveryLatitude,
+            DeliveryLongitude     = request.DeliveryLongitude,
+            DeliveryContactPhone  = request.DeliveryContactPhone,
+            DeliveryNotes         = request.DeliveryNotes,
+            DeliveryStatus        = request.FulfillmentType == Domain.Enums.FulfillmentType.Delivery ? Domain.Enums.DeliveryStatus.Pending : null
         };
         context.Reservations.Add(reservation);
 
@@ -131,7 +138,14 @@ public sealed class CreateReservationCommandHandler(
             expiresAt,
             reservation.CreatedAt,
             reservation.ReservationCode,
-            PrescriptionCropUrl: reservation.PrescriptionCropUrl);
+            PrescriptionCropUrl: reservation.PrescriptionCropUrl,
+            FulfillmentType: reservation.FulfillmentType.ToString(),
+            DeliveryAddress: reservation.DeliveryAddress,
+            DeliveryLatitude: reservation.DeliveryLatitude,
+            DeliveryLongitude: reservation.DeliveryLongitude,
+            DeliveryContactPhone: reservation.DeliveryContactPhone,
+            DeliveryNotes: reservation.DeliveryNotes,
+            DeliveryStatus: reservation.DeliveryStatus?.ToString());
     }
 
     /// <summary>6 hex chars from a crypto-random source — 16.7M combinations, collision risk negligible at this scale.</summary>

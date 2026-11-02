@@ -42,6 +42,10 @@ public sealed class RegisterCommandHandlerTests
             null,
             null,
             "PharmacyOwner",
+            null,
+            null,
+            null,
+            null,
             It.IsAny<CancellationToken>()))
             .ReturnsAsync((true, userId.ToString(), null));
 
@@ -86,5 +90,61 @@ public sealed class RegisterCommandHandlerTests
         pharmacy.VerificationStatus.Should().Be(VerificationStatus.Pending);
         pharmacy.GeoPoint.X.Should().Be(31.2089);
         pharmacy.GeoPoint.Y.Should().Be(30.0131);
+    }
+
+    [Fact]
+    public async Task Handle_PatientRegistration_WithClinicalProfile_ShouldPassAttributesToIdentity()
+    {
+        var userId = Guid.NewGuid();
+        _identityMock.Setup(i => i.RegisterAsync(
+            "patient@test.com",
+            "Password123",
+            "أحمد محمود",
+            null,
+            null,
+            "Patient",
+            "ذكر",
+            28,
+            "حساسية الصدر",
+            "البنسلين، السلفا",
+            It.IsAny<CancellationToken>()))
+            .ReturnsAsync((true, userId.ToString(), null));
+
+        _jwtMock.Setup(j => j.GenerateAccessToken(userId, "patient@test.com", "Patient"))
+            .Returns("access-token-patient");
+        _jwtMock.Setup(j => j.GenerateRefreshToken())
+            .Returns(("refresh-token-patient", DateTime.UtcNow.AddDays(7)));
+
+        var command = new RegisterCommand(
+            Email: "patient@test.com",
+            Password: "Password123",
+            FullName: "أحمد محمود",
+            FcmToken: null,
+            Role: "Patient",
+            Gender: "ذكر",
+            Age: 28,
+            ChronicConditions: "حساسية الصدر",
+            KnownAllergies: "البنسلين، السلفا"
+        );
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        result.Should().NotBeNull();
+        result.Role.Should().Be("Patient");
+        result.UserId.Should().Be(userId);
+        result.AccessToken.Should().Be("access-token-patient");
+
+        _identityMock.Verify(i => i.RegisterAsync(
+            "patient@test.com",
+            "Password123",
+            "أحمد محمود",
+            null,
+            null,
+            "Patient",
+            "ذكر",
+            28,
+            "حساسية الصدر",
+            "البنسلين، السلفا",
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 }

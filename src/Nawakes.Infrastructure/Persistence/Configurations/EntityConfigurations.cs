@@ -17,6 +17,9 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<ApplicationUser
         builder.Property(u => u.FullName).HasMaxLength(150);
         builder.Property(u => u.PhoneNumber).HasMaxLength(20);
         builder.Property(u => u.MedicalHistoryNotes).HasMaxLength(2000);
+        builder.Property(u => u.Gender).HasMaxLength(20);
+        builder.Property(u => u.ChronicConditions).HasMaxLength(1000);
+        builder.Property(u => u.KnownAllergies).HasMaxLength(1000);
         builder.Property(u => u.FcmToken).HasMaxLength(500);
         builder.Property(u => u.HealthQuestionnaireJson).HasColumnType("nvarchar(max)");
         builder.Property(u => u.CreatedAt).HasColumnType("datetime2(7)");
@@ -39,6 +42,8 @@ public sealed class PharmacyConfiguration : IEntityTypeConfiguration<Pharmacy>
         builder.Property(p => p.RejectionReason).HasMaxLength(500);
         builder.Property(p => p.TrustScore).HasColumnType("decimal(5,2)");
         builder.Property(p => p.VerificationStatus).HasConversion<byte>();
+        builder.Property(p => p.DeliveryFee).HasColumnType("decimal(18,2)");
+        builder.Property(p => p.DeliveryPhone).HasMaxLength(20);
 
         builder.Property(p => p.GeoPoint)
             .HasColumnType("geography")
@@ -107,6 +112,11 @@ public sealed class ReservationConfiguration : IEntityTypeConfiguration<Reservat
         builder.Property(r => r.UpdatedAt).HasColumnType("datetime2(7)");
         builder.Property(r => r.DeletedAt).HasColumnType("datetime2(7)");
         builder.Property(r => r.PrescriptionCropUrl).IsUnicode(true);
+        builder.Property(r => r.FulfillmentType).HasConversion<byte>();
+        builder.Property(r => r.DeliveryStatus).HasConversion<byte>();
+        builder.Property(r => r.DeliveryAddress).HasMaxLength(500);
+        builder.Property(r => r.DeliveryContactPhone).HasMaxLength(20);
+        builder.Property(r => r.DeliveryNotes).HasMaxLength(1000);
 
         // FK to ApplicationUser (patient) — no navigation on Domain entity
         builder.HasOne<ApplicationUser>()

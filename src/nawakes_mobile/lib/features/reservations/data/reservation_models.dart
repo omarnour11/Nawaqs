@@ -7,11 +7,23 @@ class CreateReservationRequest {
   final String inventoryItemId;
   final String? prescriptionCropBase64;
   final String? prescriptionCropUrl;
+  final String fulfillmentType;
+  final String? deliveryAddress;
+  final double? deliveryLatitude;
+  final double? deliveryLongitude;
+  final String? deliveryContactPhone;
+  final String? deliveryNotes;
 
   CreateReservationRequest({
     required this.inventoryItemId,
     this.prescriptionCropBase64,
     this.prescriptionCropUrl,
+    this.fulfillmentType = 'Pickup',
+    this.deliveryAddress,
+    this.deliveryLatitude,
+    this.deliveryLongitude,
+    this.deliveryContactPhone,
+    this.deliveryNotes,
   });
 
   factory CreateReservationRequest.fromJson(Map<String, dynamic> json) =>
@@ -35,6 +47,13 @@ class ReservationResponse {
   final String? recommendedAlternativeMedication;
   final String? recommendedAlternativeItemId;
   final String? prescriptionCropUrl;
+  final String fulfillmentType;
+  final String? deliveryAddress;
+  final double? deliveryLatitude;
+  final double? deliveryLongitude;
+  final String? deliveryContactPhone;
+  final String? deliveryNotes;
+  final String? deliveryStatus;
 
   ReservationResponse({
     required this.id,
@@ -51,6 +70,13 @@ class ReservationResponse {
     this.recommendedAlternativeMedication,
     this.recommendedAlternativeItemId,
     this.prescriptionCropUrl,
+    this.fulfillmentType = 'Pickup',
+    this.deliveryAddress,
+    this.deliveryLatitude,
+    this.deliveryLongitude,
+    this.deliveryContactPhone,
+    this.deliveryNotes,
+    this.deliveryStatus,
   });
 
   factory ReservationResponse.fromJson(Map<String, dynamic> json) =>

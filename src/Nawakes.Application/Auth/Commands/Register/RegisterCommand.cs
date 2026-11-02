@@ -12,6 +12,10 @@ public sealed record RegisterCommand(
     string FullName,
     string? FcmToken,
     string? Role = "Patient",
+    string? Gender = null,
+    int? Age = null,
+    string? ChronicConditions = null,
+    string? KnownAllergies = null,
     RegisterHealthQuestionnaireDto? HealthQuestionnaire = null,
     RegisterPharmacyDto? Pharmacy = null
 ) : IRequest<AuthResult>;

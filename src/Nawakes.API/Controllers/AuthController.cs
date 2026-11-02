@@ -31,15 +31,19 @@ public sealed class AuthController(ISender mediator) : ControllerBase
         CancellationToken cancellationToken)
     {
         var command = new RegisterCommand(
-            request.Email,
-            request.Password,
-            request.FullName,
-            request.FcmToken,
-            request.Role,
-            request.HealthQuestionnaire is null ? null : new RegisterHealthQuestionnaireDto(
+            Email: request.Email,
+            Password: request.Password,
+            FullName: request.FullName,
+            FcmToken: request.FcmToken,
+            Role: request.Role,
+            Gender: request.Gender,
+            Age: request.Age,
+            ChronicConditions: request.ChronicConditions,
+            KnownAllergies: request.KnownAllergies,
+            HealthQuestionnaire: request.HealthQuestionnaire is null ? null : new RegisterHealthQuestionnaireDto(
                 request.HealthQuestionnaire.ChronicIllnesses ?? [],
                 request.HealthQuestionnaire.KnownAllergies ?? []),
-            request.Pharmacy is null ? null : new RegisterPharmacyDto(
+            Pharmacy: request.Pharmacy is null ? null : new RegisterPharmacyDto(
                 request.Pharmacy.Name,
                 request.Pharmacy.AddressLine,
                 request.Pharmacy.City,
@@ -170,8 +174,12 @@ public sealed record RegisterRequest(
     string FullName,
     string? FcmToken,
     string? Role,
-    RegisterHealthDto? HealthQuestionnaire,
-    RegisterPharmacyRequestDto? Pharmacy);
+    string? Gender = null,
+    int? Age = null,
+    string? ChronicConditions = null,
+    string? KnownAllergies = null,
+    RegisterHealthDto? HealthQuestionnaire = null,
+    RegisterPharmacyRequestDto? Pharmacy = null);
 
 public sealed record RegisterPharmacyRequestDto(
     string Name,

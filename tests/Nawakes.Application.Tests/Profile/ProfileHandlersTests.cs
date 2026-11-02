@@ -17,7 +17,19 @@ public class ProfileHandlersTests
         var userId = Guid.NewGuid();
         _currentUserMock.Setup(u => u.UserId).Returns(userId);
 
-        var expectedDto = new ProfileDto(userId, "test@nawakes.app", "Test User", "01000000000", null, DateTime.UtcNow, true);
+        var expectedDto = new ProfileDto(
+            userId,
+            "test@nawakes.app",
+            "Test User",
+            "01000000000",
+            null,
+            DateTime.UtcNow,
+            true,
+            "ذكر",
+            30,
+            "السكري",
+            "البنسلين");
+
         _identityMock.Setup(i => i.GetProfileAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(expectedDto);
 
@@ -34,10 +46,26 @@ public class ProfileHandlersTests
         _currentUserMock.Setup(u => u.UserId).Returns(userId);
 
         var handler = new UpdateProfileCommandHandler(_identityMock.Object, _currentUserMock.Object);
-        await handler.Handle(new UpdateProfileCommand("New Name", "01234567890", "Allergic to penicillin"), CancellationToken.None);
+        await handler.Handle(new UpdateProfileCommand(
+            "New Name",
+            "01234567890",
+            "Allergic to penicillin",
+            true,
+            "ذكر",
+            35,
+            "الضغط",
+            "الأسبرين"), CancellationToken.None);
 
         _identityMock.Verify(i => i.UpdateProfileAsync(
-            userId, "New Name", "01234567890", "Allergic to penicillin", null,
+            userId,
+            "New Name",
+            "01234567890",
+            "Allergic to penicillin",
+            true,
+            "ذكر",
+            35,
+            "الضغط",
+            "الأسبرين",
             It.IsAny<CancellationToken>()), Times.Once);
     }
 }

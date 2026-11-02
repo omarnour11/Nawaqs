@@ -23,6 +23,9 @@ MyPharmacyDto _$MyPharmacyDtoFromJson(Map<String, dynamic> json) =>
       averageRating: (json['averageRating'] as num).toDouble(),
       ratingCount: (json['ratingCount'] as num).toInt(),
       createdAt: DateTime.parse(json['createdAt'] as String),
+      offersDelivery: json['offersDelivery'] as bool? ?? true,
+      deliveryFee: (json['deliveryFee'] as num?)?.toDouble(),
+      deliveryPhone: json['deliveryPhone'] as String?,
     );
 
 Map<String, dynamic> _$MyPharmacyDtoToJson(MyPharmacyDto instance) =>
@@ -42,6 +45,9 @@ Map<String, dynamic> _$MyPharmacyDtoToJson(MyPharmacyDto instance) =>
       'averageRating': instance.averageRating,
       'ratingCount': instance.ratingCount,
       'createdAt': instance.createdAt.toIso8601String(),
+      'offersDelivery': instance.offersDelivery,
+      'deliveryFee': instance.deliveryFee,
+      'deliveryPhone': instance.deliveryPhone,
     };
 
 RegisterPharmacyRequest _$RegisterPharmacyRequestFromJson(
@@ -55,6 +61,9 @@ RegisterPharmacyRequest _$RegisterPharmacyRequestFromJson(
   longitude: (json['longitude'] as num).toDouble(),
   licenseDocUrl: json['licenseDocUrl'] as String?,
   nationalIdDocUrl: json['nationalIdDocUrl'] as String?,
+  offersDelivery: json['offersDelivery'] as bool? ?? true,
+  deliveryFee: (json['deliveryFee'] as num?)?.toDouble(),
+  deliveryPhone: json['deliveryPhone'] as String?,
 );
 
 Map<String, dynamic> _$RegisterPharmacyRequestToJson(
@@ -68,4 +77,7 @@ Map<String, dynamic> _$RegisterPharmacyRequestToJson(
   'longitude': instance.longitude,
   'licenseDocUrl': instance.licenseDocUrl,
   'nationalIdDocUrl': instance.nationalIdDocUrl,
+  'offersDelivery': instance.offersDelivery,
+  'deliveryFee': instance.deliveryFee,
+  'deliveryPhone': instance.deliveryPhone,
 };

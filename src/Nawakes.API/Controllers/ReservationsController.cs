@@ -4,33 +4,32 @@ using Microsoft.AspNetCore.Mvc;
 using Nawakes.Application.Reservations.Commands.CancelReservation;
 using Nawakes.Application.Reservations.Commands.CreateReservation;
 using Nawakes.Application.Reservations.Commands.ReserveAlternative;
-using Nawakes.Application.Reservations.Queries.GetPatientReservations;
 using Nawakes.Application.Reservations.Dtos;
+using Nawakes.Application.Reservations.Queries.GetMyReservations;
 
 namespace Nawakes.API.Controllers;
 
-/// <summary>
-/// Reservation endpoints for patients.
-/// POST   /api/v1/reservations          — Place a 2-hour hold (race condition safe via RowVersion)
-/// DELETE /api/v1/reservations/{id}     — Cancel (15-min lock-in enforced)
-/// </summary>
 [ApiController]
 [Route("api/v1/reservations")]
 [Authorize]
+[Produces("application/json")]
 public sealed class ReservationsController(ISender mediator) : ControllerBase
 {
-    /// <summary>Get all reservations for the current patient.</summary>
+    /// <summary>Active and past reservations for the calling user.</summary>
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<ReservationResponse>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<IReadOnlyList<ReservationResponse>>> Get(CancellationToken cancellationToken)
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<IReadOnlyList<ReservationResponse>>> GetMine(
+        CancellationToken cancellationToken)
     {
-        var dtos = await mediator.Send(new GetPatientReservationsQuery(), cancellationToken);
-        var responses = dtos.Select(ToResponse).ToList();
-        return Ok(responses);
+        var dtos = await mediator.Send(new GetMyReservationsQuery(), cancellationToken);
+        return Ok(dtos.Select(ToResponse).ToList());
     }
 
-    /// <summary>Create a reservation hold on an in-stock inventory item.</summary>
-    /// <param name="request">InventoryItemId to reserve.</param>
+    /// <summary>Places a 2-hour hold on an inventory item.</summary>
+    /// <response code="201">Hold placed. Returns the reservation record with pickup code.</response>
+    /// <response code="404">Item not found or already deleted.</response>
+    /// <response code="409">Item is already reserved or out of stock.</response>
     [HttpPost]
     [ProducesResponseType(typeof(ReservationResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -51,8 +50,21 @@ public sealed class ReservationsController(ISender mediator) : ControllerBase
             catch {}
         }
 
+        var fulfillment = string.Equals(request.FulfillmentType, "Delivery", StringComparison.OrdinalIgnoreCase)
+            ? Nawakes.Domain.Enums.FulfillmentType.Delivery
+            : Nawakes.Domain.Enums.FulfillmentType.Pickup;
+
         var dto = await mediator.Send(
-            new CreateReservationCommand(request.InventoryItemId, request.PrescriptionCropUrl, cropBytes),
+            new CreateReservationCommand(
+                request.InventoryItemId,
+                request.PrescriptionCropUrl,
+                cropBytes,
+                fulfillment,
+                request.DeliveryAddress,
+                request.DeliveryLatitude,
+                request.DeliveryLongitude,
+                request.DeliveryContactPhone,
+                request.DeliveryNotes),
             cancellationToken);
         return CreatedAtAction(nameof(Create), new { id = dto.Id }, ToResponse(dto));
     }
@@ -91,7 +103,14 @@ public sealed class ReservationsController(ISender mediator) : ControllerBase
         dto.Id, dto.InventoryItemId, dto.PharmacyId,
         dto.PharmacyName, dto.MedicationName,
         dto.Status, dto.ExpiresAt, dto.CreatedAt, dto.ReservationCode,
-        dto.PrescriptionCropUrl);
+        dto.PrescriptionCropUrl,
+        dto.FulfillmentType,
+        dto.DeliveryAddress,
+        dto.DeliveryLatitude,
+        dto.DeliveryLongitude,
+        dto.DeliveryContactPhone,
+        dto.DeliveryNotes,
+        dto.DeliveryStatus);
 }
 
 // ── API-layer DTOs ─────────────────────────────────────────────────────────────
@@ -99,7 +118,13 @@ public sealed class ReservationsController(ISender mediator) : ControllerBase
 public sealed record CreateReservationRequest(
     Guid InventoryItemId,
     string? PrescriptionCropUrl = null,
-    string? PrescriptionCropBase64 = null);
+    string? PrescriptionCropBase64 = null,
+    string? FulfillmentType = "Pickup",
+    string? DeliveryAddress = null,
+    double? DeliveryLatitude = null,
+    double? DeliveryLongitude = null,
+    string? DeliveryContactPhone = null,
+    string? DeliveryNotes = null);
 
 public sealed record ReservationResponse(
     Guid Id,
@@ -111,5 +136,11 @@ public sealed record ReservationResponse(
     DateTime ExpiresAt,
     DateTime CreatedAt,
     string ReservationCode,
-    string? PrescriptionCropUrl = null);
-
+    string? PrescriptionCropUrl = null,
+    string? FulfillmentType = "Pickup",
+    string? DeliveryAddress = null,
+    double? DeliveryLatitude = null,
+    double? DeliveryLongitude = null,
+    string? DeliveryContactPhone = null,
+    string? DeliveryNotes = null,
+    string? DeliveryStatus = null);

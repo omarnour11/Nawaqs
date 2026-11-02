@@ -19,6 +19,9 @@ class MyPharmacyDto {
   final double averageRating;
   final int ratingCount;
   final DateTime createdAt;
+  final bool offersDelivery;
+  final double? deliveryFee;
+  final String? deliveryPhone;
 
   MyPharmacyDto({
     required this.id,
@@ -36,6 +39,9 @@ class MyPharmacyDto {
     required this.averageRating,
     required this.ratingCount,
     required this.createdAt,
+    this.offersDelivery = true,
+    this.deliveryFee,
+    this.deliveryPhone,
   });
 
   factory MyPharmacyDto.fromJson(Map<String, dynamic> json) => _$MyPharmacyDtoFromJson(json);
@@ -52,6 +58,9 @@ class RegisterPharmacyRequest {
   final double longitude;
   final String? licenseDocUrl;
   final String? nationalIdDocUrl;
+  final bool offersDelivery;
+  final double? deliveryFee;
+  final String? deliveryPhone;
 
   RegisterPharmacyRequest({
     required this.name,
@@ -62,6 +71,9 @@ class RegisterPharmacyRequest {
     required this.longitude,
     this.licenseDocUrl,
     this.nationalIdDocUrl,
+    this.offersDelivery = true,
+    this.deliveryFee,
+    this.deliveryPhone,
   });
 
   factory RegisterPharmacyRequest.fromJson(Map<String, dynamic> json) =>

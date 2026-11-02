@@ -12,7 +12,7 @@ public sealed record GetActiveReservationsQuery : IRequest<IReadOnlyList<Pharmac
 /// <summary>
 /// Returns active (and recently expired/completed) reservations for the calling
 /// pharmacy owner's pharmacy. Patient names are anonymized, but clinical background
-/// (chronic diseases, allergies, and consented active medications) is included
+/// (chronic diseases, allergies, gender, age, and consented active medications) is included
 /// for pharmacist safety verification.
 /// </summary>
 public sealed class GetActiveReservationsQueryHandler(
@@ -61,8 +61,12 @@ public sealed class GetActiveReservationsQueryHandler(
             summaries.TryGetValue(r.UserId, out var patient);
             var notes = patient?.MedicalHistoryNotes ?? string.Empty;
 
-            string? chronicConditions = ExtractSection(notes, "أمراض:");
-            string? allergies = ExtractSection(notes, "حساسية:");
+            string? chronicConditions = !string.IsNullOrWhiteSpace(patient?.ChronicConditions)
+                ? patient.ChronicConditions
+                : ExtractSection(notes, "أمراض:");
+            string? allergies = !string.IsNullOrWhiteSpace(patient?.KnownAllergies)
+                ? patient.KnownAllergies
+                : ExtractSection(notes, "حساسية:");
             var allowMeds = patient?.AllowPharmacistViewActiveMedications ?? true;
             IReadOnlyList<string>? activeMeds = allowMeds ? medsByUser.GetValueOrDefault(r.UserId) : null;
 
@@ -86,7 +90,16 @@ public sealed class GetActiveReservationsQueryHandler(
                 activeMeds,
                 r.ClinicalContraindicationReason,
                 r.RecommendedAlternativeMedication,
-                crop));
+                crop,
+                r.FulfillmentType.ToString(),
+                r.DeliveryAddress,
+                r.DeliveryLatitude,
+                r.DeliveryLongitude,
+                r.DeliveryContactPhone,
+                r.DeliveryNotes,
+                r.DeliveryStatus?.ToString(),
+                patient?.Gender,
+                patient?.Age));
         }
 
         return result;

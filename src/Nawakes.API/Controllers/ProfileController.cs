@@ -34,18 +34,39 @@ public sealed class ProfileController(ISender mediator) : ControllerBase
         CancellationToken cancellationToken)
     {
         await mediator.Send(new UpdateProfileCommand(
-            request.FullName, request.Phone, request.MedicalHistoryNotes, request.AllowPharmacistViewActiveMedications), cancellationToken);
+            request.FullName,
+            request.Phone,
+            request.MedicalHistoryNotes,
+            request.AllowPharmacistViewActiveMedications,
+            request.Gender,
+            request.Age,
+            request.ChronicConditions,
+            request.KnownAllergies), cancellationToken);
         return NoContent();
     }
 
     private static ProfileResponse ToResponse(ProfileDto dto) => new(
-        dto.UserId, dto.Email, dto.FullName, dto.Phone, dto.MedicalHistoryNotes, dto.CreatedAt, dto.AllowPharmacistViewActiveMedications);
+        dto.UserId,
+        dto.Email,
+        dto.FullName,
+        dto.Phone,
+        dto.MedicalHistoryNotes,
+        dto.CreatedAt,
+        dto.AllowPharmacistViewActiveMedications,
+        dto.Gender,
+        dto.Age,
+        dto.ChronicConditions,
+        dto.KnownAllergies);
 
     public sealed record UpdateProfileRequest(
         string? FullName,
         string? Phone,
         string? MedicalHistoryNotes,
-        bool? AllowPharmacistViewActiveMedications = null);
+        bool? AllowPharmacistViewActiveMedications = null,
+        string? Gender = null,
+        int? Age = null,
+        string? ChronicConditions = null,
+        string? KnownAllergies = null);
 }
 
 public sealed record ProfileResponse(
@@ -55,4 +76,8 @@ public sealed record ProfileResponse(
     string? Phone,
     string? MedicalHistoryNotes,
     DateTime CreatedAt,
-    bool AllowPharmacistViewActiveMedications = true);
+    bool AllowPharmacistViewActiveMedications = true,
+    string? Gender = null,
+    int? Age = null,
+    string? ChronicConditions = null,
+    string? KnownAllergies = null);

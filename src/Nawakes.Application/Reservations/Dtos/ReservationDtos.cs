@@ -14,7 +14,14 @@ public sealed record ReservationDto(
     string? ClinicalContraindicationReason = null,
     string? RecommendedAlternativeMedication = null,
     Guid? RecommendedAlternativeItemId = null,
-    string? PrescriptionCropUrl = null
+    string? PrescriptionCropUrl = null,
+    string? FulfillmentType = "Pickup",
+    string? DeliveryAddress = null,
+    double? DeliveryLatitude = null,
+    double? DeliveryLongitude = null,
+    string? DeliveryContactPhone = null,
+    string? DeliveryNotes = null,
+    string? DeliveryStatus = null
 );
 
 public sealed record PharmacyReservationDto(
@@ -31,6 +38,14 @@ public sealed record PharmacyReservationDto(
     IReadOnlyList<string>? ActiveMedications = null,
     string? ClinicalContraindicationReason = null,
     string? RecommendedAlternativeMedication = null,
-    string? PrescriptionCropUrl = null
+    string? PrescriptionCropUrl = null,
+    string? FulfillmentType = "Pickup",
+    string? DeliveryAddress = null,
+    double? DeliveryLatitude = null,
+    double? DeliveryLongitude = null,
+    string? DeliveryContactPhone = null,
+    string? DeliveryNotes = null,
+    string? DeliveryStatus = null,
+    string? PatientGender = null,
+    int? PatientAge = null
 );
-

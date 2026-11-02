@@ -260,6 +260,117 @@ class _ProfileBody extends HookConsumerWidget {
               ),
               const SizedBox(height: 12),
 
+              // ── Demographics card (Gender & Age) ────────────────────────
+              Container(
+                padding: const EdgeInsets.all(15),
+                decoration: BoxDecoration(
+                  color: AppColors.card,
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  border: Border.all(color: AppColors.hairline),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SectionLabel('البيانات الحيوية (للأمان والجرعات)'),
+                    const SizedBox(height: 10),
+                    if (editing.value) ...[
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('النوع', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+                                const SizedBox(height: 6),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: InkWell(
+                                        onTap: () => gender.value = 'ذكر',
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(vertical: 8),
+                                          decoration: BoxDecoration(
+                                            color: gender.value == 'ذكر' ? AppColors.brand900 : const Color(0xFFF1F3F5),
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          alignment: Alignment.center,
+                                          child: Text('ذكر 👨',
+                                            style: TextStyle(
+                                              fontSize: 12.5,
+                                              fontWeight: FontWeight.w700,
+                                              color: gender.value == 'ذكر' ? Colors.white : AppColors.textPrimary,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: InkWell(
+                                        onTap: () => gender.value = 'أنثى',
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(vertical: 8),
+                                          decoration: BoxDecoration(
+                                            color: gender.value == 'أنثى' ? AppColors.brand900 : const Color(0xFFF1F3F5),
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          alignment: Alignment.center,
+                                          child: Text('أنثى 👩',
+                                            style: TextStyle(
+                                              fontSize: 12.5,
+                                              fontWeight: FontWeight.w700,
+                                              color: gender.value == 'أنثى' ? Colors.white : AppColors.textPrimary,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('العمر بالسنين', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+                                const SizedBox(height: 6),
+                                TextField(
+                                  controller: ageCtrl,
+                                  keyboardType: TextInputType.number,
+                                  decoration: const InputDecoration(
+                                    hintText: 'مثال: 32',
+                                    isDense: true,
+                                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ] else ...[
+                      Row(
+                        children: [
+                          Icon(gender.value == 'أنثى' ? Icons.female_rounded : Icons.male_rounded,
+                              color: AppColors.accentBlue, size: 20),
+                          const SizedBox(width: 8),
+                          Text(
+                            '${gender.value ?? "ذكر"}${ageCtrl.text.isNotEmpty ? " · ${ageCtrl.text} سنة" : ""}',
+                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+
               // ── Chronic conditions ──────────────────────────────────────
               _ChipsCard(
                 sectionLabel: 'الأمراض المزمنة',

@@ -28,6 +28,16 @@ public sealed class RegisterCommandHandler(
             encryptedHealth = encryption.Encrypt(json);
         }
 
+        var chronic = request.ChronicConditions ??
+            (request.HealthQuestionnaire?.ChronicIllnesses is { Count: > 0 }
+                ? string.Join(", ", request.HealthQuestionnaire.ChronicIllnesses)
+                : null);
+
+        var allergies = request.KnownAllergies ??
+            (request.HealthQuestionnaire?.KnownAllergies is { Count: > 0 }
+                ? string.Join(", ", request.HealthQuestionnaire.KnownAllergies)
+                : null);
+
         var (success, userId, error) = await identityService.RegisterAsync(
             email: request.Email,
             password: request.Password,
@@ -35,6 +45,10 @@ public sealed class RegisterCommandHandler(
             fcmToken: request.FcmToken,
             encryptedHealthJson: encryptedHealth,
             role: role,
+            gender: request.Gender,
+            age: request.Age,
+            chronicConditions: chronic,
+            knownAllergies: allergies,
             cancellationToken: cancellationToken);
 
         if (!success || userId is null)
@@ -76,7 +90,9 @@ public sealed class RegisterCommandHandler(
                 NationalIdDocUrl = p?.NationalIdDocUrl,
                 VerificationStatus = VerificationStatus.Pending,
                 TrustScore = 100m,
-                TrustScoreUpdatedAt = DateTime.UtcNow
+                TrustScoreUpdatedAt = DateTime.UtcNow,
+                OffersDelivery = true,
+                DeliveryFee = 0m
             };
 
             context.Pharmacies.Add(pharmacy);
@@ -88,15 +104,16 @@ public sealed class RegisterCommandHandler(
         context.RefreshTokens.Add(new Nawakes.Domain.Entities.RefreshToken
         {
             UserId = userGuid,
-            TokenHash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(
-                System.Text.Encoding.UTF8.GetBytes(refreshToken))),
-            ExpiresAt = refreshExpiry
+            Token = refreshToken,
+            ExpiresAt = refreshExpiry,
+            CreatedAt = DateTime.UtcNow
         });
+
         await context.SaveChangesAsync(cancellationToken);
 
         return new AuthResult(
             AccessToken: accessToken,
-            AccessTokenExpiresAt: DateTime.UtcNow.AddMinutes(15),
+            AccessTokenExpiresAt: DateTime.UtcNow.AddMinutes(60),
             RefreshToken: refreshToken,
             RefreshTokenExpiresAt: refreshExpiry,
             UserId: userGuid,

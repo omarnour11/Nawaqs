@@ -8,22 +8,23 @@ import 'package:nawakes_mobile/features/family_cabinet/data/family_cabinet_model
 
 /// Bottom sheet to create a tracked family member (cabinet) and optionally
 /// invite a caregiver by phone. Returns true when a cabinet was created.
-Future<bool> showAddFamilyMemberSheet(BuildContext context) async {
+Future<bool> showAddFamilyMemberSheet(BuildContext context, {String? initialNickname}) async {
   final result = await showModalBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (_) => const _AddFamilyMemberSheet(),
+    builder: (_) => _AddFamilyMemberSheet(initialNickname: initialNickname),
   );
   return result ?? false;
 }
 
 class _AddFamilyMemberSheet extends HookConsumerWidget {
-  const _AddFamilyMemberSheet();
+  final String? initialNickname;
+  const _AddFamilyMemberSheet({this.initialNickname});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final nickname = useTextEditingController();
+    final nickname = useTextEditingController(text: initialNickname ?? '');
     final phone = useTextEditingController();
     final submitting = useState(false);
     // Created once per sheet: if the invite below fails (e.g. the phone number
@@ -49,55 +50,89 @@ class _AddFamilyMemberSheet extends HookConsumerWidget {
           profileId = created.id;
           createdProfileId.value = profileId;
         }
-        if (phone.text.trim().isNotEmpty) {
+
+        final invitePhone = phone.text.trim();
+        if (invitePhone.isNotEmpty) {
           await ref.read(apiClientProvider).inviteCaregiver(
                 profileId,
-                InviteCaregiverRequest(invitedPhoneNumber: phone.text.trim()),
+                InviteCaregiverRequest(caregiverPhoneNumber: invitePhone),
               );
         }
+
         if (context.mounted) Navigator.of(context).pop(true);
       } catch (e) {
-        submitting.value = false;
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(describeApiError(e))));
         }
+      } finally {
+        submitting.value = false;
       }
     }
 
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 20, right: 20, top: 20,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 28,
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
+      padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(context).viewInsets.bottom + 20),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('إضافة شخص للعيلة', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.hairline,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'إضافة فرد لمتابعة الأدوية',
+            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'مثل: والدي، والدتي، طفلي، نفسي — لمتابعة تواريخ نفاذ الأدوية بانتظام.',
+            style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
+          ),
           const SizedBox(height: 16),
           TextField(
             controller: nickname,
-            textInputAction: TextInputAction.next,
-            decoration: const InputDecoration(labelText: 'الاسم (مثال: والدي)'),
+            autofocus: (initialNickname == null || initialNickname!.isEmpty),
+            decoration: const InputDecoration(
+              labelText: 'الاسم أو صلة القرابة *',
+              hintText: 'مثال: والدي، والدتي، طفلي',
+              prefixIcon: Icon(Icons.person_outline_rounded),
+            ),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: phone,
             keyboardType: TextInputType.phone,
-            decoration: const InputDecoration(labelText: 'رقم موبايل مقدم الرعاية (اختياري)'),
-          ),
-          const SizedBox(height: 20),
-          SizedBox(
-            height: 50,
-            child: FilledButton(
-              onPressed: submitting.value ? null : submit,
-              style: FilledButton.styleFrom(backgroundColor: AppColors.accentBlue),
-              child: submitting.value
-                  ? const SizedBox(
-                      width: 22, height: 22,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Text('حفظ'),
+            decoration: const InputDecoration(
+              labelText: 'مشاركة المتابعة مع مرافق (اختياري)',
+              hintText: 'رقم هاتف المرافق في نواقص',
+              prefixIcon: Icon(Icons.phone_outlined),
             ),
+          ),
+          const SizedBox(height: 18),
+          FilledButton(
+            onPressed: submitting.value ? null : submit,
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.accentBlue,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+            child: submitting.value
+                ? const SizedBox(
+                    width: 20, height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  )
+                : const Text('حفظ وبدء المتابعة', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
           ),
         ],
       ),

@@ -57,6 +57,24 @@ class PharmacyBasketGroup {
 }
 
 /// Result of the greedy pharmacy grouping algorithm.
+class FulfillmentSelection {
+  final String type; // 'Pickup' or 'Delivery'
+  final String? address;
+  final String? phone;
+  final String? notes;
+  final double? latitude;
+  final double? longitude;
+
+  const FulfillmentSelection({
+    this.type = 'Pickup',
+    this.address,
+    this.phone,
+    this.notes,
+    this.latitude,
+    this.longitude,
+  });
+}
+
 class GreedyGroupingResult {
   final List<PharmacyBasketGroup> groups;
   final List<BatchSearchItemDto> unfulfillableItems;
@@ -355,7 +373,162 @@ class BatchSearchResultsScreen extends HookConsumerWidget {
       );
     }
 
+    Future<FulfillmentSelection?> promptFulfillmentDetails(String targetName) async {
+      String selectedType = 'Pickup';
+      final addressCtrl = TextEditingController();
+      final phoneCtrl = TextEditingController();
+      final notesCtrl = TextEditingController();
+
+      return showModalBottomSheet<FulfillmentSelection>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.white,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        builder: (ctx) => StatefulBuilder(
+          builder: (ctx, setSheetState) => Padding(
+            padding: EdgeInsets.only(
+              left: 20,
+              right: 20,
+              top: 20,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.delivery_dining_rounded, color: AppColors.brand900, size: 24),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'طريقة استلام الأدوية ($targetName)',
+                          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: InkWell(
+                          onTap: () => setSheetState(() => selectedType = 'Pickup'),
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            decoration: BoxDecoration(
+                              color: selectedType == 'Pickup' ? AppColors.brand900 : const Color(0xFFF1F3F5),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: selectedType == 'Pickup' ? AppColors.brand900 : AppColors.hairline,
+                              ),
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              '🏪 استلام من الصيدلية',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                                color: selectedType == 'Pickup' ? Colors.white : AppColors.textPrimary,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: InkWell(
+                          onTap: () => setSheetState(() => selectedType = 'Delivery'),
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            decoration: BoxDecoration(
+                              color: selectedType == 'Delivery' ? AppColors.brand900 : const Color(0xFFF1F3F5),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: selectedType == 'Delivery' ? AppColors.brand900 : AppColors.hairline,
+                              ),
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              '🛵 توصيل للمنزل',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                                color: selectedType == 'Delivery' ? Colors.white : AppColors.textPrimary,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (selectedType == 'Delivery') ...[
+                    const SizedBox(height: 14),
+                    TextField(
+                      controller: addressCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'عنوان التوصيل بالتفصيل *',
+                        hintText: 'الشارع، رقم العمارة، الدور، الشقة',
+                        prefixIcon: Icon(Icons.home_outlined, size: 20),
+                        isDense: true,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: phoneCtrl,
+                      keyboardType: TextInputType.phone,
+                      decoration: const InputDecoration(
+                        labelText: 'رقم هاتف المستلم (للطيار) *',
+                        hintText: '010XXXXXXXX',
+                        prefixIcon: Icon(Icons.phone_outlined, size: 20),
+                        isDense: true,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: notesCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'ملاحظات للطيار (اختياري)',
+                        hintText: 'مثال: رن الجرس ودع الدواء عند الباب',
+                        prefixIcon: Icon(Icons.edit_note_rounded, size: 20),
+                        isDense: true,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 20),
+                  FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.brand900,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    onPressed: () {
+                      Navigator.of(ctx).pop(FulfillmentSelection(
+                        type: selectedType,
+                        address: addressCtrl.text.trim().isNotEmpty ? addressCtrl.text.trim() : null,
+                        phone: phoneCtrl.text.trim().isNotEmpty ? phoneCtrl.text.trim() : null,
+                        notes: notesCtrl.text.trim().isNotEmpty ? notesCtrl.text.trim() : null,
+                      ));
+                    },
+                    child: const Text('تأكيد الحجز', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     Future<void> bookSinglePharmacy(PharmacyBasketGroup group) async {
+      final fulfillment = await promptFulfillmentDetails(group.pharmacyName);
+      if (fulfillment == null) return;
+
       final updated = Set<String>.from(bookedPharmacyIds.value)..add(group.pharmacyId);
       bookedPharmacyIds.value = updated;
 
@@ -366,6 +539,12 @@ class BatchSearchResultsScreen extends HookConsumerWidget {
                   CreateReservationRequest(
                     inventoryItemId: it.inventoryItemId!,
                     prescriptionCropBase64: sanitizedCropBase64,
+                    fulfillmentType: fulfillment.type,
+                    deliveryAddress: fulfillment.address,
+                    deliveryContactPhone: fulfillment.phone,
+                    deliveryNotes: fulfillment.notes,
+                    deliveryLatitude: fulfillment.latitude,
+                    deliveryLongitude: fulfillment.longitude,
                   ),
                 );
           } catch (_) {}
@@ -398,6 +577,9 @@ class BatchSearchResultsScreen extends HookConsumerWidget {
     }
 
     Future<void> bookAllPharmacies(List<PharmacyBasketGroup> groups) async {
+      final fulfillment = await promptFulfillmentDetails('جميع الصيدليات');
+      if (fulfillment == null) return;
+
       final allIds = groups.map((g) => g.pharmacyId).toSet();
       bookedPharmacyIds.value = allIds;
 
@@ -409,6 +591,12 @@ class BatchSearchResultsScreen extends HookConsumerWidget {
                     CreateReservationRequest(
                       inventoryItemId: it.inventoryItemId!,
                       prescriptionCropBase64: sanitizedCropBase64,
+                      fulfillmentType: fulfillment.type,
+                      deliveryAddress: fulfillment.address,
+                      deliveryContactPhone: fulfillment.phone,
+                      deliveryNotes: fulfillment.notes,
+                      deliveryLatitude: fulfillment.latitude,
+                      deliveryLongitude: fulfillment.longitude,
                     ),
                   );
             } catch (_) {}

@@ -13,6 +13,16 @@ public sealed class Reservation : BaseEntity
     /// <summary>Short human-readable pickup code shown to the patient (e.g. NWQ-4F2A9C).</summary>
     public string ReservationCode { get; set; } = string.Empty;
 
+    /// <summary>Pickup from pharmacy (0) vs Home Delivery (1).</summary>
+    public FulfillmentType FulfillmentType { get; set; } = FulfillmentType.Pickup;
+
+    public string? DeliveryAddress { get; set; }
+    public double? DeliveryLatitude { get; set; }
+    public double? DeliveryLongitude { get; set; }
+    public string? DeliveryContactPhone { get; set; }
+    public string? DeliveryNotes { get; set; }
+    public DeliveryStatus? DeliveryStatus { get; set; }
+
     public DateTime ExpiresAt { get; set; }
 
     /// <summary>Hangfire job ID stored so it can be deleted on early completion/cancellation.</summary>

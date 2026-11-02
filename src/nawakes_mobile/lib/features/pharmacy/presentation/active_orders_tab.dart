@@ -7,6 +7,7 @@ import 'package:nawakes_mobile/features/auth/presentation/auth_controller.dart';
 import 'package:nawakes_mobile/features/pharmacy/presentation/pharmacy_dashboard_controller.dart';
 import 'package:nawakes_mobile/core/network/api_client.dart';
 import 'package:nawakes_mobile/features/pharmacy/data/pharmacy_dashboard_models.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 
 class ActiveOrdersTab extends HookConsumerWidget {
@@ -348,6 +349,62 @@ class _OrderCard extends HookWidget {
                 ],
               ),
 
+              if (reservation.fulfillmentType == 'Delivery') ...[
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEFF6FF),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFBFDBFE)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.delivery_dining_rounded, color: Color(0xFF1D4ED8), size: 18),
+                          const SizedBox(width: 6),
+                          const Text('طلب توصيل للمنزل (دليفري)',
+                              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: Color(0xFF1E40AF))),
+                          const Spacer(),
+                          if (reservation.deliveryStatus != null)
+                            Text(reservation.deliveryStatus!,
+                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF1D4ED8))),
+                        ],
+                      ),
+                      if (reservation.deliveryAddress != null && reservation.deliveryAddress!.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text('📍 العنوان: ${reservation.deliveryAddress}',
+                            style: const TextStyle(fontSize: 12, color: Color(0xFF1E3A8A))),
+                      ],
+                      if (reservation.deliveryContactPhone != null && reservation.deliveryContactPhone!.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text('📞 هاتف العميل: ${reservation.deliveryContactPhone}',
+                            style: const TextStyle(fontSize: 12, color: Color(0xFF1E3A8A))),
+                      ],
+                      if (reservation.deliveryNotes != null && reservation.deliveryNotes!.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text('📝 ملاحظات: ${reservation.deliveryNotes}',
+                            style: const TextStyle(fontSize: 11.5, color: Color(0xFF475569))),
+                      ],
+                      const SizedBox(height: 8),
+                      FilledButton.icon(
+                        onPressed: () => _dispatchRunnerViaWhatsApp(context, reservation),
+                        icon: const Icon(Icons.send_rounded, size: 16),
+                        label: const Text('📲 إرسال للطيار عبر واتساب'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF16A34A),
+                          minimumSize: const Size.fromHeight(38),
+                          textStyle: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+
               if (isActive || isReady) ...[
                 const SizedBox(height: 14),
                 Row(
@@ -647,6 +704,42 @@ class _ErrorBanner extends StatelessWidget {
 
 
 /// Bottom Sheet for Pharmacist Clinical Review (Allergies, Chronic Conditions, Active Medications, and Alternatives)
+Future<void> _dispatchRunnerViaWhatsApp(BuildContext context, dynamic reservation) async {
+  final buf = StringBuffer();
+  buf.writeln('🛵 *طلب توصيل دواء جديد - نواقص*');
+  buf.writeln('--------------------------------');
+  buf.writeln('💊 *الدواء:* ${reservation.medicationName}');
+  buf.writeln('🔢 *كود الطلب:* ${reservation.reservationCode}');
+  buf.writeln('👤 *العميل:* ${reservation.patientDisplayName}');
+  if (reservation.deliveryContactPhone != null && reservation.deliveryContactPhone!.isNotEmpty) {
+    buf.writeln('📞 *هاتف العميل:* ${reservation.deliveryContactPhone}');
+  }
+  if (reservation.deliveryAddress != null && reservation.deliveryAddress!.isNotEmpty) {
+    buf.writeln('📍 *العنوان:* ${reservation.deliveryAddress}');
+  }
+  if (reservation.deliveryNotes != null && reservation.deliveryNotes!.isNotEmpty) {
+    buf.writeln('📝 *ملاحظات التوصيل:* ${reservation.deliveryNotes}');
+  }
+  if (reservation.deliveryLatitude != null && reservation.deliveryLongitude != null) {
+    buf.writeln('🗺️ *موقع العميل على الخريطة:*');
+    buf.writeln('https://maps.google.com/?q=${reservation.deliveryLatitude},${reservation.deliveryLongitude}');
+  }
+  buf.writeln('--------------------------------');
+  buf.writeln('يرجى تأكيد الاستلام والتسليم للعميل.');
+
+  final encoded = Uri.encodeComponent(buf.toString());
+  final uri = Uri.parse('https://wa.me/?text=$encoded');
+  try {
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  } catch (_) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تعذر فتح تطبيق واتساب.')),
+      );
+    }
+  }
+}
+
 void _showClinicalReviewSheet(BuildContext context, WidgetRef ref, dynamic reservation) {
   showModalBottomSheet(
     context: context,

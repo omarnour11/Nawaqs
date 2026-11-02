@@ -12,6 +12,12 @@ CreateReservationRequest _$CreateReservationRequestFromJson(
   inventoryItemId: json['inventoryItemId'] as String,
   prescriptionCropBase64: json['prescriptionCropBase64'] as String?,
   prescriptionCropUrl: json['prescriptionCropUrl'] as String?,
+  fulfillmentType: json['fulfillmentType'] as String? ?? 'Pickup',
+  deliveryAddress: json['deliveryAddress'] as String?,
+  deliveryLatitude: (json['deliveryLatitude'] as num?)?.toDouble(),
+  deliveryLongitude: (json['deliveryLongitude'] as num?)?.toDouble(),
+  deliveryContactPhone: json['deliveryContactPhone'] as String?,
+  deliveryNotes: json['deliveryNotes'] as String?,
 );
 
 Map<String, dynamic> _$CreateReservationRequestToJson(
@@ -20,6 +26,12 @@ Map<String, dynamic> _$CreateReservationRequestToJson(
   'inventoryItemId': instance.inventoryItemId,
   'prescriptionCropBase64': instance.prescriptionCropBase64,
   'prescriptionCropUrl': instance.prescriptionCropUrl,
+  'fulfillmentType': instance.fulfillmentType,
+  'deliveryAddress': instance.deliveryAddress,
+  'deliveryLatitude': instance.deliveryLatitude,
+  'deliveryLongitude': instance.deliveryLongitude,
+  'deliveryContactPhone': instance.deliveryContactPhone,
+  'deliveryNotes': instance.deliveryNotes,
 };
 
 ReservationResponse _$ReservationResponseFromJson(Map<String, dynamic> json) =>
@@ -41,6 +53,13 @@ ReservationResponse _$ReservationResponseFromJson(Map<String, dynamic> json) =>
       recommendedAlternativeItemId:
           json['recommendedAlternativeItemId'] as String?,
       prescriptionCropUrl: json['prescriptionCropUrl'] as String?,
+      fulfillmentType: json['fulfillmentType'] as String? ?? 'Pickup',
+      deliveryAddress: json['deliveryAddress'] as String?,
+      deliveryLatitude: (json['deliveryLatitude'] as num?)?.toDouble(),
+      deliveryLongitude: (json['deliveryLongitude'] as num?)?.toDouble(),
+      deliveryContactPhone: json['deliveryContactPhone'] as String?,
+      deliveryNotes: json['deliveryNotes'] as String?,
+      deliveryStatus: json['deliveryStatus'] as String?,
     );
 
 Map<String, dynamic> _$ReservationResponseToJson(
@@ -60,4 +79,11 @@ Map<String, dynamic> _$ReservationResponseToJson(
   'recommendedAlternativeMedication': instance.recommendedAlternativeMedication,
   'recommendedAlternativeItemId': instance.recommendedAlternativeItemId,
   'prescriptionCropUrl': instance.prescriptionCropUrl,
+  'fulfillmentType': instance.fulfillmentType,
+  'deliveryAddress': instance.deliveryAddress,
+  'deliveryLatitude': instance.deliveryLatitude,
+  'deliveryLongitude': instance.deliveryLongitude,
+  'deliveryContactPhone': instance.deliveryContactPhone,
+  'deliveryNotes': instance.deliveryNotes,
+  'deliveryStatus': instance.deliveryStatus,
 };

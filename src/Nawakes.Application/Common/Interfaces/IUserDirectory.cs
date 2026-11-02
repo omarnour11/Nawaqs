@@ -5,7 +5,11 @@ namespace Nawakes.Application.Common.Interfaces;
 public sealed record PatientClinicalSummaryDto(
     Guid UserId,
     string? MedicalHistoryNotes,
-    bool AllowPharmacistViewActiveMedications);
+    bool AllowPharmacistViewActiveMedications,
+    string? Gender = null,
+    int? Age = null,
+    string? ChronicConditions = null,
+    string? KnownAllergies = null);
 
 /// <summary>
 /// Read-only access to Identity user data for the Application layer

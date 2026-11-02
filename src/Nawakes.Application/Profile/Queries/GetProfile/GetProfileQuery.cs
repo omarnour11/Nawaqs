@@ -9,7 +9,11 @@ public sealed record ProfileDto(
     string? Phone,
     string? MedicalHistoryNotes,
     DateTime CreatedAt,
-    bool AllowPharmacistViewActiveMedications = true);
+    bool AllowPharmacistViewActiveMedications = true,
+    string? Gender = null,
+    int? Age = null,
+    string? ChronicConditions = null,
+    string? KnownAllergies = null);
 
 public sealed record GetProfileQuery : IRequest<ProfileDto>;
 

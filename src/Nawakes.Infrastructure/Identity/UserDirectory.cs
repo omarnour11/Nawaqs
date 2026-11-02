@@ -35,7 +35,11 @@ public sealed class UserDirectory(ApplicationDbContext context) : IUserDirectory
             .Select(u => new PatientClinicalSummaryDto(
                 u.Id,
                 u.MedicalHistoryNotes,
-                u.AllowPharmacistViewActiveMedications))
+                u.AllowPharmacistViewActiveMedications,
+                u.Gender,
+                u.Age,
+                u.ChronicConditions,
+                u.KnownAllergies))
             .ToDictionaryAsync(u => u.UserId, cancellationToken);
 
     public async Task<Guid?> FindUserIdByPhoneAsync(

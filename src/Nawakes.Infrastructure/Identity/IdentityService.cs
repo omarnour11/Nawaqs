@@ -22,6 +22,10 @@ public sealed class IdentityService(
         string? fcmToken,
         string? encryptedHealthJson,
         string role = "Patient",
+        string? gender = null,
+        int? age = null,
+        string? chronicConditions = null,
+        string? knownAllergies = null,
         CancellationToken cancellationToken = default)
     {
         var existingUser = await userManager.FindByEmailAsync(email);
@@ -37,7 +41,11 @@ public sealed class IdentityService(
             FullName = string.IsNullOrWhiteSpace(fullName) ? null : fullName.Trim(),
             FcmToken = fcmToken,
             HealthQuestionnaireJson = encryptedHealthJson,
-            Role = parsedRole
+            Role = parsedRole,
+            Gender = string.IsNullOrWhiteSpace(gender) ? null : gender.Trim(),
+            Age = age,
+            ChronicConditions = string.IsNullOrWhiteSpace(chronicConditions) ? null : chronicConditions.Trim(),
+            KnownAllergies = string.IsNullOrWhiteSpace(knownAllergies) ? null : knownAllergies.Trim()
         };
 
         var result = await userManager.CreateAsync(user, password);
@@ -100,7 +108,11 @@ public sealed class IdentityService(
             user.PhoneNumber,
             user.MedicalHistoryNotes,
             user.CreatedAt,
-            user.AllowPharmacistViewActiveMedications);
+            user.AllowPharmacistViewActiveMedications,
+            user.Gender,
+            user.Age,
+            user.ChronicConditions,
+            user.KnownAllergies);
     }
 
     public async Task UpdateProfileAsync(
@@ -109,6 +121,10 @@ public sealed class IdentityService(
         string? phone,
         string? medicalHistoryNotes,
         bool? allowPharmacistViewActiveMedications = null,
+        string? gender = null,
+        int? age = null,
+        string? chronicConditions = null,
+        string? knownAllergies = null,
         CancellationToken cancellationToken = default)
     {
         var user = await userManager.FindByIdAsync(userId.ToString())
@@ -119,6 +135,10 @@ public sealed class IdentityService(
         if (medicalHistoryNotes is not null) user.MedicalHistoryNotes = medicalHistoryNotes.Trim();
         if (allowPharmacistViewActiveMedications.HasValue)
             user.AllowPharmacistViewActiveMedications = allowPharmacistViewActiveMedications.Value;
+        if (gender is not null) user.Gender = gender.Trim();
+        if (age.HasValue) user.Age = age.Value;
+        if (chronicConditions is not null) user.ChronicConditions = chronicConditions.Trim();
+        if (knownAllergies is not null) user.KnownAllergies = knownAllergies.Trim();
 
         await userManager.UpdateAsync(user);
     }
@@ -141,11 +161,9 @@ public sealed class IdentityService(
         string email, string resetToken, string newPassword, CancellationToken cancellationToken = default)
     {
         var user = await userManager.FindByEmailAsync(email);
-        if (user is null) return "الحساب غير موجود.";
+        if (user is null) return "User not found.";
 
         var result = await userManager.ResetPasswordAsync(user, resetToken, newPassword);
-        return result.Succeeded
-            ? null
-            : string.Join("; ", result.Errors.Select(e => e.Description));
+        return result.Succeeded ? null : string.Join("; ", result.Errors.Select(e => e.Description));
     }
 }

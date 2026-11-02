@@ -18,7 +18,10 @@ class RegisterRequest {
   final String password;
   final String fullName;
   final String? role;
-  final List<String>? knownAllergies;
+  final String? gender;
+  final int? age;
+  final String? chronicConditions;
+  final dynamic knownAllergies;
   final List<String>? chronicIllnesses;
   final PharmacyRegistrationDto? pharmacy;
 
@@ -27,26 +30,50 @@ class RegisterRequest {
     required this.password,
     required this.fullName,
     this.role,
+    this.gender,
+    this.age,
+    this.chronicConditions,
     this.knownAllergies,
     this.chronicIllnesses,
     this.pharmacy,
   });
 
-  // factory RegisterRequest.fromJson not needed
+  Map<String, dynamic> toJson() {
+    List<String>? allergiesList;
+    String? allergiesStr;
 
-  /// API expects nested `healthQuestionnaire` and optional `pharmacy` details.
-  Map<String, dynamic> toJson() => {
-        'email': email,
-        'password': password,
-        'fullName': fullName,
-        if (role != null) 'role': role,
-        if (knownAllergies != null || chronicIllnesses != null)
-          'healthQuestionnaire': {
-            'knownAllergies': knownAllergies,
-            'chronicIllnesses': chronicIllnesses,
-          },
-        if (pharmacy != null) 'pharmacy': pharmacy!.toJson(),
-      };
+    if (knownAllergies is List<String>) {
+      allergiesList = knownAllergies as List<String>;
+      allergiesStr = allergiesList.join('، ');
+    } else if (knownAllergies is List) {
+      allergiesList = (knownAllergies as List).map((e) => e.toString()).toList();
+      allergiesStr = allergiesList.join('، ');
+    } else if (knownAllergies is String) {
+      allergiesStr = knownAllergies as String;
+      allergiesList = (knownAllergies as String)
+          .split(RegExp(r'[,،]'))
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
+    }
+
+    return {
+      'email': email,
+      'password': password,
+      'fullName': fullName,
+      if (role != null) 'role': role,
+      if (gender != null) 'gender': gender,
+      if (age != null) 'age': age,
+      if (chronicConditions != null) 'chronicConditions': chronicConditions,
+      if (allergiesStr != null) 'knownAllergies': allergiesStr,
+      if (allergiesList != null || chronicIllnesses != null)
+        'healthQuestionnaire': {
+          if (allergiesList != null) 'knownAllergies': allergiesList,
+          if (chronicIllnesses != null) 'chronicIllnesses': chronicIllnesses,
+        },
+      if (pharmacy != null) 'pharmacy': pharmacy!.toJson(),
+    };
+  }
 }
 
 class PharmacyRegistrationDto {
@@ -106,15 +133,6 @@ class RefreshTokenRequest {
 
   RefreshTokenRequest({required this.refreshToken});
 
-  factory RefreshTokenRequest.fromJson(Map<String, dynamic> json) =>
-      _$RefreshTokenRequestFromJson(json);
+  factory RefreshTokenRequest.fromJson(Map<String, dynamic> json) => _$RefreshTokenRequestFromJson(json);
   Map<String, dynamic> toJson() => _$RefreshTokenRequestToJson(this);
-}
-
-class DeviceTokenRequest {
-  final String fcmToken;
-
-  DeviceTokenRequest({required this.fcmToken});
-
-  Map<String, dynamic> toJson() => {'fcmToken': fcmToken};
 }

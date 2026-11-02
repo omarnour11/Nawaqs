@@ -13,6 +13,18 @@ public sealed class ApplicationUser : IdentityUser<Guid>
     /// <summary>Display name (first + last). Optional; defaults to the email prefix.</summary>
     public string? FullName { get; set; }
 
+    /// <summary>Gender: "Male" or "Female" (or null if not provided).</summary>
+    public string? Gender { get; set; }
+
+    /// <summary>Age in years (used for pediatric/geriatric safety checks and clinical recommendations).</summary>
+    public int? Age { get; set; }
+
+    /// <summary>Structured comma-separated list of chronic conditions (e.g. "Diabetes,Hypertension").</summary>
+    public string? ChronicConditions { get; set; }
+
+    /// <summary>Structured comma-separated list of drug sensitivities/allergies (e.g. "Penicillin,NSAIDs").</summary>
+    public string? KnownAllergies { get; set; }
+
     /// <summary>Free-text notes pharmacists should know (allergies, conditions). Plain text by design — non-diagnostic.</summary>
     public string? MedicalHistoryNotes { get; set; }
 
