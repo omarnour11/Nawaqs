@@ -22,9 +22,15 @@ public sealed class EgyptianDrugRegistryConfiguration : IEntityTypeConfiguration
         builder.Property(d => d.OfficialPriceEGP).HasColumnType("decimal(18,2)");
         builder.Property(d => d.Manufacturer).HasMaxLength(200);
         builder.Property(d => d.EdaRegistrationNumber).HasMaxLength(50);
+        builder.Property(d => d.GtinBarcode).HasMaxLength(32);
 
         // Instant exact lookup by normalized trade name
         builder.HasIndex(d => d.TradeNameNormalized);
+
+        // Instant lookup by GTIN / EAN-13 barcode
+        builder.HasIndex(d => d.GtinBarcode)
+            .HasFilter("[GtinBarcode] IS NOT NULL");
+
 
         // Fast lookup by Arabic commercial name
         builder.HasIndex(d => d.CommercialNameArNormalized)

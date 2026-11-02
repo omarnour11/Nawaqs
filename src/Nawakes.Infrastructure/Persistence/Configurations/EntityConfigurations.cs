@@ -73,6 +73,8 @@ public sealed class InventoryItemConfiguration : IEntityTypeConfiguration<Invent
         builder.Property(i => i.MedicationName).HasMaxLength(300).IsRequired();
         builder.Property(i => i.MedicationNameNormalized).HasMaxLength(300).IsRequired();
         builder.Property(i => i.Price).HasColumnType("decimal(18,2)");
+        builder.Property(i => i.Barcode).HasMaxLength(32);
+        builder.Property(i => i.ExternalPosSku).HasMaxLength(64);
         builder.Property(i => i.Status).HasConversion<byte>();
 
         builder.Property(i => i.RowVersion)
@@ -94,8 +96,15 @@ public sealed class InventoryItemConfiguration : IEntityTypeConfiguration<Invent
 
         builder.HasIndex(i => new { i.PharmacyId, i.Status })
             .HasFilter("[IsDeleted] = 0");
+
+        builder.HasIndex(i => new { i.PharmacyId, i.Barcode })
+            .HasFilter("[Barcode] IS NOT NULL AND [IsDeleted] = 0");
+
+        builder.HasIndex(i => new { i.PharmacyId, i.ExternalPosSku })
+            .HasFilter("[ExternalPosSku] IS NOT NULL AND [IsDeleted] = 0");
     }
 }
+
 
 public sealed class ReservationConfiguration : IEntityTypeConfiguration<Reservation>
 {
