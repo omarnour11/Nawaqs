@@ -19,6 +19,15 @@ class PharmacyReservationResponse {
   final List<String>? activeMedications;
   final String? clinicalContraindicationReason;
   final String? recommendedAlternativeMedication;
+  final String? fulfillmentType;
+  final String? deliveryAddress;
+  final double? deliveryLatitude;
+  final double? deliveryLongitude;
+  final String? deliveryContactPhone;
+  final String? deliveryNotes;
+  final String? deliveryStatus;
+  final String? patientGender;
+  final int? patientAge;
 
   PharmacyReservationResponse({
     required this.id,
@@ -34,6 +43,15 @@ class PharmacyReservationResponse {
     this.activeMedications,
     this.clinicalContraindicationReason,
     this.recommendedAlternativeMedication,
+    this.fulfillmentType,
+    this.deliveryAddress,
+    this.deliveryLatitude,
+    this.deliveryLongitude,
+    this.deliveryContactPhone,
+    this.deliveryNotes,
+    this.deliveryStatus,
+    this.patientGender,
+    this.patientAge,
   });
 
   factory PharmacyReservationResponse.fromJson(Map<String, dynamic> json) =>

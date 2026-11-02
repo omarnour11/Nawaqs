@@ -5,7 +5,7 @@ using Nawakes.Application.Reservations.Commands.CancelReservation;
 using Nawakes.Application.Reservations.Commands.CreateReservation;
 using Nawakes.Application.Reservations.Commands.ReserveAlternative;
 using Nawakes.Application.Reservations.Dtos;
-using Nawakes.Application.Reservations.Queries.GetMyReservations;
+using Nawakes.Application.Reservations.Queries.GetPatientReservations;
 
 namespace Nawakes.API.Controllers;
 
@@ -22,7 +22,7 @@ public sealed class ReservationsController(ISender mediator) : ControllerBase
     public async Task<ActionResult<IReadOnlyList<ReservationResponse>>> GetMine(
         CancellationToken cancellationToken)
     {
-        var dtos = await mediator.Send(new GetMyReservationsQuery(), cancellationToken);
+        var dtos = await mediator.Send(new GetPatientReservationsQuery(), cancellationToken);
         return Ok(dtos.Select(ToResponse).ToList());
     }
 

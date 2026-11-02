@@ -3,7 +3,6 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nawakes_mobile/core/network/api_client.dart';
-import 'package:nawakes_mobile/core/location/location_service.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
 import 'package:nawakes_mobile/features/auth/data/auth_models.dart';
 import 'package:nawakes_mobile/features/profile/data/profile_models.dart';
@@ -20,7 +19,7 @@ class MockDeliveryApiClient implements ApiClient {
   List<PendingCaregiverInviteModel> pendingInvitesList = [];
 
   @override
-  Future<List<PharmacyReservationResponse>> getActiveReservations() async => reservations;
+  Future<List<PharmacyReservationResponse>> getPharmacyReservations() async => reservations;
 
   @override
   Future<FamilyCabinetResponseModel> getFamilyCabinet() async =>
@@ -67,7 +66,7 @@ class _MockPharmacyReservationsNotifier extends PharmacyReservationsController {
 
   @override
   Future<List<PharmacyReservationResponse>> build() async {
-    return client.getActiveReservations();
+    return client.getPharmacyReservations();
   }
 }
 

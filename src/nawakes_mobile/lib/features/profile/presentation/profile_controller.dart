@@ -20,6 +20,10 @@ class ProfileController extends _$ProfileController {
     String? phone,
     String? medicalHistoryNotes,
     bool? allowPharmacistViewActiveMedications,
+    String? gender,
+    int? age,
+    String? chronicConditions,
+    String? knownAllergies,
   }) async {
     final client = ref.read(apiClientProvider);
     await client.updateProfile(UpdateProfileRequest(
@@ -27,6 +31,10 @@ class ProfileController extends _$ProfileController {
       phone: phone,
       medicalHistoryNotes: medicalHistoryNotes,
       allowPharmacistViewActiveMedications: allowPharmacistViewActiveMedications,
+      gender: gender,
+      age: age,
+      chronicConditions: chronicConditions,
+      knownAllergies: knownAllergies,
     ));
     // Re-fetch so the screen shows the freshly saved data
     ref.invalidateSelf();

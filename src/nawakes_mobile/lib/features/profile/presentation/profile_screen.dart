@@ -121,6 +121,8 @@ class _ProfileBody extends HookConsumerWidget {
 
     final newConditionCtrl = useTextEditingController();
     final newAllergyCtrl = useTextEditingController();
+    final gender = useState<String>(profile.gender ?? 'ذكر');
+    final ageCtrl = useTextEditingController(text: profile.age != null ? profile.age.toString() : '');
 
     Future<void> save() async {
       saving.value = true;
@@ -154,6 +156,8 @@ class _ProfileBody extends HookConsumerWidget {
               fullName: nameCtrl.text.trim().isEmpty ? null : nameCtrl.text.trim(),
               phone: phoneCtrl.text.trim().isEmpty ? null : phoneCtrl.text.trim(),
               medicalHistoryNotes: savedNotes,
+              gender: gender.value,
+              age: int.tryParse(ageCtrl.text.trim()),
             );
         editing.value = false;
         // Re-parse from the saved notes so chips reflect exactly what's stored

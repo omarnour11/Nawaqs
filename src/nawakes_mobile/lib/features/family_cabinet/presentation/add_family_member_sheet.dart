@@ -55,7 +55,7 @@ class _AddFamilyMemberSheet extends HookConsumerWidget {
         if (invitePhone.isNotEmpty) {
           await ref.read(apiClientProvider).inviteCaregiver(
                 profileId,
-                InviteCaregiverRequest(caregiverPhoneNumber: invitePhone),
+                InviteCaregiverRequest(invitedPhoneNumber: invitePhone),
               );
         }
 

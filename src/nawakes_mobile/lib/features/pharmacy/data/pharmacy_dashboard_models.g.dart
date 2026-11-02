@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'pharmacy_dashboard_models.dart';
+part 'pharmacy_dashboard_models.dart';
 
 // **************************************************************************
 // JsonSerializableGenerator
@@ -27,6 +27,15 @@ PharmacyReservationResponse _$PharmacyReservationResponseFromJson(
       json['clinicalContraindicationReason'] as String?,
   recommendedAlternativeMedication:
       json['recommendedAlternativeMedication'] as String?,
+  fulfillmentType: json['fulfillmentType'] as String?,
+  deliveryAddress: json['deliveryAddress'] as String?,
+  deliveryLatitude: (json['deliveryLatitude'] as num?)?.toDouble(),
+  deliveryLongitude: (json['deliveryLongitude'] as num?)?.toDouble(),
+  deliveryContactPhone: json['deliveryContactPhone'] as String?,
+  deliveryNotes: json['deliveryNotes'] as String?,
+  deliveryStatus: json['deliveryStatus'] as String?,
+  patientGender: json['patientGender'] as String?,
+  patientAge: (json['patientAge'] as num?)?.toInt(),
 );
 
 Map<String, dynamic> _$PharmacyReservationResponseToJson(
@@ -46,6 +55,15 @@ Map<String, dynamic> _$PharmacyReservationResponseToJson(
   'activeMedications': instance.activeMedications,
   'clinicalContraindicationReason': instance.clinicalContraindicationReason,
   'recommendedAlternativeMedication': instance.recommendedAlternativeMedication,
+  'fulfillmentType': instance.fulfillmentType,
+  'deliveryAddress': instance.deliveryAddress,
+  'deliveryLatitude': instance.deliveryLatitude,
+  'deliveryLongitude': instance.deliveryLongitude,
+  'deliveryContactPhone': instance.deliveryContactPhone,
+  'deliveryNotes': instance.deliveryNotes,
+  'deliveryStatus': instance.deliveryStatus,
+  'patientGender': instance.patientGender,
+  'patientAge': instance.patientAge,
 };
 
 ClinicalRejectRequest _$ClinicalRejectRequestFromJson(
