@@ -33,31 +33,3 @@ class ProfileController extends _$ProfileController {
     await future; // wait for the new fetch to complete before returning
   }
 }
-
-extension ProfileControllerClinicalUpdateX on ProfileController {
-  Future<void> updateClinicalProfile({
-    String? fullName,
-    String? phone,
-    String? medicalHistoryNotes,
-    bool? allowPharmacistViewActiveMedications,
-    String? gender,
-    int? age,
-    String? chronicConditions,
-    String? knownAllergies,
-  }) async {
-    final client = ref.read(apiClientProvider);
-    await client.updateProfile(UpdateProfileRequest(
-      fullName: fullName,
-      phone: phone,
-      medicalHistoryNotes: medicalHistoryNotes,
-      allowPharmacistViewActiveMedications: allowPharmacistViewActiveMedications,
-      gender: gender,
-      age: age,
-      chronicConditions: chronicConditions,
-      knownAllergies: knownAllergies,
-    ));
-    // Re-fetch so the screen shows the freshly saved data
-    ref.invalidateSelf();
-    await future; // wait for the new fetch to complete before returning
-  }
-}

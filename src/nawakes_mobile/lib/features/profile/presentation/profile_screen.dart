@@ -152,13 +152,14 @@ class _ProfileBody extends HookConsumerWidget {
         }
 
         final savedNotes = buf.toString().trim();
-        await ref.read(profileControllerProvider.notifier).updateClinicalProfile(
+        await ref.read(apiClientProvider).updateProfile(UpdateProfileRequest(
               fullName: nameCtrl.text.trim().isEmpty ? null : nameCtrl.text.trim(),
               phone: phoneCtrl.text.trim().isEmpty ? null : phoneCtrl.text.trim(),
               medicalHistoryNotes: savedNotes,
               gender: gender.value,
               age: int.tryParse(ageCtrl.text.trim()),
-            );
+            ));
+        ref.invalidate(profileControllerProvider);
         editing.value = false;
         // Re-parse from the saved notes so chips reflect exactly what's stored
         conditions.value = _parseConditions(savedNotes);
@@ -364,7 +365,7 @@ class _ProfileBody extends HookConsumerWidget {
                               color: AppColors.accentBlue, size: 20),
                           const SizedBox(width: 8),
                           Text(
-                            '${gender.value ?? "ذكر"}${ageCtrl.text.isNotEmpty ? " · ${ageCtrl.text} سنة" : ""}',
+                            '${gender.value}${ageCtrl.text.isNotEmpty ? " · ${ageCtrl.text} سنة" : ""}',
                             style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
                           ),
                         ],
