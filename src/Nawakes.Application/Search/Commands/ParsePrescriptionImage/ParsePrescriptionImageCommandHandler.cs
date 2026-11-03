@@ -372,16 +372,19 @@ public sealed class ParsePrescriptionImageCommandHandler : IRequestHandler<Parse
     {
         public IReadOnlyList<SafetyAlertDto> AuditPrescriptionSafety(
             IReadOnlyList<ParsedCandidateDto> candidates,
-            IReadOnlyList<string>? patientAllergies = null) => [];
+            IReadOnlyList<string>? patientAllergies = null,
+            IReadOnlyList<string>? chronicConditions = null) => [];
 
         public IReadOnlyList<SafetyAlertDto> AuditPrescriptionSafety(
             IReadOnlyList<SafetyMedicationInput> medications,
-            IReadOnlyList<string>? patientAllergies = null) => [];
+            IReadOnlyList<string>? patientAllergies = null,
+            IReadOnlyList<string>? chronicConditions = null) => [];
 
         public Task<IReadOnlyList<SafetyAlertDto>> AuditPrescriptionSafetyAsync(
             IReadOnlyList<SafetyMedicationInput> medications,
             IReadOnlyList<string>? patientAllergies = null,
-            CancellationToken cancellationToken = default) =>
+            CancellationToken cancellationToken = default,
+            IReadOnlyList<string>? chronicConditions = null) =>
             Task.FromResult<IReadOnlyList<SafetyAlertDto>>([]);
     }
 }

@@ -40,7 +40,7 @@ public sealed class ScanBarcodeInventoryCommandHandler(
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.RawBarcode))
-            throw new ValidationException("Barcode is required.");
+            throw new FluentValidation.ValidationException("Barcode is required.");
 
         var pharmacy = await context.Pharmacies
             .FirstOrDefaultAsync(p => p.OwnerId == currentUser.UserId, cancellationToken)
