@@ -336,6 +336,7 @@ public static partial class DrugNameNormalizer
 
     /// <summary>
     /// Computes Damerau-Levenshtein distance (insertions, deletions, substitutions, and adjacent transpositions).
+    /// Uses stackalloc for strings up to 62 characters to eliminate GC heap allocations during catalog scans.
     /// </summary>
     public static int DamerauLevenshteinDistance(string a, string b)
     {
@@ -344,30 +345,71 @@ public static partial class DrugNameNormalizer
 
         var lenA = a.Length;
         var lenB = b.Length;
-        var d = new int[lenA + 1, lenB + 1];
+        var width = lenB + 1;
+        var totalSize = (lenA + 1) * width;
 
-        for (var i = 0; i <= lenA; i++) d[i, 0] = i;
-        for (var j = 0; j <= lenB; j++) d[0, j] = j;
+        Span<int> d = totalSize <= 4096
+            ? stackalloc int[totalSize]
+            : new int[totalSize];
+
+        for (var i = 0; i <= lenA; i++) d[i * width] = i;
+        for (var j = 0; j <= lenB; j++) d[j] = j;
 
         for (var i = 1; i <= lenA; i++)
         {
+            var rowOffset = i * width;
+            var prevRowOffset = (i - 1) * width;
+            var prevPrevRowOffset = (i - 2) * width;
+
             for (var j = 1; j <= lenB; j++)
             {
                 var cost = (a[i - 1] == b[j - 1]) ? 0 : 1;
 
-                d[i, j] = Math.Min(
-                    Math.Min(d[i - 1, j] + 1, d[i, j - 1] + 1),
-                    d[i - 1, j - 1] + cost);
+                var val = Math.Min(
+                    Math.Min(d[prevRowOffset + j] + 1, d[rowOffset + j - 1] + 1),
+                    d[prevRowOffset + j - 1] + cost);
 
                 // Check transposition
                 if (i > 1 && j > 1 && a[i - 1] == b[j - 2] && a[i - 2] == b[j - 1])
                 {
-                    d[i, j] = Math.Min(d[i, j], d[i - 2, j - 2] + cost);
+                    val = Math.Min(val, d[prevPrevRowOffset + j - 2] + cost);
                 }
+
+                d[rowOffset + j] = val;
             }
         }
 
-        return d[lenA, lenB];
+        return d[lenA * width + lenB];
+    }
+
+    /// <summary>
+    /// Returns all Redis search cache key patterns that should be invalidated when an inventory item changes.
+    /// Covers raw lowercased, normalized underscored, and first-token brand root keys.
+    /// </summary>
+    public static IReadOnlyList<string> GetSearchCachePatterns(string? medicationName)
+    {
+        if (string.IsNullOrWhiteSpace(medicationName)) return [];
+
+        var patterns = new HashSet<string>(StringComparer.Ordinal);
+        var rawLower = medicationName.Trim().ToLowerInvariant();
+        patterns.Add($"nawakes:search:{rawLower}:*");
+        patterns.Add($"nawakes:search:{rawLower.Replace(' ', '_')}:*");
+
+        var lookup = NormalizeLookup(medicationName);
+        if (!string.IsNullOrWhiteSpace(lookup))
+        {
+            patterns.Add($"nawakes:search:{lookup}:*");
+            patterns.Add($"nawakes:search:{lookup.Replace(' ', '_')}:*");
+
+            var firstSpace = lookup.IndexOf(' ');
+            if (firstSpace >= 2)
+            {
+                var brandRoot = lookup[..firstSpace];
+                patterns.Add($"nawakes:search:{brandRoot}:*");
+            }
+        }
+
+        return [.. patterns];
     }
 
     /// <summary>Parses a decimal price written with Arabic digits or comma separators.</summary>

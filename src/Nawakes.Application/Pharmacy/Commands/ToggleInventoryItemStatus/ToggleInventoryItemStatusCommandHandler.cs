@@ -33,11 +33,12 @@ public sealed class ToggleInventoryItemStatusCommandHandler(
             return new InventoryItemDto(item.Id, item.MedicationName, item.Price, item.Quantity, item.Status.ToString(), item.PatientNote, item.UpdatedAt);
         }
 
-        // Toggle to OutOfStock blocked if item has Active reservation
+        // Toggle to OutOfStock blocked if item has Active or Ready reservation
         if (request.TargetStatus == InventoryStatus.OutOfStock && item.Status == InventoryStatus.Reserved)
         {
             var hasActiveReservation = await context.Reservations.AnyAsync(r => 
-                r.InventoryItemId == item.Id && r.Status == ReservationStatus.Active, cancellationToken);
+                r.InventoryItemId == item.Id &&
+                (r.Status == ReservationStatus.Active || r.Status == ReservationStatus.Ready), cancellationToken);
                 
             if (hasActiveReservation)
             {
@@ -51,9 +52,11 @@ public sealed class ToggleInventoryItemStatusCommandHandler(
         // Invalidate specific pharmacy inventory cache
         await cacheService.RemoveAsync($"nawakes:pharmacy:inventory:{pharmacy.Id}", cancellationToken);
 
-        // Invalidate relevant search cache matching this medication
-        var medNormalized = item.MedicationName.Trim().ToLowerInvariant();
-        await cacheService.RemoveByPatternAsync($"nawakes:search:{medNormalized}:*", cancellationToken);
+        // Invalidate relevant search cache matching this medication (raw, underscored, and brand root)
+        foreach (var pattern in Nawakes.Domain.Common.DrugNameNormalizer.GetSearchCachePatterns(item.MedicationName))
+        {
+            await cacheService.RemoveByPatternAsync(pattern, cancellationToken);
+        }
 
         if (item.Status == InventoryStatus.InStock)
         {

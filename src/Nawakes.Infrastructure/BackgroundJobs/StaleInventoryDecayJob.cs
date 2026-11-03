@@ -22,26 +22,31 @@ public sealed class StaleInventoryDecayJob(
         var cutoff = DateTime.UtcNow.AddDays(-14);
         logger.LogInformation("StaleInventoryDecayJob running: identifying items older than {Cutoff}", cutoff);
 
-        var staleItems = await context.InventoryItems
-            .Where(i => i.Status == InventoryStatus.InStock && i.UpdatedAt < cutoff && !i.IsDeleted)
-            .ToListAsync(cancellationToken);
-
-        if (staleItems.Count == 0)
+        var strategy = context.Database.CreateExecutionStrategy();
+        await strategy.ExecuteAsync(async () =>
         {
-            logger.LogInformation("StaleInventoryDecayJob completed: no stale items found.");
-            return;
-        }
+            var staleItems = await context.InventoryItems
+                .Where(i => i.Status == InventoryStatus.InStock && i.UpdatedAt < cutoff && !i.IsDeleted)
+                .ToListAsync(cancellationToken);
 
-        foreach (var item in staleItems)
-        {
-            item.Status = InventoryStatus.Unconfirmed;
-            item.UpdatedAt = DateTime.UtcNow;
-        }
+            if (staleItems.Count == 0)
+            {
+                logger.LogInformation("StaleInventoryDecayJob completed: no stale items found.");
+                return;
+            }
 
-        await context.SaveChangesAsync(cancellationToken);
+            var now = DateTime.UtcNow;
+            foreach (var item in staleItems)
+            {
+                item.Status = InventoryStatus.Unconfirmed;
+                item.UpdatedAt = now;
+            }
 
-        logger.LogWarning(
-            "StaleInventoryDecayJob: Marked {Count} stale inventory items as Unconfirmed",
-            staleItems.Count);
+            await context.SaveChangesAsync(cancellationToken);
+
+            logger.LogWarning(
+                "StaleInventoryDecayJob: Marked {Count} stale inventory items as Unconfirmed",
+                staleItems.Count);
+        });
     }
 }

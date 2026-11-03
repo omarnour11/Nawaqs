@@ -37,7 +37,8 @@ public sealed class CompleteReservationCommandHandler(
         if (reservation.Pharmacy.OwnerId != currentUser.UserId)
             throw new ForbiddenException("This reservation does not belong to your pharmacy.");
 
-        if (reservation.Status != ReservationStatus.Active)
+        if (reservation.Status != ReservationStatus.Active &&
+            reservation.Status != ReservationStatus.Ready)
         {
             throw new ConflictException($"Reservation is already {reservation.Status} and cannot be completed.");
         }

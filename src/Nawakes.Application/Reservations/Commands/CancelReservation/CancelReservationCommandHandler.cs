@@ -36,8 +36,9 @@ public sealed class CancelReservationCommandHandler(
         if (reservation.UserId != currentUser.UserId)
             throw new ForbiddenException("You do not own this reservation.");
 
-        // State check
-        if (reservation.Status != ReservationStatus.Active)
+        // State check (both Active and Ready reservations can be cancelled by the patient after lock-in)
+        if (reservation.Status != ReservationStatus.Active &&
+            reservation.Status != ReservationStatus.Ready)
             throw new ConflictException(
                 $"Reservation is already {reservation.Status} and cannot be cancelled.");
 

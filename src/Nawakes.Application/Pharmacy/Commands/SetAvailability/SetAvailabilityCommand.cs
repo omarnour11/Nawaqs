@@ -47,11 +47,12 @@ public sealed class SetAvailabilityCommandHandler(
 
         var wasInStock = item.Status == InventoryStatus.InStock;
 
-        // Cannot go unavailable while an active reservation holds the item
+        // Cannot go unavailable while an active or ready reservation holds the item
         if (request.Quantity == 0 && item.Status == InventoryStatus.Reserved)
         {
             var hasActiveReservation = await context.Reservations.AnyAsync(
-                r => r.InventoryItemId == item.Id && r.Status == ReservationStatus.Active, cancellationToken);
+                r => r.InventoryItemId == item.Id &&
+                     (r.Status == ReservationStatus.Active || r.Status == ReservationStatus.Ready), cancellationToken);
             if (hasActiveReservation)
                 throw new ConflictException("لا يمكن تعديل التوفر أثناء وجود حجز نشط على هذا الدواء.");
         }
@@ -72,8 +73,10 @@ public sealed class SetAvailabilityCommandHandler(
 
         // Cache invalidation
         await cacheService.RemoveAsync($"nawakes:pharmacy:inventory:{pharmacy.Id}", cancellationToken);
-        var medNormalized = item.MedicationName.Trim().ToLowerInvariant();
-        await cacheService.RemoveByPatternAsync($"nawakes:search:{medNormalized}:*", cancellationToken);
+        foreach (var pattern in Nawakes.Domain.Common.DrugNameNormalizer.GetSearchCachePatterns(item.MedicationName))
+        {
+            await cacheService.RemoveByPatternAsync(pattern, cancellationToken);
+        }
 
         // Restock notifications fire when going 0 → in stock
         if (previousStatus == InventoryStatus.OutOfStock && item.Status == InventoryStatus.InStock)

@@ -34,8 +34,9 @@ public sealed class ReservationExpiryJob(
             return;
         }
 
-        // Idempotency guard
-        if (reservation.Status != ReservationStatus.Active)
+        // Idempotency guard (both Active and Ready reservations expire after their 2-hour window)
+        if (reservation.Status != ReservationStatus.Active &&
+            reservation.Status != ReservationStatus.Ready)
         {
             logger.LogInformation(
                 "ReservationExpiryJob: Reservation {ReservationId} already in status {Status}. Skipping.",

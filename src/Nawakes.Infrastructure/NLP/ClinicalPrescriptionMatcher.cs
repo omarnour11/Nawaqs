@@ -220,13 +220,12 @@ public sealed class ClinicalPrescriptionMatcher : IClinicalPrescriptionMatcher
 
         foreach (var entry in cached.Entries)
         {
-            var entryTokens = entry.TradeNameNormalized.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            if (entryTokens.Length == 0) continue;
+            var firstEntryToken = entry.FirstToken;
+            if (firstEntryToken.Length == 0) continue;
 
-            var firstEntryToken = entryTokens[0];
-            var firstEntrySkeleton = DrugNameNormalizer.ConsonantSkeleton(firstEntryToken);
+            var firstEntrySkeleton = entry.FirstTokenSkeleton;
             var firstEntryPhonetic = _options.EnableEgyptianPhonetics
-                ? DrugNameNormalizer.ApplyEgyptianPhonetics(firstEntryToken)
+                ? entry.FirstTokenPhonetic
                 : firstEntryToken;
 
             var baseScore = 0m;
@@ -258,12 +257,20 @@ public sealed class ClinicalPrescriptionMatcher : IClinicalPrescriptionMatcher
             // 2d. Bounded Damerau-Levenshtein distance (swapped / mistyped OCR characters)
             else
             {
-                var distance = DrugNameNormalizer.DamerauLevenshteinDistance(firstQueryToken, firstEntryToken);
-                var maxLen = Math.Max(firstQueryToken.Length, firstEntryToken.Length);
-
-                if (distance <= _options.MaxDamerauDistance && maxLen >= 4)
+                // Length difference guard avoids allocating 2D Levenshtein matrix when length difference > MaxDamerauDistance
+                if (Math.Abs(firstQueryToken.Length - firstEntryToken.Length) <= _options.MaxDamerauDistance)
                 {
-                    baseScore = 1.0m - ((decimal)distance / maxLen);
+                    var distance = DrugNameNormalizer.DamerauLevenshteinDistance(firstQueryToken, firstEntryToken);
+                    var maxLen = Math.Max(firstQueryToken.Length, firstEntryToken.Length);
+
+                    if (distance <= _options.MaxDamerauDistance && maxLen >= 4)
+                    {
+                        baseScore = 1.0m - ((decimal)distance / maxLen);
+                    }
+                    else if (queryTokens.Length > 1 && entry.TradeNameNormalized.Contains(firstQueryToken, StringComparison.Ordinal))
+                    {
+                        baseScore = 0.75m;
+                    }
                 }
                 else if (queryTokens.Length > 1 && entry.TradeNameNormalized.Contains(firstQueryToken, StringComparison.Ordinal))
                 {
@@ -304,9 +311,10 @@ public sealed class ClinicalPrescriptionMatcher : IClinicalPrescriptionMatcher
         List<CatalogEntry> entries;
         if (_directContext != null)
         {
-            entries = await _directContext.EgyptianDrugRegistry
+            var rawList = await _directContext.EgyptianDrugRegistry
                 .AsNoTracking()
-                .Select(d => new CatalogEntry(
+                .Select(d => new
+                {
                     d.TradeName,
                     d.TradeNameNormalized,
                     d.CommercialNameAr,
@@ -314,16 +322,28 @@ public sealed class ClinicalPrescriptionMatcher : IClinicalPrescriptionMatcher
                     d.ActiveIngredient,
                     d.Strength,
                     d.DosageForm,
-                    d.OfficialPriceEGP))
+                    d.OfficialPriceEGP
+                })
                 .ToListAsync(cancellationToken);
+
+            entries = rawList.Select(d => CreateCatalogEntry(
+                d.TradeName,
+                d.TradeNameNormalized,
+                d.CommercialNameAr,
+                d.CommercialNameArNormalized,
+                d.ActiveIngredient,
+                d.Strength,
+                d.DosageForm,
+                d.OfficialPriceEGP)).ToList();
         }
         else if (_scopeFactory != null)
         {
             await using var scope = _scopeFactory.CreateAsyncScope();
             var context = scope.ServiceProvider.GetRequiredService<IApplicationDbContext>();
-            entries = await context.EgyptianDrugRegistry
+            var rawList = await context.EgyptianDrugRegistry
                 .AsNoTracking()
-                .Select(d => new CatalogEntry(
+                .Select(d => new
+                {
                     d.TradeName,
                     d.TradeNameNormalized,
                     d.CommercialNameAr,
@@ -331,8 +351,19 @@ public sealed class ClinicalPrescriptionMatcher : IClinicalPrescriptionMatcher
                     d.ActiveIngredient,
                     d.Strength,
                     d.DosageForm,
-                    d.OfficialPriceEGP))
+                    d.OfficialPriceEGP
+                })
                 .ToListAsync(cancellationToken);
+
+            entries = rawList.Select(d => CreateCatalogEntry(
+                d.TradeName,
+                d.TradeNameNormalized,
+                d.CommercialNameAr,
+                d.CommercialNameArNormalized,
+                d.ActiveIngredient,
+                d.Strength,
+                d.DosageForm,
+                d.OfficialPriceEGP)).ToList();
         }
         else
         {
@@ -356,6 +387,38 @@ public sealed class ClinicalPrescriptionMatcher : IClinicalPrescriptionMatcher
         return result;
     }
 
+    private static CatalogEntry CreateCatalogEntry(
+        string tradeName,
+        string tradeNameNormalized,
+        string? commercialNameAr,
+        string? commercialNameArNormalized,
+        string? activeIngredient,
+        string? strength,
+        string? dosageForm,
+        decimal? officialPriceEgp)
+    {
+        var firstToken = ExtractBrandRoot(tradeNameNormalized);
+        var firstSkeleton = DrugNameNormalizer.ConsonantSkeleton(firstToken);
+        var firstPhonetic = DrugNameNormalizer.ApplyEgyptianPhonetics(firstToken);
+        var firstArToken = !string.IsNullOrWhiteSpace(commercialNameArNormalized)
+            ? ExtractBrandRoot(commercialNameArNormalized)
+            : string.Empty;
+
+        return new CatalogEntry(
+            tradeName,
+            tradeNameNormalized,
+            commercialNameAr,
+            commercialNameArNormalized,
+            activeIngredient,
+            strength,
+            dosageForm,
+            officialPriceEgp,
+            firstToken,
+            firstSkeleton,
+            firstPhonetic,
+            firstArToken);
+    }
+
     private ClinicalCandidateDto ScoreCandidate(
         CatalogEntry entry,
         decimal baseScore,
@@ -366,7 +429,7 @@ public sealed class ClinicalPrescriptionMatcher : IClinicalPrescriptionMatcher
         var confidence = baseScore;
         var isDosageFeasible = true;
 
-        var brandRoot = ExtractBrandRoot(entry.TradeNameNormalized);
+        var brandRoot = entry.FirstToken;
 
         // ── Dosage Feasibility Gate ──────────────────────────────────────────
         if (_options.EnableDosageFeasibilityGate && !string.IsNullOrWhiteSpace(targetStrength))
@@ -467,8 +530,7 @@ public sealed class ClinicalPrescriptionMatcher : IClinicalPrescriptionMatcher
             // 3. First Arabic token exact match (e.g. "كونكور" matches "كونكور ٥ مجم")
             else
             {
-                var entryTokens = entryAr.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                var firstEntryToken = entryTokens.Length > 0 ? entryTokens[0] : entryAr;
+                var firstEntryToken = entry.FirstArToken.Length > 0 ? entry.FirstArToken : entryAr;
 
                 if (firstEntryToken.Equals(firstToken, StringComparison.OrdinalIgnoreCase) && firstToken.Length >= 3)
                 {
@@ -479,7 +541,7 @@ public sealed class ClinicalPrescriptionMatcher : IClinicalPrescriptionMatcher
                 {
                     baseScore = 0.85m;
                 }
-                else if (firstToken.Length >= 4 && firstEntryToken.Length >= 4)
+                else if (firstToken.Length >= 4 && firstEntryToken.Length >= 4 && Math.Abs(firstToken.Length - firstEntryToken.Length) <= 1)
                 {
                     var dist = DrugNameNormalizer.DamerauLevenshteinDistance(firstToken, firstEntryToken);
                     if (dist <= 1)
@@ -509,7 +571,7 @@ public sealed class ClinicalPrescriptionMatcher : IClinicalPrescriptionMatcher
 
         foreach (var entry in catalog)
         {
-            var brandRoot = ExtractBrandRoot(entry.TradeNameNormalized);
+            var brandRoot = entry.FirstToken;
             if (string.IsNullOrWhiteSpace(brandRoot)) continue;
 
             if (!map.TryGetValue(brandRoot, out var set))
@@ -562,8 +624,8 @@ public sealed class ClinicalPrescriptionMatcher : IClinicalPrescriptionMatcher
     private static string ExtractBrandRoot(string normalizedTradeName)
     {
         if (string.IsNullOrWhiteSpace(normalizedTradeName)) return string.Empty;
-        var tokens = normalizedTradeName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        return tokens.Length > 0 ? tokens[0] : normalizedTradeName;
+        var spaceIdx = normalizedTradeName.IndexOf(' ');
+        return spaceIdx > 0 ? normalizedTradeName[..spaceIdx] : normalizedTradeName;
     }
 
     private sealed record CatalogEntry(
@@ -574,7 +636,11 @@ public sealed class ClinicalPrescriptionMatcher : IClinicalPrescriptionMatcher
         string? ActiveIngredient,
         string? Strength,
         string? DosageForm,
-        decimal? OfficialPriceEGP);
+        decimal? OfficialPriceEGP,
+        string FirstToken,
+        string FirstTokenSkeleton,
+        string FirstTokenPhonetic,
+        string FirstArToken);
 
     /// <summary>
     /// Bundles the full catalog entry list with its pre-built brand strength map
