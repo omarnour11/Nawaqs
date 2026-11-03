@@ -1,10 +1,12 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Nawakes.Application.Common.Interfaces;
 using Nawakes.Application.Reservations.Commands.CancelReservation;
 using Nawakes.Application.Reservations.Commands.CreateReservation;
 using Nawakes.Application.Reservations.Commands.ReserveAlternative;
 using Nawakes.Application.Reservations.Dtos;
+using Nawakes.Application.Reservations.Queries.CheckReservationSafety;
 using Nawakes.Application.Reservations.Queries.GetPatientReservations;
 
 namespace Nawakes.API.Controllers;
@@ -24,6 +26,24 @@ public sealed class ReservationsController(ISender mediator) : ControllerBase
     {
         var dtos = await mediator.Send(new GetPatientReservationsQuery(), cancellationToken);
         return Ok(dtos.Select(ToResponse).ToList());
+    }
+
+    /// <summary>
+    /// Pre-checkout clinical safety check: evaluates target medication against the patient's
+    /// active medications (duplicate active ingredients, drug-drug interactions), allergies, and chronic conditions.
+    /// </summary>
+    [HttpGet("safety-check")]
+    [ProducesResponseType(typeof(ReservationSafetyCheckResultDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<ReservationSafetyCheckResultDto>> CheckSafety(
+        [FromQuery] Guid? inventoryItemId = null,
+        [FromQuery] string? medicationName = null,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await mediator.Send(
+            new CheckReservationSafetyQuery(inventoryItemId, medicationName),
+            cancellationToken);
+        return Ok(result);
     }
 
     /// <summary>Places a 2-hour hold on an inventory item.</summary>
@@ -110,7 +130,8 @@ public sealed class ReservationsController(ISender mediator) : ControllerBase
         dto.DeliveryLongitude,
         dto.DeliveryContactPhone,
         dto.DeliveryNotes,
-        dto.DeliveryStatus);
+        dto.DeliveryStatus,
+        dto.SafetyAlerts);
 }
 
 // ── API-layer DTOs ─────────────────────────────────────────────────────────────
@@ -143,4 +164,6 @@ public sealed record ReservationResponse(
     double? DeliveryLongitude = null,
     string? DeliveryContactPhone = null,
     string? DeliveryNotes = null,
-    string? DeliveryStatus = null);
+    string? DeliveryStatus = null,
+    IReadOnlyList<SafetyAlertDto>? SafetyAlerts = null);
+

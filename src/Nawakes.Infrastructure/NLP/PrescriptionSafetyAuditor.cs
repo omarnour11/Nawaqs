@@ -20,7 +20,8 @@ public sealed class PrescriptionSafetyAuditor : IPrescriptionSafetyAuditor
     /// <inheritdoc />
     public IReadOnlyList<SafetyAlertDto> AuditPrescriptionSafety(
         IReadOnlyList<ParsedCandidateDto> candidates,
-        IReadOnlyList<string>? patientAllergies = null)
+        IReadOnlyList<string>? patientAllergies = null,
+        IReadOnlyList<string>? chronicConditions = null)
     {
         var alerts = new List<SafetyAlertDto>();
         if (candidates == null || candidates.Count == 0)
@@ -31,6 +32,27 @@ public sealed class PrescriptionSafetyAuditor : IPrescriptionSafetyAuditor
         var medNames = candidates
             .Select(c => $"{c.TradeName} {c.ActiveIngredient}".Trim().ToLowerInvariant())
             .ToList();
+
+        // 0. Duplicate Active Ingredient Detection across different trade names (Critical/Warning)
+        var duplicateGroups = candidates
+            .Where(c => !string.IsNullOrWhiteSpace(c.ActiveIngredient))
+            .GroupBy(c => c.ActiveIngredient!.Trim().ToUpperInvariant())
+            .Where(g => g.Select(x => x.TradeName.Trim().ToUpperInvariant()).Distinct().Count() > 1)
+            .ToList();
+
+        foreach (var dupGroup in duplicateGroups)
+        {
+            var distinctTrades = dupGroup.Select(x => x.TradeName.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            var ingredient = dupGroup.First().ActiveIngredient!;
+            alerts.Add(new SafetyAlertDto(
+                Id: "DUPLICATE_ACTIVE_INGREDIENT",
+                Severity: SafetyAlertSeverity.Warning,
+                Category: "duplication",
+                Title: $"تكرار المادة الفعالة ({ingredient}) تحت أسماء تجارية مختلفة",
+                Description: $"الأدوية ({string.Join("، ", distinctTrades)}) تحتوي على نفس المادة الفعالة ({ingredient}). تناولها معاً قد يؤدي إلى مضاعفة الجرعة والتسمم الدوائي.",
+                InvolvedDrugs: distinctTrades,
+                Recommendation: "يرجى مراجعة الصيدلي أو الطبيب للاكتفاء بصنف واحد فقط من نفس المادة الفعالة."));
+        }
 
         // 1. Patient Allergy Cross-Reactivity (Critical)
         if (patientAllergies is { Count: > 0 })
@@ -91,6 +113,41 @@ public sealed class PrescriptionSafetyAuditor : IPrescriptionSafetyAuditor
                             Description: $"الملف الطبي يسجل حساسية تجاه الأسبرين أو مضادات الالتهاب. الدواء الموصوف {nsaidMatch.TradeName} ينتمي لمجموعة NSAIDs.",
                             InvolvedDrugs: [nsaidMatch.TradeName, "NSAIDs"]));
                     }
+                }
+            }
+        }
+
+        // 1.5 Chronic Condition Contraindications
+        if (chronicConditions is { Count: > 0 })
+        {
+            var chronicText = string.Join(" ", chronicConditions).ToLowerInvariant();
+
+            var nsaidCandidate = candidates.FirstOrDefault(c =>
+                MatchesDrug(c, "cataflam", "voltaren", "diclofenac", "brufen", "ibuprofen", "ketolac", "ketorolac", "كتافلام", "فولتارين", "بروفين"));
+
+            if (nsaidCandidate != null)
+            {
+                if (chronicText.Contains("كلى") || chronicText.Contains("كلوي") || chronicText.Contains("renal") || chronicText.Contains("kidney"))
+                {
+                    alerts.Add(new SafetyAlertDto(
+                        Id: "CHRONIC_RENAL_NSAID",
+                        Severity: SafetyAlertSeverity.Critical,
+                        Category: "chronic_condition",
+                        Title: "تحذير لمرضى الكلى: مسكنات NSAID قد تدهور وظائف الكلى",
+                        Description: $"الملف الطبي يسجل حالة كلى مزمنة، ودواء {nsaidCandidate.TradeName} ينتمي لمضادات الالتهاب غير الستيرويدية التي تقلل التروية الكلوية.",
+                        InvolvedDrugs: [nsaidCandidate.TradeName],
+                        Recommendation: "استشر الطبيب أو الصيدلي لاستبداله بمسكن آمن على الكلى مثل الباراسيتامول (Panadol)."));
+                }
+                else if (chronicText.Contains("ضغط") || chronicText.Contains("hypertension") || chronicText.Contains("قرحة") || chronicText.Contains("ulcer"))
+                {
+                    alerts.Add(new SafetyAlertDto(
+                        Id: "CHRONIC_HTN_ULCER_NSAID",
+                        Severity: SafetyAlertSeverity.Warning,
+                        Category: "chronic_condition",
+                        Title: "تنبيه للأمراض المزمنة (الضغط / المعدة): مسكن NSAID",
+                        Description: $"دواء {nsaidCandidate.TradeName} قد يرفع ضغط الدم أو يسبب تهيجاً بجدار المعدة مع الاستخدام المتكرر.",
+                        InvolvedDrugs: [nsaidCandidate.TradeName],
+                        Recommendation: "ينصح بتناوله بعد الأكل فقط ولأقصر فترة ممكنة مع متابعة قياس الضغط."));
                 }
             }
         }
@@ -199,7 +256,8 @@ public sealed class PrescriptionSafetyAuditor : IPrescriptionSafetyAuditor
     public Task<IReadOnlyList<SafetyAlertDto>> AuditPrescriptionSafetyAsync(
         IReadOnlyList<SafetyMedicationInput> medications,
         IReadOnlyList<string>? patientAllergies = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        IReadOnlyList<string>? chronicConditions = null)
     {
         var candidates = medications
             .Select(m => new ParsedCandidateDto(
@@ -216,13 +274,14 @@ public sealed class PrescriptionSafetyAuditor : IPrescriptionSafetyAuditor
                 PriceEgp: null))
             .ToList();
 
-        return Task.FromResult(AuditPrescriptionSafety(candidates, patientAllergies));
+        return Task.FromResult(AuditPrescriptionSafety(candidates, patientAllergies, chronicConditions));
     }
 
     /// <inheritdoc />
     public IReadOnlyList<SafetyAlertDto> AuditPrescriptionSafety(
         IReadOnlyList<SafetyMedicationInput> medications,
-        IReadOnlyList<string>? patientAllergies = null)
+        IReadOnlyList<string>? patientAllergies = null,
+        IReadOnlyList<string>? chronicConditions = null)
     {
         var candidates = medications
             .Select(m => new ParsedCandidateDto(
@@ -239,7 +298,7 @@ public sealed class PrescriptionSafetyAuditor : IPrescriptionSafetyAuditor
                 PriceEgp: null))
             .ToList();
 
-        return AuditPrescriptionSafety(candidates, patientAllergies);
+        return AuditPrescriptionSafety(candidates, patientAllergies, chronicConditions);
     }
 
     private static bool MatchesDrug(ParsedCandidateDto candidate, params string[] patterns)
@@ -248,3 +307,4 @@ public sealed class PrescriptionSafetyAuditor : IPrescriptionSafetyAuditor
         return patterns.Any(p => text.Contains(p));
     }
 }
+
