@@ -123,7 +123,8 @@ public sealed class ParsePrescriptionImageCommandHandler : IRequestHandler<Parse
                         var rawSig = !string.IsNullOrWhiteSpace(item.RawSig)
                             ? item.RawSig
                             : _sigDecoderService.ExtractSigFromRawLine(item.TradeName);
-                        var decodedSig = _sigDecoderService.DecodeMedicalSig(rawSig);
+                        var effectiveFormForSig = match.DosageForm ?? item.DosageForm;
+                        var decodedSig = _sigDecoderService.DecodeMedicalSig(rawSig, effectiveFormForSig);
                         var price = match.PriceEgp ?? match.Candidates.FirstOrDefault(c => c.PriceEgp.HasValue)?.PriceEgp;
 
                         var requiresDisambig = match.RequiresDisambiguation || effectiveConf < 0.90m;
@@ -218,7 +219,7 @@ public sealed class ParsePrescriptionImageCommandHandler : IRequestHandler<Parse
                         if (!string.IsNullOrWhiteSpace(match.ResolvedName) && match.Confidence >= 0.70m)
                         {
                             var rawSig = _sigDecoderService.ExtractSigFromRawLine(line);
-                            var decodedSig = _sigDecoderService.DecodeMedicalSig(rawSig);
+                            var decodedSig = _sigDecoderService.DecodeMedicalSig(rawSig, match.DosageForm);
                             var price = match.PriceEgp ?? match.Candidates.FirstOrDefault(c => c.PriceEgp.HasValue)?.PriceEgp;
 
                             var alts = match.Candidates
@@ -291,7 +292,7 @@ public sealed class ParsePrescriptionImageCommandHandler : IRequestHandler<Parse
                 if (!string.IsNullOrWhiteSpace(match.ResolvedName) && match.Confidence >= 0.65m)
                 {
                     var rawSig = _sigDecoderService.ExtractSigFromRawLine(line);
-                    var decodedSig = _sigDecoderService.DecodeMedicalSig(rawSig);
+                    var decodedSig = _sigDecoderService.DecodeMedicalSig(rawSig, match.DosageForm);
                     var price = match.PriceEgp ?? match.Candidates.FirstOrDefault(c => c.PriceEgp.HasValue)?.PriceEgp;
 
                     var alts = match.Candidates
@@ -364,6 +365,9 @@ public sealed class ParsePrescriptionImageCommandHandler : IRequestHandler<Parse
     {
         public DecodedSigDto DecodeMedicalSig(string rawSig) =>
             new(rawSig, "1 tablet", "PO", "by mouth", "QD", "once daily", "", "", "", "30 units", "Take 1 tablet by mouth once daily.", "قرص واحد — عن طريق الفم — مرة واحدة يومياً", []);
+
+        public DecodedSigDto DecodeMedicalSig(string rawSig, string? dosageForm) =>
+            DecodeMedicalSig(rawSig);
 
         public string ExtractSigFromRawLine(string rawLine, string defaultSig = "1 tab PO QD #30") => defaultSig;
     }

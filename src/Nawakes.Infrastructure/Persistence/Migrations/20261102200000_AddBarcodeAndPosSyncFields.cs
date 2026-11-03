@@ -1,4 +1,3 @@
-using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
@@ -35,41 +34,40 @@ namespace Nawakes.Infrastructure.Persistence.Migrations
                 nullable: true);
 
             migrationBuilder.AddColumn<string>(
-                name: "BatchNumber",
+                name: "ExternalPosSku",
                 table: "InventoryItems",
                 type: "nvarchar(64)",
                 maxLength: 64,
-                nullable: true);
-
-            migrationBuilder.AddColumn<DateTime>(
-                name: "ExpiryDate",
-                table: "InventoryItems",
-                type: "datetime2",
                 nullable: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_InventoryItems_Pharmacy_Barcode",
                 table: "InventoryItems",
                 columns: new[] { "PharmacyId", "Barcode" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_InventoryItems_Pharmacy_ExternalPosSku",
+                table: "InventoryItems",
+                columns: new[] { "PharmacyId", "ExternalPosSku" });
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropIndex(
+                name: "IX_InventoryItems_Pharmacy_ExternalPosSku",
+                table: "InventoryItems");
+
+            migrationBuilder.DropIndex(
                 name: "IX_InventoryItems_Pharmacy_Barcode",
                 table: "InventoryItems");
 
             migrationBuilder.DropColumn(
+                name: "ExternalPosSku",
+                table: "InventoryItems");
+
+            migrationBuilder.DropColumn(
                 name: "Barcode",
-                table: "InventoryItems");
-
-            migrationBuilder.DropColumn(
-                name: "BatchNumber",
-                table: "InventoryItems");
-
-            migrationBuilder.DropColumn(
-                name: "ExpiryDate",
                 table: "InventoryItems");
 
             migrationBuilder.DropIndex(

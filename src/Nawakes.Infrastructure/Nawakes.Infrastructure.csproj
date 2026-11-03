@@ -6,6 +6,9 @@
     <LangVersion>12</LangVersion>
   </PropertyGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="Nawakes.Application.Tests" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\Nawakes.Domain\Nawakes.Domain.csproj" />
     <ProjectReference Include="..\Nawakes.Application\Nawakes.Application.csproj" />
   </ItemGroup>

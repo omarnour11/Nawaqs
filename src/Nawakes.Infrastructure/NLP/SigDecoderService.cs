@@ -60,7 +60,10 @@ public sealed class SigDecoderService : ISigDecoderService
     public DecodedSigDto DecodeSig(string rawSig) => DecodeMedicalSig(rawSig);
 
     /// <inheritdoc />
-    public DecodedSigDto DecodeMedicalSig(string rawSig)
+    public DecodedSigDto DecodeMedicalSig(string rawSig) => DecodeMedicalSig(rawSig, null);
+
+    /// <inheritdoc />
+    public DecodedSigDto DecodeMedicalSig(string rawSig, string? dosageForm)
     {
         var normalized = string.IsNullOrWhiteSpace(rawSig) ? "1 tab PO QD #30" : rawSig.Trim();
 
@@ -78,13 +81,20 @@ public sealed class SigDecoderService : ISigDecoderService
         // 2. Dose amount detection
         var doseMatch = Regex.Match(
             normalized,
-            @"(?i)(\d+(?:\.\d+)?)\s*(tab(?:let)?s?|caps?(?:ule)?s?|ml|mL|odt|sachets?|amps?(?:oule)?s?|puffs?|قرص|أقراص|كبسولة|كبسولات|ملعقة|كيس|أكياس|أمبول|امبول)",
+            @"(?i)(\d+(?:\.\d+)?)\s*(tab(?:let)?s?|caps?(?:ule)?s?|ml|mL|odt|sachets?|amps?(?:oule)?s?|puffs?|gutta?e?|gtts?|drops?|نقط[ةةه]?|قطن?[ةةه]?|قطر[ةةه]|قرص|أقراص|كبسولة|كبسولات|ملعقة|كيس|أكياس|أمبول|امبول)",
             RegexOptions.Compiled);
 
         var egyptianMultMatch = Regex.Match(normalized, @"(\d+)\s*[xX*×]\s*(\d+)", RegexOptions.Compiled);
 
-        var doseAmount = "1 tablet";
-        var arabicDose = "قرص واحد";
+        // Liquid/other forms default to a form-appropriate unit until a more
+        // specific unit is matched — an eye-drop or suspension prescription
+        // must never say "قرص واحد". The dosage form comes from the EDA
+        // registry match when the Sig itself doesn't spell the unit out.
+        var form = dosageForm ?? string.Empty;
+        var (defaultAmount, defaultArabic) = GetFormDefaultUnit(normalized, form);
+
+        var doseAmount = defaultAmount;
+        var arabicDose = defaultArabic;
         var doseQuantity = 1;
 
         if (Regex.IsMatch(normalized, @"قرصين"))
@@ -144,6 +154,13 @@ public sealed class SigDecoderService : ISigDecoderService
             {
                 unitExpanded = decimal.TryParse(qty, out var q) && q > 1 ? "puffs" : "puff";
                 arabicDose = $"{qty} بخة";
+            }
+            else if (unitRaw.StartsWith("gutt") || unitRaw.StartsWith("gtt") ||
+                     unitRaw.StartsWith("drop") || unitRaw.Contains("قطرة") ||
+                     unitRaw.Contains("قطر") || unitRaw.Contains("نقط"))
+            {
+                unitExpanded = decimal.TryParse(qty, out var q) && q > 1 ? "drops" : "drop";
+                arabicDose = qty == "1" ? "نقطة واحدة" : $"{qty} نقطة";
             }
 
             doseAmount = $"{qty} {unitExpanded}";
@@ -216,11 +233,11 @@ public sealed class SigDecoderService : ISigDecoderService
             routeExpanded = "topically to affected area";
             arabicRoute = "استخدام موضعي";
         }
-        else if (upperTokens.Contains("OU"))
+        else if (upperTokens.Contains("OU") || Regex.IsMatch(normalized, @"عيون|عين\s*يس|عين\s*يم|gutt.*eye|ear\s*drops?|قطرة\s*عين|قطرة\s*أذن|قطرة\s*اذن"))
         {
             routeCode = "OU";
-            routeExpanded = "in both eyes";
-            arabicRoute = "في كلتا العينين";
+            routeExpanded = "as eye/ear drops";
+            arabicRoute = "نقاط في العين/الأذن";
         }
         else if (upperTokens.Contains("OD") && normalized.Contains("eye", StringComparison.OrdinalIgnoreCase))
         {
@@ -430,6 +447,70 @@ public sealed class SigDecoderService : ISigDecoderService
             FrequencyPerDay: frequencyPerDay,
             RouteArabic: arabicRoute,
             TimingArabic: string.IsNullOrEmpty(arabicTiming) ? null : arabicTiming);
+    }
+
+    /// <summary>
+    /// Picks the default dose unit from the medication's dosage form when the
+    /// Sig text doesn't spell the unit out. Used so eye drops never read as
+    /// "قرص واحد" and syrups read as mL/spoonfuls.
+    /// </summary>
+    private static (string Amount, string Arabic) GetFormDefaultUnit(string normalized, string? dosageForm)
+    {
+        // Explicit unit already present anywhere in the Sig → keep legacy defaults
+        // (the dose-match branch will override with the exact parsed values).
+        var sigHasUnit = Regex.IsMatch(
+            normalized,
+            @"(?i)tab|cap\b|caps?|odt|sachet|amp|puff|gutt|gtt|drop|ml|نقط|قطر|قطرة|قرص|أقراص|كبسولة|كبسولات|كيس|أكياس|أمبول|امبول|ملعقة",
+            RegexOptions.Compiled);
+        if (sigHasUnit)
+        {
+            return ("1 tablet", "قرص واحد");
+        }
+
+        var f = (dosageForm ?? string.Empty).ToLowerInvariant();
+        var hasForm = f.Length > 0;
+
+        if (hasForm && (f.Contains("drop") || f.Contains("قطر") || f.Contains("نقط")))
+        {
+            return ("1 drop", "نقطة واحدة");
+        }
+        if (hasForm && (f.Contains("susp") || f.Contains("syrup") || f.Contains("شراب") ||
+                        f.Contains("suspens") || f.Contains("solution") || f.Contains("محلول")))
+        {
+            return ("5 mL (1 teaspoon)", "ملعقة صغيرة (5 سم)");
+        }
+        if (hasForm && (f.Contains("spray") || f.Contains("بخاخ")))
+        {
+            return ("1 puff", "بخة واحدة");
+        }
+        if (hasForm && (f.Contains("amp") || f.Contains("أمبول") || f.Contains("امبول") || f.Contains("injection") || f.Contains("حقن")))
+        {
+            return ("1 ampoule", "أمبول واحد");
+        }
+        if (hasForm && (f.Contains("sachet") || f.Contains("كيس") || f.Contains("فوار")))
+        {
+            return ("1 sachet", "كيس فوار");
+        }
+        if (hasForm && (f.Contains("suppository") || f.Contains("لبوس")))
+        {
+            return ("1 suppository", "لبوس واحد");
+        }
+        if (hasForm && (f.Contains("cream") || f.Contains("ointment") || f.Contains("gel") ||
+                        f.Contains("كريم") || f.Contains("مرهم") || f.Contains("جل")))
+        {
+            return ("thin layer", "طبقة رقيقة على المنطقة المصابة");
+        }
+        if (hasForm && (f.Contains("inhaler") || f.Contains("استنشاق")))
+        {
+            return ("1 puff", "بخة واحدة");
+        }
+        if (hasForm && (f.Contains("capsule") || f.Contains("كبسول")))
+        {
+            return ("1 capsule", "كبسولة واحدة");
+        }
+
+        // Tablet or unknown → tablet
+        return ("1 tablet", "قرص واحد");
     }
 
     /// <inheritdoc />

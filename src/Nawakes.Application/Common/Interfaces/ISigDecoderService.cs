@@ -53,6 +53,13 @@ public interface ISigDecoderService
     DecodedSigDto DecodeSig(string rawSig) => DecodeMedicalSig(rawSig);
 
     /// <summary>
+    /// Decodes a Sig with knowledge of the medication's dosage form (Tablet, Eye Drops, Suspension, ...).
+    /// When the Sig omits an explicit unit (e.g. the Egyptian "1x2" shorthand), the unit word is
+    /// derived from the dosage form instead of defaulting to "قرص واحد".
+    /// </summary>
+    DecodedSigDto DecodeMedicalSig(string rawSig, string? dosageForm);
+
+    /// <summary>
     /// Extracts the directions (Sig) portion from a raw doctor prescription line.
     /// </summary>
     string ExtractSigFromRawLine(string rawLine, string defaultSig = "1 tab PO QD #30");

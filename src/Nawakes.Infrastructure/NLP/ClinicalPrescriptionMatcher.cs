@@ -49,8 +49,9 @@ public sealed class ClinicalPrescriptionMatcher : IClinicalPrescriptionMatcher
 
     /// <summary>
     /// Direct-context constructor (primarily for unit tests and local execution).
+    /// Internal so the DI container sees exactly one public constructor.
     /// </summary>
-    public ClinicalPrescriptionMatcher(
+    internal ClinicalPrescriptionMatcher(
         IApplicationDbContext context,
         IEgyptianDialectNormalizer dialectNormalizer,
         IMemoryCache? memoryCache = null,
