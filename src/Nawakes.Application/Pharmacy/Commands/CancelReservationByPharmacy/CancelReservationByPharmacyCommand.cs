@@ -17,7 +17,8 @@ public sealed record CancelReservationByPharmacyCommand(
 public sealed class CancelReservationByPharmacyCommandHandler(
     IApplicationDbContext context,
     ICurrentUserService currentUser,
-    IReservationJobScheduler jobScheduler)
+    IReservationJobScheduler jobScheduler,
+    IRealtimeReservationNotifier? realtimeNotifier = null)
     : IRequestHandler<CancelReservationByPharmacyCommand>
 {
     public async Task Handle(CancelReservationByPharmacyCommand request, CancellationToken cancellationToken)
@@ -57,5 +58,22 @@ public sealed class CancelReservationByPharmacyCommandHandler(
 
         if (!string.IsNullOrWhiteSpace(reservation.HangfireJobId))
             jobScheduler.DeleteJob(reservation.HangfireJobId);
+
+        if (realtimeNotifier is not null)
+        {
+            await realtimeNotifier.NotifyReservationUpdatedAsync(
+                new ReservationStatusUpdatedEvent(
+                    reservation.Id,
+                    reservation.UserId,
+                    reservation.PharmacyId,
+                    reservation.Pharmacy.Name ?? string.Empty,
+                    reservation.InventoryItem.MedicationName,
+                    nameof(ReservationStatus.Cancelled),
+                    reservation.DeliveryStatus?.ToString(),
+                    reservation.ReservationCode,
+                    reservation.ExpiresAt),
+                cancellationToken);
+        }
     }
 }
+

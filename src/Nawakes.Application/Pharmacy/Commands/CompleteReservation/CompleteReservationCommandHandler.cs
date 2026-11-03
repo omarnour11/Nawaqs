@@ -19,7 +19,8 @@ namespace Nawakes.Application.Pharmacy.Commands.CompleteReservation;
 public sealed class CompleteReservationCommandHandler(
     IApplicationDbContext context,
     ICurrentUserService currentUser,
-    IReservationJobScheduler jobScheduler)
+    IReservationJobScheduler jobScheduler,
+    IRealtimeReservationNotifier? realtimeNotifier = null)
     : IRequestHandler<CompleteReservationCommand, PharmacyReservationDto>
 {
     public async Task<PharmacyReservationDto> Handle(
@@ -79,6 +80,22 @@ public sealed class CompleteReservationCommandHandler(
         if (!string.IsNullOrWhiteSpace(reservation.HangfireJobId))
             jobScheduler.DeleteJob(reservation.HangfireJobId);
 
+        if (realtimeNotifier is not null)
+        {
+            await realtimeNotifier.NotifyReservationUpdatedAsync(
+                new ReservationStatusUpdatedEvent(
+                    reservation.Id,
+                    reservation.UserId,
+                    reservation.PharmacyId,
+                    reservation.Pharmacy.Name ?? string.Empty,
+                    reservation.InventoryItem.MedicationName,
+                    nameof(ReservationStatus.Completed),
+                    reservation.DeliveryStatus?.ToString(),
+                    reservation.ReservationCode,
+                    reservation.ExpiresAt),
+                cancellationToken);
+        }
+
         var displayName = $"مريض #{reservation.UserId.ToString()[^4..].ToUpperInvariant()}";
 
         return new PharmacyReservationDto(
@@ -91,3 +108,4 @@ public sealed class CompleteReservationCommandHandler(
             reservation.ReservationCode);
     }
 }
+

@@ -66,9 +66,28 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             IssuerSigningKey         = new SymmetricSecurityKey(key),
             ClockSkew                = TimeSpan.FromSeconds(30)
         };
+
+        // Allow SignalR WebSocket connections to pass JWT via ?access_token=...
+        opts.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+                if (!string.IsNullOrEmpty(accessToken) &&
+                    path.StartsWithSegments("/hubs/reservations"))
+                {
+                    context.Token = accessToken;
+                }
+                return Task.CompletedTask;
+            }
+        };
     });
 
 builder.Services.AddAuthorization();
+builder.Services.AddSignalR();
+builder.Services.AddScoped<Nawakes.Application.Common.Interfaces.IRealtimeReservationNotifier,
+    Nawakes.API.Services.SignalRReservationNotifier>();
 
 // ── Rate Limiting (Slice 1.4: 30 req/min IP, 60 req/min Auth) ───────────
 builder.Services.AddRateLimiter(opts =>
@@ -230,6 +249,8 @@ RecurringJob.AddOrUpdate<CheckCabinetDepletionJob>(
     "0 6 * * *");
 
 app.MapControllers();
+app.MapHub<Nawakes.API.Hubs.ReservationTrackingHub>("/hubs/reservations");
+
 
 // Health check endpoints (Slice 1.3)
 app.MapHealthChecks("/health/live", new HealthCheckOptions

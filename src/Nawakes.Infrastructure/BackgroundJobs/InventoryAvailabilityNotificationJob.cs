@@ -143,6 +143,7 @@ public sealed class InventoryAvailabilityNotificationJob(
             return;
         }
 
+        var realtimeNotifier = scope.ServiceProvider.GetService<IRealtimeReservationNotifier>();
         foreach (var (sub, expiresAt) in offeredSubscriptions)
         {
             try
@@ -155,6 +156,21 @@ public sealed class InventoryAvailabilityNotificationJob(
             {
                 logger.LogWarning(ex,
                     "Failed to schedule expiry job for offer {SubId}.", sub.Id);
+            }
+
+            if (realtimeNotifier is not null)
+            {
+                await realtimeNotifier.NotifyQueueOfferSentAsync(
+                    new QueueOfferDispatchedEvent(
+                        sub.Id,
+                        sub.UserId,
+                        item.Id,
+                        item.PharmacyId,
+                        item.Pharmacy?.Name ?? "الصيدلية",
+                        item.MedicationName,
+                        item.Price,
+                        expiresAt),
+                    cancellationToken);
             }
         }
 
@@ -185,6 +201,7 @@ public sealed class InventoryAvailabilityNotificationJob(
         logger.LogInformation("Queue allocation done for Item {ItemId}: {Count} offers sent.",
             inventoryItemId, offerCount);
     }
+
 
     private static double HaversineDistanceKm(NetTopologySuite.Geometries.Point p1, NetTopologySuite.Geometries.Point p2)
     {

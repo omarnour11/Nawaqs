@@ -113,6 +113,7 @@ public sealed class PharmacyReservationsController(ISender mediator) : Controlle
         [FromBody] ClinicalRejectRequest request,
         [FromServices] IApplicationDbContext context,
         [FromServices] ICurrentUserService currentUser,
+        [FromServices] IRealtimeReservationNotifier realtimeNotifier,
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.Reason))
@@ -159,12 +160,79 @@ public sealed class PharmacyReservationsController(ISender mediator) : Controlle
 
         await context.SaveChangesAsync(cancellationToken);
 
+        await realtimeNotifier.NotifyReservationUpdatedAsync(
+            new ReservationStatusUpdatedEvent(
+                reservation.Id,
+                reservation.UserId,
+                reservation.PharmacyId,
+                pharmacy.Name ?? string.Empty,
+                reservation.InventoryItem?.MedicationName ?? string.Empty,
+                reservation.Status.ToString(),
+                reservation.DeliveryStatus?.ToString(),
+                reservation.ReservationCode,
+                reservation.ExpiresAt,
+                reservation.ClinicalContraindicationReason,
+                reservation.RecommendedAlternativeMedication),
+            cancellationToken);
+
         return Ok(new
         {
             success = true,
             reservationId = reservation.Id,
             status = reservation.Status.ToString(),
             recommendedMedication = reservation.RecommendedAlternativeMedication
+        });
+    }
+
+    /// <summary>
+    /// Updates the live home-delivery status (Pending -> OutForDelivery -> Delivered) and broadcasts via SignalR.
+    /// </summary>
+    [HttpPatch("{id:guid}/delivery-status")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateDeliveryStatus(
+        Guid id,
+        [FromBody] UpdateDeliveryStatusRequest request,
+        [FromServices] IApplicationDbContext context,
+        [FromServices] ICurrentUserService currentUser,
+        [FromServices] IRealtimeReservationNotifier realtimeNotifier,
+        CancellationToken cancellationToken)
+    {
+        var pharmacy = await context.Pharmacies
+            .FirstOrDefaultAsync(p => p.OwnerId == currentUser.UserId, cancellationToken)
+            ?? throw new NotFoundException(nameof(Domain.Entities.Pharmacy), currentUser.UserId);
+
+        var reservation = await context.Reservations
+            .Include(r => r.InventoryItem)
+            .FirstOrDefaultAsync(r => r.Id == id && r.PharmacyId == pharmacy.Id, cancellationToken)
+            ?? throw new NotFoundException(nameof(Domain.Entities.Reservation), id);
+
+        if (!Enum.TryParse<DeliveryStatus>(request.DeliveryStatus, ignoreCase: true, out var parsedDelivery))
+        {
+            return BadRequest(new { message = "حالة التوصيل غير صالحة." });
+        }
+
+        reservation.DeliveryStatus = parsedDelivery;
+        await context.SaveChangesAsync(cancellationToken);
+
+        await realtimeNotifier.NotifyReservationUpdatedAsync(
+            new ReservationStatusUpdatedEvent(
+                reservation.Id,
+                reservation.UserId,
+                reservation.PharmacyId,
+                pharmacy.Name ?? string.Empty,
+                reservation.InventoryItem?.MedicationName ?? string.Empty,
+                reservation.Status.ToString(),
+                reservation.DeliveryStatus.ToString(),
+                reservation.ReservationCode,
+                reservation.ExpiresAt),
+            cancellationToken);
+
+        return Ok(new
+        {
+            reservationId = reservation.Id,
+            status = reservation.Status.ToString(),
+            deliveryStatus = reservation.DeliveryStatus.ToString()
         });
     }
 
@@ -234,3 +302,6 @@ public sealed record ClinicalRejectRequest(
     string Reason,
     string RecommendedMedicationName,
     Guid? RecommendedInventoryItemId = null);
+
+public sealed record UpdateDeliveryStatusRequest(string DeliveryStatus);
+
