@@ -26,7 +26,14 @@ public sealed class InventoryItem : BaseEntity
     /// <summary>Free-text note for patients (e.g. "only 30-cap packs").</summary>
     public string? PatientNote { get; set; }
 
+    /// <summary>GS1 GTIN / EAN-13 barcode for 1-second scanner lookup.</summary>
+    public string? Barcode { get; set; }
+
+    /// <summary>External POS / ERP SKU identifier (e.g. Orgasoft / PharmaSoft item code).</summary>
+    public string? ExternalPosSku { get; set; }
+
     public InventoryStatus Status { get; set; } = InventoryStatus.InStock;
+
 
     /// <summary>Optimistic concurrency token — maps to SQL ROWVERSION.</summary>
     public byte[] RowVersion { get; set; } = [];

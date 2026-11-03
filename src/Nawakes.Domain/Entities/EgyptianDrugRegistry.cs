@@ -30,8 +30,11 @@ public sealed class EgyptianDrugRegistry
 
     public string? Manufacturer { get; set; }
     public string? EdaRegistrationNumber { get; set; }
+    /// <summary>GS1 GTIN-14 / EAN-13 international drug barcode registered with EDA.</summary>
+    public string? GtinBarcode { get; set; }
     public bool IsChronic { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }
+

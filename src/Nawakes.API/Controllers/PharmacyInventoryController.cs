@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Nawakes.Application.Pharmacy.Commands.AddInventoryItem;
 using Nawakes.Application.Pharmacy.Commands.DeleteInventoryItem;
+using Nawakes.Application.Pharmacy.Commands.ScanBarcodeInventory;
+using Nawakes.Application.Pharmacy.Commands.SyncPosInventory;
 using Nawakes.Application.Pharmacy.Commands.ToggleInventoryItemStatus;
 using Nawakes.Application.Pharmacy.Queries.GetPharmacyInventory;
 using Nawakes.Domain.Enums;
@@ -70,6 +72,36 @@ public class PharmacyInventoryController(IMediator mediator) : ControllerBase
         return Created(string.Empty, result);
     }
 
+    /// <summary>
+    /// 1-Second Barcode / GS1 DataMatrix Scanner Upsert:
+    /// Resolves GTIN-14 / EAN-13 against the Egyptian Drug Authority catalog, extracts GS1 expiry date if present,
+    /// and increments or creates the pharmacy's inventory item automatically.
+    /// </summary>
+    [HttpPost("scan-barcode")]
+    [ProducesResponseType(typeof(BarcodeScanResultDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<BarcodeScanResultDto>> ScanBarcode(
+        [FromBody] ScanBarcodeInventoryCommand command,
+        CancellationToken cancellationToken)
+    {
+        var result = await mediator.Send(command, cancellationToken);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Automated POS / ERP Webhook Batch Synchronization:
+    /// Syncs real-time stock quantities by Barcode, ExternalPosSku, or MedicationName while protecting active reservations.
+    /// </summary>
+    [HttpPost("pos-sync")]
+    [ProducesResponseType(typeof(PosInventorySyncResultDto), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PosInventorySyncResultDto>> SyncPosInventory(
+        [FromBody] SyncPosInventoryCommand command,
+        CancellationToken cancellationToken)
+    {
+        var result = await mediator.Send(command, cancellationToken);
+        return Ok(result);
+    }
+
     public sealed record ToggleStatusRequest([Required] InventoryStatus Status);
 
     /// <summary>
@@ -128,3 +160,4 @@ public class PharmacyInventoryController(IMediator mediator) : ControllerBase
         return Ok(result);
     }
 }
+
