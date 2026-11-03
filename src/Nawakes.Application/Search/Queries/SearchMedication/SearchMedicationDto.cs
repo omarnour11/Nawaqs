@@ -18,7 +18,12 @@ public sealed record PharmacySearchResultDto
     public DateTime LastUpdatedAt { get; init; }
     public double Latitude { get; init; }
     public double Longitude { get; init; }
+    public decimal? OfficialEdaPriceEgp { get; init; }
+    public decimal? PriceVariancePercent { get; init; }
+    public bool IsEdaPriceVerified { get; init; } = true;
+    public string? EdaPriceBadgeText { get; init; }
 }
+
 
 public sealed record SearchMedicationResponse
 {

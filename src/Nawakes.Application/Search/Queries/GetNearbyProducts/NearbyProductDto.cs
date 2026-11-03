@@ -9,7 +9,10 @@ public sealed record NearbyPharmacyOptionDto(
     int InStockQuantity,
     string? Phone,
     bool SupportsDelivery = true,
-    Guid InventoryItemId = default
+    Guid InventoryItemId = default,
+    decimal? OfficialEdaPriceEgp = null,
+    bool IsEdaPriceVerified = true,
+    string? EdaPriceBadgeText = null
 );
 
 public sealed record NearbyProductDto(
@@ -24,8 +27,12 @@ public sealed record NearbyProductDto(
     string? Category,
     string? ImageUrl,
     IReadOnlyList<NearbyPharmacyOptionDto> Pharmacies,
-    string? Description = null
+    string? Description = null,
+    decimal? OfficialEdaPriceEgp = null,
+    bool IsEdaPriceVerified = true,
+    string? EdaPriceBadgeText = null
 );
+
 
 public sealed record GetNearbyProductsResponse(
     IReadOnlyList<NearbyProductDto> Products,

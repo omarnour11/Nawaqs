@@ -49,19 +49,25 @@ public sealed class PharmacySearchRepository(
         // Resolve Arabic commercial name from EDA registry (e.g. بانادول -> PANADOL, كونكور -> CONCOR)
         var firstWord = normSearch.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? normSearch;
 
-        var matchedTradeTokens = await context.EgyptianDrugRegistry
+        var matchedCatalogEntries = await context.EgyptianDrugRegistry
             .AsNoTracking()
-            .Where(d => d.CommercialNameArNormalized != null &&
-                        (d.CommercialNameArNormalized.Contains(normSearch) ||
-                         (firstWord.Length >= 3 && d.CommercialNameArNormalized.Contains(firstWord)) ||
-                         normSearch.Contains(d.CommercialNameArNormalized)))
-            .Select(d => d.TradeNameNormalized)
-            .Distinct()
-            .Take(10)
+            .Where(d => d.TradeNameNormalized.Contains(normSearch) ||
+                        (firstWord.Length >= 3 && d.TradeNameNormalized.Contains(firstWord)) ||
+                        (d.CommercialNameArNormalized != null &&
+                         (d.CommercialNameArNormalized.Contains(normSearch) ||
+                          (firstWord.Length >= 3 && d.CommercialNameArNormalized.Contains(firstWord)) ||
+                          normSearch.Contains(d.CommercialNameArNormalized))))
+            .Select(d => new
+            {
+                d.TradeNameNormalized,
+                d.CommercialNameArNormalized,
+                d.OfficialPriceEGP
+            })
+            .Take(20)
             .ToListAsync(cancellationToken);
 
-        var brandRoots = matchedTradeTokens
-            .Select(t => t.Split(' ', StringSplitOptions.RemoveEmptyEntries)[0])
+        var brandRoots = matchedCatalogEntries
+            .Select(t => t.TradeNameNormalized.Split(' ', StringSplitOptions.RemoveEmptyEntries)[0])
             .Where(b => b.Length >= 2)
             .Distinct()
             .Take(5)
@@ -103,23 +109,37 @@ public sealed class PharmacySearchRepository(
             {
                 var bestItem = g.OrderBy(x => x.item.Price).First();
                 var totalQty = g.Sum(x => x.item.Quantity);
+                var itemNorm = bestItem.item.MedicationNameNormalized;
+                var edaMatch = matchedCatalogEntries.FirstOrDefault(d =>
+                    d.TradeNameNormalized.Equals(itemNorm, StringComparison.OrdinalIgnoreCase) ||
+                    (d.CommercialNameArNormalized != null && d.CommercialNameArNormalized.Equals(itemNorm, StringComparison.OrdinalIgnoreCase)) ||
+                    itemNorm.Contains(d.TradeNameNormalized, StringComparison.OrdinalIgnoreCase));
+
+                var (officialPrice, variancePct, isVerified, badgeText) = EvaluateEdaPriceCompliance(
+                    bestItem.item.Price,
+                    edaMatch?.OfficialPriceEGP);
+
                 return new PharmacySearchResultDto
                 {
-                    PharmacyId      = bestItem.item.PharmacyId,
-                    PharmacyName    = bestItem.item.Pharmacy.Name ?? "Unknown Pharmacy",
-                    AddressLine     = bestItem.item.Pharmacy.AddressLine ?? "Unknown Address",
-                    Phone           = bestItem.item.Pharmacy.Phone ?? "N/A",
-                    TrustScore      = bestItem.item.Pharmacy.TrustScore,
-                    DistanceKm      = bestItem.DistanceKm,
-                    InventoryItemId = bestItem.item.Id,
-                    MedicationName  = bestItem.item.MedicationName,
-                    Price           = bestItem.item.Price,
-                    Status          = bestItem.item.Status.ToString(),
-                    Quantity        = totalQty,
-                    PatientNote     = bestItem.item.PatientNote,
-                    LastUpdatedAt   = bestItem.item.UpdatedAt,
-                    Latitude        = bestItem.item.Pharmacy.GeoPoint != null ? bestItem.item.Pharmacy.GeoPoint.Y : 0.0,
-                    Longitude       = bestItem.item.Pharmacy.GeoPoint != null ? bestItem.item.Pharmacy.GeoPoint.X : 0.0,
+                    PharmacyId           = bestItem.item.PharmacyId,
+                    PharmacyName         = bestItem.item.Pharmacy.Name ?? "Unknown Pharmacy",
+                    AddressLine          = bestItem.item.Pharmacy.AddressLine ?? "Unknown Address",
+                    Phone                = bestItem.item.Pharmacy.Phone ?? "N/A",
+                    TrustScore           = bestItem.item.Pharmacy.TrustScore,
+                    DistanceKm           = bestItem.DistanceKm,
+                    InventoryItemId      = bestItem.item.Id,
+                    MedicationName       = bestItem.item.MedicationName,
+                    Price                = bestItem.item.Price,
+                    Status               = bestItem.item.Status.ToString(),
+                    Quantity             = totalQty,
+                    PatientNote          = bestItem.item.PatientNote,
+                    LastUpdatedAt        = bestItem.item.UpdatedAt,
+                    Latitude             = bestItem.item.Pharmacy.GeoPoint != null ? bestItem.item.Pharmacy.GeoPoint.Y : 0.0,
+                    Longitude            = bestItem.item.Pharmacy.GeoPoint != null ? bestItem.item.Pharmacy.GeoPoint.X : 0.0,
+                    OfficialEdaPriceEgp  = officialPrice,
+                    PriceVariancePercent = variancePct,
+                    IsEdaPriceVerified   = isVerified,
+                    EdaPriceBadgeText    = badgeText
                 };
             })
             .OrderBy(x => x.DistanceKm)
@@ -129,6 +149,7 @@ public sealed class PharmacySearchRepository(
 
         return results;
     }
+
 
     public async Task<IReadOnlyList<NearbyProductDto>> GetNearbyProductsAsync(
         double latitude,
@@ -258,6 +279,7 @@ public sealed class PharmacySearchRepository(
                     var dist = pg.Min(x => x.DistanceKm);
                     // Delivery supported up to 25 km from user
                     var deliverySupported = dist <= 25.0;
+                    var (optOfficial, _, optVerified, optBadge) = EvaluateEdaPriceCompliance(bestPrice, drug?.OfficialPriceEGP);
 
                     return new NearbyPharmacyOptionDto(
                         pg.Key,
@@ -268,7 +290,10 @@ public sealed class PharmacySearchRepository(
                         totalQty,
                         primary.Phone,
                         deliverySupported,
-                        primary.Id
+                        primary.Id,
+                        optOfficial,
+                        optVerified,
+                        optBadge
                     );
                 })
                 .OrderBy(x => x.DistanceKm)
@@ -281,6 +306,7 @@ public sealed class PharmacySearchRepository(
 
             var minDistance = distinctPharmacies.Min(x => x.DistanceKm);
             var minPrice = distinctPharmacies.Min(x => x.Price);
+            var (prodOfficial, _, prodVerified, prodBadge) = EvaluateEdaPriceCompliance(minPrice, drug?.OfficialPriceEGP);
 
             var (imageUrl, description) = ResolveProductDemoMeta(tradeName, commercialAr, dosageForm, cat);
 
@@ -296,13 +322,37 @@ public sealed class PharmacySearchRepository(
                 Category: cat,
                 ImageUrl: imageUrl,
                 Pharmacies: distinctPharmacies,
-                Description: description
+                Description: description,
+                OfficialEdaPriceEgp: prodOfficial,
+                IsEdaPriceVerified: prodVerified,
+                EdaPriceBadgeText: prodBadge
             ));
         }
 
         var sorted = productList.OrderBy(p => p.MinDistanceKm);
         return (limit > 0 ? sorted.Take(limit) : sorted).ToList();
     }
+
+    public static (decimal? OfficialPriceEgp, decimal? VariancePercent, bool IsVerified, string? BadgeText) EvaluateEdaPriceCompliance(
+        decimal pharmacyPrice,
+        decimal? officialEdaPriceEgp)
+    {
+        if (officialEdaPriceEgp is null || officialEdaPriceEgp.Value <= 0m)
+        {
+            return (null, null, true, null);
+        }
+
+        var official = officialEdaPriceEgp.Value;
+        var variancePct = Math.Round(((pharmacyPrice - official) / official) * 100m, 1);
+        // Allow up to 2% rounding tolerance on compulsory ceiling price
+        var isVerified = pharmacyPrice <= official * 1.02m;
+        var badgeText = isVerified
+            ? "مطابق للتسعيرة الرسمية لهيئة الدواء ✓"
+            : $"أعلى من التسعيرة الرسمية ({official:0.##} ج.م)";
+
+        return (official, variancePct, isVerified, badgeText);
+    }
+
 
     private static string DetermineProductCategory(
         EgyptianDrugRegistry? drug,
