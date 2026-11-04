@@ -12,7 +12,11 @@ public sealed record SubscriptionDto(
     double Longitude,
     bool IsActive,
     DateTime? LastNotifiedAt,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    string QueueStatus = "Waiting",
+    int QueuePosition = 0,
+    DateTime? OfferExpiresAt = null,
+    Guid? OfferedInventoryItemId = null);
 
 public sealed record GetMySubscriptionsQuery : IRequest<IReadOnlyList<SubscriptionDto>>;
 
@@ -37,7 +41,11 @@ public sealed class GetMySubscriptionsQueryHandler(
                 s.GeoPoint.X,
                 s.IsActive,
                 s.LastNotifiedAt,
-                s.CreatedAt))
+                s.CreatedAt,
+                s.QueueStatus.ToString(),
+                s.QueuePosition,
+                s.OfferExpiresAt,
+                s.OfferedInventoryItemId))
             .ToListAsync(cancellationToken);
     }
 }

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Nawakes.Application.Subscriptions.Commands.ClaimOffer;
 using Nawakes.Application.Subscriptions.Commands.CreateSubscription;
 using Nawakes.Application.Subscriptions.Commands.DeleteSubscription;
+using Nawakes.Application.Subscriptions.Commands.ToggleSubscription;
 using Nawakes.Application.Subscriptions.Queries.GetMySubscriptions;
 using System.ComponentModel.DataAnnotations;
 
@@ -66,6 +67,23 @@ public class SubscriptionsController(IMediator mediator) : ControllerBase
         return Ok(reservation);
     }
 
+    /// <summary>Activates or pauses an availability alert without deleting it.</summary>
+    /// <response code="204">If successful</response>
+    /// <response code="403">If the subscription belongs to a different user</response>
+    /// <response code="404">If the subscription doesn't exist</response>
+    [HttpPatch("{id}/toggle")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Toggle(
+        Guid id,
+        [FromBody] ToggleSubscriptionRequest request,
+        CancellationToken cancellationToken)
+    {
+        await mediator.Send(new ToggleSubscriptionCommand(id, request.IsActive), cancellationToken);
+        return NoContent();
+    }
+
     /// <summary>Deactivates a subscription.</summary>
     /// <response code="204">If successful</response>
     /// <response code="403">If the subscription belongs to a different user</response>
@@ -82,8 +100,11 @@ public class SubscriptionsController(IMediator mediator) : ControllerBase
 
     private static SubscriptionResponse ToResponse(Nawakes.Application.Subscriptions.Queries.GetMySubscriptions.SubscriptionDto dto) => new(
         dto.Id, dto.MedicationName, dto.RadiusKm, dto.Latitude, dto.Longitude,
-        dto.IsActive, dto.LastNotifiedAt, dto.CreatedAt);
+        dto.IsActive, dto.LastNotifiedAt, dto.CreatedAt,
+        dto.QueueStatus, dto.QueuePosition, dto.OfferExpiresAt, dto.OfferedInventoryItemId);
 }
+
+public sealed record ToggleSubscriptionRequest([Required] bool IsActive);
 
 public sealed record SubscriptionResponse(
     Guid Id,
@@ -93,4 +114,8 @@ public sealed record SubscriptionResponse(
     double Longitude,
     bool IsActive,
     DateTime? LastNotifiedAt,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    string QueueStatus = "Waiting",
+    int QueuePosition = 0,
+    DateTime? OfferExpiresAt = null,
+    Guid? OfferedInventoryItemId = null);
