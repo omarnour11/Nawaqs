@@ -37,6 +37,7 @@ class FakeVoiceApiClient implements ApiClient {
   final Map<String, List<String>> suggestionsMap = {};
   final List<String> calls = [];
   final List<CreateReservationRequest> reservationRequests = [];
+  final List<BatchReservationRequestBody> batchRequests = [];
   BatchSearchRequest? lastBatchSearchRequest;
 
   @override
@@ -94,6 +95,29 @@ class FakeVoiceApiClient implements ApiClient {
       expiresAt: DateTime.now().add(const Duration(hours: 2)),
       createdAt: DateTime.now(),
       reservationCode: 'NWQ-1234',
+    );
+  }
+
+  @override
+  Future<BatchReservationResult> createBatchReservation(BatchReservationRequestBody body) async {
+    batchRequests.add(body);
+    final created = body.items
+        .map((it) => ReservationResponse(
+              id: 'res_${it.inventoryItemId}',
+              inventoryItemId: it.inventoryItemId,
+              pharmacyId: 'pharm_1',
+              pharmacyName: 'صيدلية النور',
+              medicationName: 'Medication',
+              status: 'Active',
+              expiresAt: DateTime.now().add(const Duration(hours: 2)),
+              createdAt: DateTime.now(),
+              reservationCode: 'NWQ-BATCH',
+            ))
+        .toList();
+    return BatchReservationResult(
+      createdReservations: created,
+      failedItems: [],
+      isAllSucceeded: true,
     );
   }
 
@@ -970,9 +994,10 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 
-      // Check createReservation was invoked for both items
-      expect(fakeApi.reservationRequests.length, 2);
-      expect(fakeApi.reservationRequests.map((r) => r.inventoryItemId).toSet(), {
+      // Check createBatchReservation was invoked with both items in one call
+      expect(fakeApi.batchRequests.length, 1);
+      expect(
+          fakeApi.batchRequests.first.items.map((i) => i.inventoryItemId).toSet(), {
         'inv_panadol',
         'inv_brufen',
       });
@@ -1030,8 +1055,9 @@ void main() {
       await tester.pump();
       await tester.pumpAndSettle();
 
-      // Verify reservations were sent
-      expect(fakeApi.reservationRequests.length, 2);
+      // Verify batch reservation was sent with both items
+      expect(fakeApi.batchRequests.length, 1);
+      expect(fakeApi.batchRequests.first.items.length, 2);
 
       // Verify the screen was popped back to root
       expect(find.byType(BatchSearchResultsScreen), findsNothing);

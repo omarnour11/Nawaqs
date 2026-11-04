@@ -32,6 +32,26 @@ class UnreadNotificationsCount extends _$UnreadNotificationsCount {
   }
 }
 
+/// Notification ids whose action was already consumed (offer claimed /
+/// alternative reserved). Keeps action buttons from being tapped twice and
+/// lets the UI hide those notifications after a successful reservation.
+final consumedActionNotificationsProvider =
+    NotifierProvider<ConsumedActionNotifications, Set<String>>(
+  ConsumedActionNotifications.new,
+);
+
+class ConsumedActionNotifications extends Notifier<Set<String>> {
+  @override
+  Set<String> build() => {};
+
+  void mark(String notificationId) {
+    if (notificationId.isEmpty) return;
+    state = {...state, notificationId};
+  }
+
+  bool isConsumed(String notificationId) => state.contains(notificationId);
+}
+
 /// ─── Shared widgets from the Nawaqs design spec ─────────────────────────────
 /// Top app bar, section labels, stat cards, status chips, queue rows, steppers.
 /// Every screen composes these; no bespoke card shapes.

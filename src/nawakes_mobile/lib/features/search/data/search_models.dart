@@ -19,6 +19,11 @@ class PharmacySearchResultDto {
   final DateTime lastUpdatedAt;
   final double latitude;
   final double longitude;
+  final double? officialEdaPriceEgp;
+  final double? priceVariancePercent;
+  @JsonKey(defaultValue: true)
+  final bool isEdaPriceVerified;
+  final String? edaPriceBadgeText;
 
   PharmacySearchResultDto({
     required this.pharmacyId,
@@ -36,6 +41,10 @@ class PharmacySearchResultDto {
     required this.lastUpdatedAt,
     required this.latitude,
     required this.longitude,
+    this.officialEdaPriceEgp,
+    this.priceVariancePercent,
+    this.isEdaPriceVerified = true,
+    this.edaPriceBadgeText,
   });
 
   factory PharmacySearchResultDto.fromJson(Map<String, dynamic> json) => _$PharmacySearchResultDtoFromJson(json);

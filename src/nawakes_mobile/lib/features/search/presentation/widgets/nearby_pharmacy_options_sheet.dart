@@ -11,6 +11,7 @@ import 'package:nawakes_mobile/features/auth/presentation/auth_controller.dart'
 import 'package:nawakes_mobile/features/reservations/data/reservation_models.dart';
 import 'package:nawakes_mobile/features/search/presentation/nearby_products_provider.dart'
     show deliveryLocationProvider;
+import 'package:nawakes_mobile/features/search/presentation/widgets/safety_shield_dialog.dart';
 
 /// Modal sheet that displays all nearby pharmacies (within 15km) stocking
 /// a specific product, allowing one-tap direct reservation.
@@ -117,6 +118,19 @@ class _NearbyPharmacyOptionsSheetState
     try {
       final targetItemId =
           opt.inventoryItemId.isNotEmpty ? opt.inventoryItemId : widget.product.id;
+
+      // Clinical safety shield before confirming the reservation.
+      final allowed = await guardReservationWithSafetyCheck(
+        context,
+        ref,
+        inventoryItemId: targetItemId,
+        medicationName: widget.product.commercialNameAr ?? widget.product.tradeName,
+      );
+      if (!allowed || !mounted) {
+        if (mounted) setState(() => _reservingPharmacyId = null);
+        return;
+      }
+
       final req = CreateReservationRequest(
         inventoryItemId: targetItemId,
       );

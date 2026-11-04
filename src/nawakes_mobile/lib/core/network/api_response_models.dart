@@ -1,4 +1,8 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:nawakes_mobile/features/pharmacy/data/pharmacy_dashboard_models.dart'
+    show PharmacyInventoryItemDto;
+import 'package:nawakes_mobile/features/reservations/data/reservation_models.dart'
+    show ReservationResponse;
 
 part 'api_response_models.g.dart';
 
@@ -380,12 +384,14 @@ class BatchSearchResponse {
   final List<BatchPharmacyResult> partialPharmacies;
   final int totalRequestedItems;
   final double radiusKm;
+  final List<SplitBasketPlan>? optimalSplitPlans;
 
   BatchSearchResponse({
     required this.completePharmacies,
     required this.partialPharmacies,
     required this.totalRequestedItems,
     required this.radiusKm,
+    this.optimalSplitPlans,
   });
 
   factory BatchSearchResponse.fromJson(Map<String, dynamic> json) =>
@@ -403,6 +409,10 @@ class BatchSearchResponse {
         totalRequestedItems:
             (json['totalRequestedItems'] as num?)?.toInt() ?? 0,
         radiusKm: (json['radiusKm'] as num?)?.toDouble() ?? 10.0,
+        optimalSplitPlans: (json['optimalSplitPlans'] as List<dynamic>?)
+            ?.map((e) =>
+                SplitBasketPlan.fromJson(e as Map<String, dynamic>))
+            .toList(),
       );
 }
 
@@ -512,5 +522,312 @@ class NearbyProductsResponse {
             [],
         totalCount: (json['totalCount'] as num?)?.toInt() ?? 0,
         radiusKm: (json['radiusKm'] as num?)?.toDouble() ?? 15.0,
+      );
+}
+
+// ─── Barcode scan (GS1/GTIN upsert) ──────────────────────────────────────────
+
+class ScanBarcodeRequest {
+  final String rawBarcode;
+  final int quantityDelta;
+  final double? overridePrice;
+  final String? externalPosSku;
+
+  ScanBarcodeRequest({
+    required this.rawBarcode,
+    this.quantityDelta = 1,
+    this.overridePrice,
+    this.externalPosSku,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'rawBarcode': rawBarcode,
+        'quantityDelta': quantityDelta,
+        if (overridePrice != null) 'overridePrice': overridePrice,
+        if (externalPosSku != null) 'externalPosSku': externalPosSku,
+      };
+}
+
+class BarcodeScanResult {
+  final PharmacyInventoryItemDto item;
+  final String extractedGtin;
+  final DateTime? extractedExpiryDate;
+  final bool matchedFromEdaRegistry;
+  final double? officialEdaPriceEgp;
+
+  BarcodeScanResult({
+    required this.item,
+    required this.extractedGtin,
+    this.extractedExpiryDate,
+    required this.matchedFromEdaRegistry,
+    this.officialEdaPriceEgp,
+  });
+
+  factory BarcodeScanResult.fromJson(Map<String, dynamic> json) =>
+      BarcodeScanResult(
+        item: PharmacyInventoryItemDto.fromJson(
+            json['item'] as Map<String, dynamic>? ?? {}),
+        extractedGtin: json['extractedGtin']?.toString() ?? '',
+        extractedExpiryDate: json['extractedExpiryDate'] == null
+            ? null
+            : DateTime.tryParse(json['extractedExpiryDate'].toString()),
+        matchedFromEdaRegistry:
+            json['matchedFromEdaRegistry'] as bool? ?? false,
+        officialEdaPriceEgp: (json['officialEdaPriceEgp'] as num?)?.toDouble(),
+      );
+}
+
+// ─── Pre-checkout clinical safety shield ─────────────────────────────────────
+
+class ReservationSafetyCheckResult {
+  final String targetMedicationName;
+  final bool hasCriticalAlerts;
+  final bool hasWarnings;
+  final List<String> duplicateActiveIngredientMedications;
+  final List<SafetyAlert> alerts;
+
+  ReservationSafetyCheckResult({
+    required this.targetMedicationName,
+    required this.hasCriticalAlerts,
+    required this.hasWarnings,
+    required this.duplicateActiveIngredientMedications,
+    required this.alerts,
+  });
+
+  factory ReservationSafetyCheckResult.fromJson(Map<String, dynamic> json) =>
+      ReservationSafetyCheckResult(
+        targetMedicationName: json['targetMedicationName']?.toString() ?? '',
+        hasCriticalAlerts: json['hasCriticalAlerts'] as bool? ?? false,
+        hasWarnings: json['hasWarnings'] as bool? ?? false,
+        duplicateActiveIngredientMedications:
+            (json['duplicateActiveIngredientMedications'] as List<dynamic>?)
+                    ?.map((e) => e.toString())
+                    .toList() ??
+                [],
+        alerts: (json['alerts'] as List<dynamic>?)
+                ?.map((e) => SafetyAlert.fromJson(e as Map<String, dynamic>))
+                .toList() ??
+            [],
+      );
+}
+
+class SafetyAlert {
+  final String id;
+  final String severity; // Critical | Warning | Nominal
+  final String category;
+  final String title;
+  final String description;
+  final List<String> involvedDrugs;
+  final String recommendation;
+
+  SafetyAlert({
+    required this.id,
+    required this.severity,
+    required this.category,
+    required this.title,
+    required this.description,
+    required this.involvedDrugs,
+    required this.recommendation,
+  });
+
+  factory SafetyAlert.fromJson(Map<String, dynamic> json) => SafetyAlert(
+        id: json['id']?.toString() ?? '',
+        severity: json['severity']?.toString() ?? 'Nominal',
+        category: json['category']?.toString() ?? '',
+        title: json['title']?.toString() ?? '',
+        description: json['description']?.toString() ?? '',
+        involvedDrugs: (json['involvedDrugs'] as List<dynamic>?)
+                ?.map((e) => e.toString())
+                .toList() ??
+            [],
+        recommendation: json['recommendation']?.toString() ?? '',
+      );
+}
+
+// ─── Smart 2-pharmacy split-basket plans ─────────────────────────────────────
+
+class SplitBasketStop {
+  final String pharmacyId;
+  final String pharmacyName;
+  final String addressLine;
+  final String phone;
+  final double trustScore;
+  final double distanceFromUserKm;
+  final double latitude;
+  final double longitude;
+  final double subtotalPrice;
+  final List<BatchMedicationDetail> assignedItems;
+
+  SplitBasketStop({
+    required this.pharmacyId,
+    required this.pharmacyName,
+    required this.addressLine,
+    required this.phone,
+    required this.trustScore,
+    required this.distanceFromUserKm,
+    required this.latitude,
+    required this.longitude,
+    required this.subtotalPrice,
+    required this.assignedItems,
+  });
+
+  factory SplitBasketStop.fromJson(Map<String, dynamic> json) =>
+      SplitBasketStop(
+        pharmacyId: json['pharmacyId']?.toString() ?? '',
+        pharmacyName: json['pharmacyName']?.toString() ?? '',
+        addressLine: json['addressLine']?.toString() ?? '',
+        phone: json['phone']?.toString() ?? '',
+        trustScore: (json['trustScore'] as num?)?.toDouble() ?? 0.0,
+        distanceFromUserKm:
+            (json['distanceFromUserKm'] as num?)?.toDouble() ?? 0.0,
+        latitude: (json['latitude'] as num?)?.toDouble() ?? 0.0,
+        longitude: (json['longitude'] as num?)?.toDouble() ?? 0.0,
+        subtotalPrice: (json['subtotalPrice'] as num?)?.toDouble() ?? 0.0,
+        assignedItems: (json['assignedItems'] as List<dynamic>?)
+                ?.map((e) => BatchMedicationDetail.fromJson(
+                    e as Map<String, dynamic>))
+                .toList() ??
+            [],
+      );
+}
+
+class SplitBasketPlan {
+  final String planType;
+  final String arabicLabel;
+  final int coveredItemsCount;
+  final int totalRequestedItems;
+  final bool isFullCoverage;
+  final double combinedTotalPrice;
+  final double totalRouteDistanceKm;
+  final double interPharmacyDistanceKm;
+  final double averageTrustScore;
+  final double savingsVsSinglePharmacyEgp;
+  final List<SplitBasketStop> stops;
+
+  SplitBasketPlan({
+    required this.planType,
+    required this.arabicLabel,
+    required this.coveredItemsCount,
+    required this.totalRequestedItems,
+    required this.isFullCoverage,
+    required this.combinedTotalPrice,
+    required this.totalRouteDistanceKm,
+    required this.interPharmacyDistanceKm,
+    required this.averageTrustScore,
+    required this.savingsVsSinglePharmacyEgp,
+    required this.stops,
+  });
+
+  factory SplitBasketPlan.fromJson(Map<String, dynamic> json) =>
+      SplitBasketPlan(
+        planType: json['planType']?.toString() ?? '',
+        arabicLabel: json['arabicLabel']?.toString() ?? '',
+        coveredItemsCount: (json['coveredItemsCount'] as num?)?.toInt() ?? 0,
+        totalRequestedItems: (json['totalRequestedItems'] as num?)?.toInt() ?? 0,
+        isFullCoverage: json['isFullCoverage'] as bool? ?? false,
+        combinedTotalPrice:
+            (json['combinedTotalPrice'] as num?)?.toDouble() ?? 0.0,
+        totalRouteDistanceKm:
+            (json['totalRouteDistanceKm'] as num?)?.toDouble() ?? 0.0,
+        interPharmacyDistanceKm:
+            (json['interPharmacyDistanceKm'] as num?)?.toDouble() ?? 0.0,
+        averageTrustScore:
+            (json['averageTrustScore'] as num?)?.toDouble() ?? 0.0,
+        savingsVsSinglePharmacyEgp:
+            (json['savingsVsSinglePharmacyEgp'] as num?)?.toDouble() ?? 0.0,
+        stops: (json['stops'] as List<dynamic>?)
+                ?.map((e) =>
+                    SplitBasketStop.fromJson(e as Map<String, dynamic>))
+                .toList() ??
+            [],
+      );
+}
+
+// ─── Batch reservation (1-tap) ───────────────────────────────────────────────
+
+class BatchReservationItem {
+  final String inventoryItemId;
+  final String fulfillmentType;
+  final String? deliveryAddress;
+  final double? deliveryLatitude;
+  final double? deliveryLongitude;
+  final String? deliveryContactPhone;
+  final String? deliveryNotes;
+
+  BatchReservationItem({
+    required this.inventoryItemId,
+    this.fulfillmentType = 'Pickup',
+    this.deliveryAddress,
+    this.deliveryLatitude,
+    this.deliveryLongitude,
+    this.deliveryContactPhone,
+    this.deliveryNotes,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'inventoryItemId': inventoryItemId,
+        'fulfillmentType': fulfillmentType,
+        if (deliveryAddress != null) 'deliveryAddress': deliveryAddress,
+        if (deliveryLatitude != null) 'deliveryLatitude': deliveryLatitude,
+        if (deliveryLongitude != null) 'deliveryLongitude': deliveryLongitude,
+        if (deliveryContactPhone != null)
+          'deliveryContactPhone': deliveryContactPhone,
+        if (deliveryNotes != null) 'deliveryNotes': deliveryNotes,
+      };
+}
+
+class BatchReservationRequestBody {
+  final List<BatchReservationItem> items;
+  final String? prescriptionCropBase64;
+
+  BatchReservationRequestBody({required this.items, this.prescriptionCropBase64});
+
+  Map<String, dynamic> toJson() => {
+        'items': items.map((e) => e.toJson()).toList(),
+        if (prescriptionCropBase64 != null)
+          'prescriptionCropBase64': prescriptionCropBase64,
+      };
+}
+
+class BatchReservationFailure {
+  final String inventoryItemId;
+  final String errorMessage;
+
+  BatchReservationFailure({
+    required this.inventoryItemId,
+    required this.errorMessage,
+  });
+
+  factory BatchReservationFailure.fromJson(Map<String, dynamic> json) =>
+      BatchReservationFailure(
+        inventoryItemId: json['inventoryItemId']?.toString() ?? '',
+        errorMessage: json['errorMessage']?.toString() ?? '',
+      );
+}
+
+class BatchReservationResult {
+  final List<ReservationResponse> createdReservations;
+  final List<BatchReservationFailure> failedItems;
+  final bool isAllSucceeded;
+
+  BatchReservationResult({
+    required this.createdReservations,
+    required this.failedItems,
+    required this.isAllSucceeded,
+  });
+
+  factory BatchReservationResult.fromJson(Map<String, dynamic> json) =>
+      BatchReservationResult(
+        createdReservations: (json['createdReservations'] as List<dynamic>?)
+                ?.map((e) =>
+                    ReservationResponse.fromJson(e as Map<String, dynamic>))
+                .toList() ??
+            [],
+        failedItems: (json['failedItems'] as List<dynamic>?)
+                ?.map((e) => BatchReservationFailure.fromJson(
+                    e as Map<String, dynamic>))
+                .toList() ??
+            [],
+        isAllSucceeded: json['isAllSucceeded'] as bool? ?? false,
       );
 }

@@ -94,6 +94,41 @@ class MockDeliveryApiClient implements ApiClient {
   }
 
   @override
+  Future<BatchReservationResult> createBatchReservation(BatchReservationRequestBody body) async {
+    for (final it in body.items) {
+      capturedReservationRequests.add(CreateReservationRequest(
+        inventoryItemId: it.inventoryItemId,
+        prescriptionCropBase64: body.prescriptionCropBase64,
+        fulfillmentType: it.fulfillmentType,
+        deliveryAddress: it.deliveryAddress,
+        deliveryLatitude: it.deliveryLatitude,
+        deliveryLongitude: it.deliveryLongitude,
+        deliveryContactPhone: it.deliveryContactPhone,
+        deliveryNotes: it.deliveryNotes,
+      ));
+    }
+    final created = body.items
+        .map((it) => ReservationResponse(
+              id: 'res-deliv-${it.inventoryItemId}',
+              inventoryItemId: it.inventoryItemId,
+              pharmacyId: 'pharm-deliv-1',
+              pharmacyName: 'صيدلية النيل الحديثة',
+              pharmacyPhone: '01011111111',
+              medicationName: 'Augmentin 1g',
+              status: 'Active',
+              expiresAt: DateTime.now().add(const Duration(hours: 2)),
+              createdAt: DateTime.now(),
+              reservationCode: 'NWQ-DELIV-99',
+            ))
+        .toList();
+    return BatchReservationResult(
+      createdReservations: created,
+      failedItems: [],
+      isAllSucceeded: true,
+    );
+  }
+
+  @override
   Future<ProfileResponse> getProfile() async =>
       profileData ??
       ProfileResponse(

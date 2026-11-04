@@ -8,6 +8,8 @@ import 'package:nawakes_mobile/core/ui/widgets.dart';
 import 'package:nawakes_mobile/features/auth/presentation/auth_controller.dart';
 import 'package:nawakes_mobile/features/search/data/search_models.dart';
 import 'package:nawakes_mobile/features/reservations/presentation/reservation_controller.dart';
+import 'package:nawakes_mobile/features/search/presentation/widgets/eda_price_badge.dart';
+import 'package:nawakes_mobile/features/search/presentation/widgets/safety_shield_dialog.dart';
 import 'package:nawakes_mobile/features/reservations/presentation/passes_screen.dart' show passesControllerProvider;
 import 'package:nawakes_mobile/features/reports/presentation/report_controller.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -116,6 +118,19 @@ class PharmacyDetailsScreen extends HookConsumerWidget {
               onBell: () => context.push('/notifications'),
             ),
             ScreenSubtitle('${item.price.toStringAsFixed(2)} ج.م · تحديث لحظي من الصيدلية'),
+            if (item.officialEdaPriceEgp != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+                child: Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: EdaPriceBadge(
+                    officialEdaPriceEgp: item.officialEdaPriceEgp,
+                    priceVariancePercent: item.priceVariancePercent,
+                    isEdaPriceVerified: item.isEdaPriceVerified,
+                    edaPriceBadgeText: item.edaPriceBadgeText,
+                  ),
+                ),
+              ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Column(
@@ -231,9 +246,20 @@ class PharmacyDetailsScreen extends HookConsumerWidget {
                       Expanded(
                         child: FilledButton.icon(
                           onPressed: inStock && !reservationState.isLoading
-                              ? () => ref
-                                  .read(reservationControllerProvider.notifier)
-                                  .reserveItem(item.inventoryItemId)
+                              ? () async {
+                                  final allowed =
+                                      await guardReservationWithSafetyCheck(
+                                    context,
+                                    ref,
+                                    inventoryItemId: item.inventoryItemId,
+                                    medicationName: item.medicationName,
+                                  );
+                                  if (!allowed || !context.mounted) return;
+                                  ref
+                                      .read(reservationControllerProvider
+                                          .notifier)
+                                      .reserveItem(item.inventoryItemId);
+                                }
                               : null,
                           icon: reservationState.isLoading
                               ? const SizedBox(

@@ -24,6 +24,10 @@ PharmacySearchResultDto _$PharmacySearchResultDtoFromJson(
   lastUpdatedAt: DateTime.parse(json['lastUpdatedAt'] as String),
   latitude: (json['latitude'] as num).toDouble(),
   longitude: (json['longitude'] as num).toDouble(),
+  officialEdaPriceEgp: (json['officialEdaPriceEgp'] as num?)?.toDouble(),
+  priceVariancePercent: (json['priceVariancePercent'] as num?)?.toDouble(),
+  isEdaPriceVerified: json['isEdaPriceVerified'] as bool? ?? true,
+  edaPriceBadgeText: json['edaPriceBadgeText'] as String?,
 );
 
 Map<String, dynamic> _$PharmacySearchResultDtoToJson(
@@ -44,6 +48,10 @@ Map<String, dynamic> _$PharmacySearchResultDtoToJson(
   'lastUpdatedAt': instance.lastUpdatedAt.toIso8601String(),
   'latitude': instance.latitude,
   'longitude': instance.longitude,
+  'officialEdaPriceEgp': instance.officialEdaPriceEgp,
+  'priceVariancePercent': instance.priceVariancePercent,
+  'isEdaPriceVerified': instance.isEdaPriceVerified,
+  'edaPriceBadgeText': instance.edaPriceBadgeText,
 };
 
 SearchMedicationResponse _$SearchMedicationResponseFromJson(

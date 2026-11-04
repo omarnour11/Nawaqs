@@ -4,6 +4,7 @@ import 'package:nawakes_mobile/core/theme/app_theme.dart';
 import 'package:nawakes_mobile/core/ui/widgets.dart';
 import 'package:nawakes_mobile/features/search/data/search_models.dart';
 import 'package:nawakes_mobile/features/search/presentation/pharmacy_details_screen.dart';
+import 'package:nawakes_mobile/features/search/presentation/widgets/eda_price_badge.dart';
 import 'package:go_router/go_router.dart';
 
 String _timeAgo(DateTime utc) {
@@ -132,6 +133,13 @@ class _ResultRow extends StatelessWidget {
                                 fontWeight: FontWeight.w700,
                                 color: fg)),
                       ],
+                    ),
+                    const SizedBox(height: 5),
+                    EdaPriceBadge(
+                      officialEdaPriceEgp: item.officialEdaPriceEgp,
+                      priceVariancePercent: item.priceVariancePercent,
+                      isEdaPriceVerified: item.isEdaPriceVerified,
+                      edaPriceBadgeText: item.edaPriceBadgeText,
                     ),
                   ],
                 ),

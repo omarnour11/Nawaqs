@@ -6,7 +6,6 @@ import 'package:nawakes_mobile/core/location/location_service.dart';
 import 'package:nawakes_mobile/core/network/api_client.dart';
 import 'package:nawakes_mobile/core/network/api_response_models.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
-import 'package:nawakes_mobile/features/reservations/data/reservation_models.dart';
 import 'package:nawakes_mobile/features/reservations/presentation/passes_screen.dart'
     show passesControllerProvider;
 import 'package:url_launcher/url_launcher.dart';
@@ -527,6 +526,36 @@ class BatchSearchResultsScreen extends HookConsumerWidget {
       );
     }
 
+    /// Books a set of inventory items in one shot via POST /reservations/batch.
+    /// Returns the failed item IDs (empty on full success).
+    Future<List<String>> bookViaBatch(
+      List<String> inventoryItemIds,
+      FulfillmentSelection fulfillment,
+    ) async {
+      if (inventoryItemIds.isEmpty) return [];
+      try {
+        final result = await ref.read(apiClientProvider).createBatchReservation(
+              BatchReservationRequestBody(
+                items: inventoryItemIds
+                    .map((id) => BatchReservationItem(
+                          inventoryItemId: id,
+                          fulfillmentType: fulfillment.type,
+                          deliveryAddress: fulfillment.address,
+                          deliveryLatitude: fulfillment.latitude,
+                          deliveryLongitude: fulfillment.longitude,
+                          deliveryContactPhone: fulfillment.phone,
+                          deliveryNotes: fulfillment.notes,
+                        ))
+                    .toList(),
+                prescriptionCropBase64: sanitizedCropBase64,
+              ),
+            );
+        return result.failedItems.map((f) => f.inventoryItemId).toList();
+      } catch (_) {
+        return inventoryItemIds;
+      }
+    }
+
     Future<void> bookSinglePharmacy(PharmacyBasketGroup group) async {
       FulfillmentSelection? fulfillment;
       if (promptFulfillment) {
@@ -536,33 +565,25 @@ class BatchSearchResultsScreen extends HookConsumerWidget {
         fulfillment = const FulfillmentSelection(type: 'Pickup');
       }
 
+      final itemIds = group.items
+          .map((it) => it.inventoryItemId)
+          .whereType<String>()
+          .where((id) => id.isNotEmpty)
+          .toList();
+
       final updated = Set<String>.from(bookedPharmacyIds.value)..add(group.pharmacyId);
       bookedPharmacyIds.value = updated;
 
-      for (final it in group.items) {
-        if (it.inventoryItemId != null && it.inventoryItemId!.isNotEmpty) {
-          try {
-            await ref.read(apiClientProvider).createReservation(
-                  CreateReservationRequest(
-                    inventoryItemId: it.inventoryItemId!,
-                    prescriptionCropBase64: sanitizedCropBase64,
-                    fulfillmentType: fulfillment.type,
-                    deliveryAddress: fulfillment.address,
-                    deliveryContactPhone: fulfillment.phone,
-                    deliveryNotes: fulfillment.notes,
-                    deliveryLatitude: fulfillment.latitude,
-                    deliveryLongitude: fulfillment.longitude,
-                  ),
-                );
-          } catch (_) {}
-        }
-      }
+      final failedIds = await bookViaBatch(itemIds, fulfillment);
 
       if (context.mounted) {
+        final okCount = itemIds.length - failedIds.length;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('تم حجز أدوية ${group.pharmacyName} بنجاح!'),
-            backgroundColor: Colors.green,
+            content: Text(failedIds.isEmpty
+                ? 'تم حجز أدوية ${group.pharmacyName} بنجاح!'
+                : 'اتحجز $okCount من ${itemIds.length} — ${failedIds.length} صنف فشل (محجوز من حد تاني أو خلصان).'),
+            backgroundColor: failedIds.isEmpty ? Colors.green : Colors.orange,
           ),
         );
       }
@@ -595,37 +616,32 @@ class BatchSearchResultsScreen extends HookConsumerWidget {
       final allIds = groups.map((g) => g.pharmacyId).toSet();
       bookedPharmacyIds.value = allIds;
 
-      for (final group in groups) {
-        for (final it in group.items) {
-          if (it.inventoryItemId != null && it.inventoryItemId!.isNotEmpty) {
-            try {
-              await ref.read(apiClientProvider).createReservation(
-                    CreateReservationRequest(
-                      inventoryItemId: it.inventoryItemId!,
-                      prescriptionCropBase64: sanitizedCropBase64,
-                      fulfillmentType: fulfillment.type,
-                      deliveryAddress: fulfillment.address,
-                      deliveryContactPhone: fulfillment.phone,
-                      deliveryNotes: fulfillment.notes,
-                      deliveryLatitude: fulfillment.latitude,
-                      deliveryLongitude: fulfillment.longitude,
-                    ),
-                  );
-            } catch (_) {}
-          }
-        }
-      }
+      final itemIds = groups
+          .expand((g) => g.items)
+          .map((it) => it.inventoryItemId)
+          .whereType<String>()
+          .where((id) => id.isNotEmpty)
+          .toList();
+
+      final failedIds = await bookViaBatch(itemIds, fulfillment);
 
       if (!context.mounted) return;
       await showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Row(
+          title: Row(
             children: [
-              Icon(Icons.check_circle_rounded, color: Colors.green, size: 28),
-              SizedBox(width: 8),
-              Text('تم الحجز بالكامل!', style: TextStyle(fontWeight: FontWeight.bold)),
+              Icon(
+                failedIds.isEmpty ? Icons.check_circle_rounded : Icons.warning_amber_rounded,
+                color: failedIds.isEmpty ? Colors.green : Colors.orange,
+                size: 28,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                failedIds.isEmpty ? 'تم الحجز بالكامل!' : 'تم الحجز مع جزء ناقص',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
             ],
           ),
           content: Column(
@@ -633,7 +649,9 @@ class BatchSearchResultsScreen extends HookConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'تم إرسال طلبات الحجز إلى ${groups.length} صيدليات بنجاح. مدة صلاحية الحجز ساعتان.',
+                failedIds.isEmpty
+                    ? 'تم إرسال طلبات الحجز إلى ${groups.length} صيدليات بنجاح. مدة صلاحية الحجز ساعتان.'
+                    : 'اتحجز ${itemIds.length - failedIds.length} من ${itemIds.length} صنف. الأصناف الفاشلة كانت محجوزة من حد تاني أو خلصت من المخزون.',
                 style: const TextStyle(fontSize: 14, height: 1.4),
               ),
               if (sanitizedCropBase64 != null) ...[
@@ -693,6 +711,37 @@ class BatchSearchResultsScreen extends HookConsumerWidget {
       );
 
       if (context.mounted) {
+        ref.invalidate(passesControllerProvider);
+        Navigator.of(context).popUntil((route) => route.isFirst);
+        try {
+          context.go('/home');
+        } catch (_) {}
+      }
+    }
+
+    Future<void> bookSplitPlan(SplitBasketPlan plan) async {
+      final itemIds = plan.stops
+          .expand((s) => s.assignedItems)
+          .map((it) => it.inventoryItemId)
+          .whereType<String>()
+          .where((id) => id.isNotEmpty)
+          .toList();
+
+      bookedPharmacyIds.value =
+          Set<String>.from(bookedPharmacyIds.value)..addAll(plan.stops.map((s) => s.pharmacyId));
+
+      final failedIds = await bookViaBatch(itemIds, const FulfillmentSelection(type: 'Pickup'));
+
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(failedIds.isEmpty
+              ? 'اتحجزت الخطة كاملة (${plan.stops.length} صيدليات) بنجاح!'
+              : 'الخطة اتحجزت جزئياً — ${failedIds.length} صنف فشل.'),
+          backgroundColor: failedIds.isEmpty ? Colors.green : Colors.orange,
+        ),
+      );
+      if (failedIds.isEmpty) {
         ref.invalidate(passesControllerProvider);
         Navigator.of(context).popUntil((route) => route.isFirst);
         try {
@@ -802,8 +851,10 @@ class BatchSearchResultsScreen extends HookConsumerWidget {
                         context,
                         greedyResult!,
                         bookedPharmacyIds.value,
+                        splitPlans: rawSearchData.value?.optimalSplitPlans ?? const [],
                         onRemoveItem: removeItem,
                         onBookSingle: bookSinglePharmacy,
+                        onBookPlan: bookSplitPlan,
                       ),
       ),
       bottomNavigationBar: (greedyResult != null && greedyResult.groups.isNotEmpty)
@@ -873,8 +924,10 @@ class BatchSearchResultsScreen extends HookConsumerWidget {
     BuildContext context,
     GreedyGroupingResult result,
     Set<String> bookedIds, {
+    required List<SplitBasketPlan> splitPlans,
     required Function(String) onRemoveItem,
     required Function(PharmacyBasketGroup) onBookSingle,
+    required Function(SplitBasketPlan) onBookPlan,
   }) {
     final groups = result.groups;
     final unfulfillable = result.unfulfillableItems;
@@ -1046,6 +1099,15 @@ class BatchSearchResultsScreen extends HookConsumerWidget {
             ),
           ),
 
+        // Smart 2-pharmacy split-basket plans (from the optimizer endpoint)
+        if (splitPlans.where((p) => p.isFullCoverage).isNotEmpty) ...[
+          _SplitPlansSection(
+            plans: splitPlans.where((p) => p.isFullCoverage).toList(),
+            bookedIds: bookedIds,
+            onBookPlan: onBookPlan,
+          ),
+        ],
+
         // Pharmacy Cards
         ...groups.map((group) {
           final isBooked = bookedIds.contains(group.pharmacyId);
@@ -1060,6 +1122,161 @@ class BatchSearchResultsScreen extends HookConsumerWidget {
 
         const SizedBox(height: 30),
       ],
+    );
+  }
+}
+
+// ─── Smart split-basket plans section ────────────────────────────────────────
+
+class _SplitPlansSection extends StatelessWidget {
+  final List<SplitBasketPlan> plans;
+  final Set<String> bookedIds;
+  final Function(SplitBasketPlan) onBookPlan;
+
+  const _SplitPlansSection({
+    required this.plans,
+    required this.bookedIds,
+    required this.onBookPlan,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.alt_route_rounded, size: 20, color: AppColors.accentBlue),
+            const SizedBox(width: 6),
+            const Text(
+              'خطط تقسيم ذكية (توفير أكتر)',
+              style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w800),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'المحرك بيقسّم الروشتة على صيدليتين بحيث توفر فلوس أو مسافة — والحجز بضغطة واحدة.',
+          style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+        ),
+        const SizedBox(height: 10),
+        ...plans.map((plan) => _SplitPlanCard(
+              plan: plan,
+              isBooked: plan.stops.every((s) => bookedIds.contains(s.pharmacyId)),
+              onBook: () => onBookPlan(plan),
+            )),
+        const SizedBox(height: 18),
+      ],
+    );
+  }
+}
+
+class _SplitPlanCard extends StatelessWidget {
+  final SplitBasketPlan plan;
+  final bool isBooked;
+  final VoidCallback onBook;
+
+  const _SplitPlanCard({
+    required this.plan,
+    required this.isBooked,
+    required this.onBook,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final savings = plan.savingsVsSinglePharmacyEgp;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: savings > 0 ? AppColors.successIcon : AppColors.hairline,
+          width: savings > 0 ? 1.4 : 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  plan.arabicLabel,
+                  style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800),
+                ),
+              ),
+              if (savings > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.successBg,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'توفر ${savings.toStringAsFixed(0)} ج.م',
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.successText,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '${plan.coveredItemsCount}/${plan.totalRequestedItems} دواء · '
+            '${plan.combinedTotalPrice.toStringAsFixed(0)} ج.م · '
+            'مسار ${plan.totalRouteDistanceKm.toStringAsFixed(1)} كم · '
+            'ثقة ${(plan.averageTrustScore).toStringAsFixed(0)}%',
+            style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+          ),
+          const SizedBox(height: 10),
+          ...plan.stops.map((stop) => Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.storefront_rounded,
+                        size: 16, color: AppColors.accentBlue),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        '${stop.pharmacyName} — ${stop.assignedItems.map((i) => i.medication).join('، ')} '
+                        '(${stop.subtotalPrice.toStringAsFixed(0)} ج.م)',
+                        style: const TextStyle(fontSize: 12.5, height: 1.35),
+                      ),
+                    ),
+                  ],
+                ),
+              )),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: isBooked ? null : onBook,
+              icon: Icon(
+                isBooked ? Icons.check_rounded : Icons.bolt_rounded,
+                size: 18,
+              ),
+              label: Text(
+                isBooked ? 'اتحجزت ✓' : 'احجز الخطة دفعة واحدة ⚡',
+                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

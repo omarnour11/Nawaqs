@@ -150,6 +150,36 @@ class AdversarialApiClient implements ApiClient {
   }
 
   @override
+  Future<BatchReservationResult> createBatchReservation(BatchReservationRequestBody body) async {
+    for (final it in body.items) {
+      capturedReservations.add(CreateReservationRequest(
+        inventoryItemId: it.inventoryItemId,
+        prescriptionCropBase64: body.prescriptionCropBase64,
+        fulfillmentType: it.fulfillmentType,
+      ));
+    }
+    final created = body.items
+        .map((it) => ReservationResponse(
+              id: 'res_${it.inventoryItemId}',
+              inventoryItemId: it.inventoryItemId,
+              reservationCode: 'NWQ-BATCH',
+              status: 'Active',
+              pharmacyId: 'ph_october_1',
+              pharmacyName: 'Al Safwa Pharmacy',
+              pharmacyPhone: '01099887766',
+              medicationName: 'Panadol',
+              createdAt: DateTime.now().toUtc(),
+              expiresAt: DateTime.now().toUtc().add(const Duration(hours: 2)),
+            ))
+        .toList();
+    return BatchReservationResult(
+      createdReservations: created,
+      failedItems: [],
+      isAllSucceeded: true,
+    );
+  }
+
+  @override
   Future<List<ReservationResponse>> getMyReservations() async => [];
 
   @override
@@ -441,14 +471,16 @@ void main() {
       ));
       await tester.pumpAndSettle();
 
-      expect(find.text('حجز البديل (بنادول أكتيفاست) بنقرة واحدة'), findsOneWidget);
+      expect(find.textContaining('حجز البديل (بنادول أكتيفاست)'), findsOneWidget);
 
       await tester.tap(find.text('حجز البديل (بنادول أكتيفاست) بنقرة واحدة'));
       await tester.pumpAndSettle();
 
+      // 409 means the alternative was already reserved elsewhere — the new
+      // UX treats it as done: informative SnackBar (no crash) and the button
+      // flips to "اتحجز البديل ✓" so it can't be reserved twice.
       expect(find.byType(SnackBar), findsOneWidget);
-      expect(find.textContaining('تعذر حجز البديل:'), findsOneWidget);
-      expect(find.textContaining('just reserved'), findsOneWidget);
+      expect(find.textContaining('اتحجز خلاص'), findsOneWidget);
     });
 
     testWidgets('Tapping 1-click alternative reservation handles Network / Connection failure without crashing', (tester) async {

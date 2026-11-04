@@ -8,7 +8,7 @@ import 'package:nawakes_mobile/core/services/local_notifications_service.dart';
 import 'package:nawakes_mobile/features/auth/presentation/auth_controller.dart'
     show describeApiError;
 import 'package:nawakes_mobile/core/ui/widgets.dart'
-    show unreadNotificationsCountProvider;
+    show unreadNotificationsCountProvider, consumedActionNotificationsProvider;
 import 'package:nawakes_mobile/features/notifications/presentation/notifications_screen.dart'
     show myNotificationsProvider;
 
@@ -184,6 +184,9 @@ class PatientShell extends HookConsumerWidget {
                               await ref
                                   .read(apiClientProvider)
                                   .claimQueueOffer(alert.relatedEntityId!);
+                              ref
+                                  .read(consumedActionNotificationsProvider.notifier)
+                                  .mark(alert.id);
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
@@ -198,6 +201,9 @@ class PatientShell extends HookConsumerWidget {
                               await ref
                                   .read(apiClientProvider)
                                   .reserveAlternative(alert.relatedEntityId!);
+                              ref
+                                  .read(consumedActionNotificationsProvider.notifier)
+                                  .mark(alert.id);
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(

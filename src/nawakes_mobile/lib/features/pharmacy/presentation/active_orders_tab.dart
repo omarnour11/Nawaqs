@@ -651,18 +651,16 @@ class _LoadingShimmer extends StatelessWidget {
   const _LoadingShimmer();
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    return ListView(
       padding: const EdgeInsets.all(16),
-      child: Column(
-        children: List.generate(
-          4,
-          (i) => Container(
-            height: 140,
-            margin: const EdgeInsets.only(bottom: 12),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceVariant,
-              borderRadius: BorderRadius.circular(16),
-            ),
+      children: List.generate(
+        4,
+        (i) => Container(
+          height: 140,
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceVariant,
+            borderRadius: BorderRadius.circular(16),
           ),
         ),
       ),

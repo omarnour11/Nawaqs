@@ -16,13 +16,13 @@ import 'package:nawakes_mobile/features/pharmacy/data/pharmacy_profile_models.da
 import 'package:nawakes_mobile/features/profile/data/profile_models.dart';
 import 'package:nawakes_mobile/features/notifications/data/notification_models.dart';
 import 'package:nawakes_mobile/features/alerts/data/alert_models.dart';
+import 'package:nawakes_mobile/core/network/api_response_models.dart';
 import 'package:nawakes_mobile/features/favorites/data/favorite_models.dart';
 import 'package:nawakes_mobile/features/admin/data/admin_models.dart';
 import 'package:nawakes_mobile/features/support/data/ticket_models.dart';
 import 'package:nawakes_mobile/features/profile/data/medication_models.dart';
 import 'package:nawakes_mobile/features/pharmacy/data/sales_ledger_models.dart';
 import 'package:nawakes_mobile/features/family_cabinet/data/family_cabinet_models.dart';
-import 'package:nawakes_mobile/core/network/api_response_models.dart';
 
 part 'api_client.g.dart';
 
@@ -93,6 +93,15 @@ abstract class ApiClient {
   @POST("/reservations")
   Future<ReservationResponse> createReservation(@Body() CreateReservationRequest body);
 
+  @POST("/reservations/batch")
+  Future<BatchReservationResult> createBatchReservation(@Body() BatchReservationRequestBody body);
+
+  @GET("/reservations/safety-check")
+  Future<ReservationSafetyCheckResult> checkReservationSafety({
+    @Query("inventoryItemId") String? inventoryItemId,
+    @Query("medicationName") String? medicationName,
+  });
+
   @POST("/reservations/{id}/reserve-alternative")
   Future<ReservationResponse> reserveAlternative(@Path("id") String id);
 
@@ -127,6 +136,10 @@ abstract class ApiClient {
 
   @DELETE("/subscriptions/{id}")
   Future<void> deleteAlert(@Path("id") String id);
+
+  /// Activates or pauses an availability alert without deleting it.
+  @PATCH("/subscriptions/{id}/toggle")
+  Future<void> toggleAlert(@Path("id") String id, @Body() ToggleAlertRequest body);
 
   /// Claims an active 15-minute queue offer, converting it into a 2-hour reservation.
   @POST("/subscriptions/{id}/claim-offer")
@@ -199,6 +212,9 @@ abstract class ApiClient {
   Future<BulkImportResultDto> bulkImportInventory(
     @Part(name: 'file') MultipartFile file,
   );
+
+  @POST("/pharmacy/inventory/scan-barcode")
+  Future<BarcodeScanResult> scanBarcode(@Body() ScanBarcodeRequest body);
 
   // ── Pharmacy profile (onboarding) ──────────────────────────────────────
   @GET("/pharmacy/profile")

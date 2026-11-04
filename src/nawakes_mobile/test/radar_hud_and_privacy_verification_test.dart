@@ -141,6 +141,36 @@ class MockVerificationApiClient implements ApiClient {
       prescriptionCropUrl: body.prescriptionCropUrl,
     );
   }
+
+  @override
+  Future<BatchReservationResult> createBatchReservation(BatchReservationRequestBody body) async {
+    for (final it in body.items) {
+      capturedReservationRequests.add(CreateReservationRequest(
+        inventoryItemId: it.inventoryItemId,
+        prescriptionCropBase64: body.prescriptionCropBase64,
+        fulfillmentType: it.fulfillmentType,
+      ));
+    }
+    final created = body.items
+        .map((it) => ReservationResponse(
+              id: 'res-${it.inventoryItemId}',
+              inventoryItemId: it.inventoryItemId,
+              pharmacyId: 'pharm-1',
+              pharmacyName: 'صيدلية النيل',
+              pharmacyPhone: '01011111111',
+              medicationName: 'Medication',
+              status: 'Active',
+              expiresAt: DateTime.now().add(const Duration(hours: 2)),
+              createdAt: DateTime.now(),
+              reservationCode: 'NWQ-BATCH',
+            ))
+        .toList();
+    return BatchReservationResult(
+      createdReservations: created,
+      failedItems: [],
+      isAllSucceeded: true,
+    );
+  }
 }
 
 void main() {

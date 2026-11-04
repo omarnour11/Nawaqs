@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
+import 'package:nawakes_mobile/core/network/reservation_realtime_service.dart';
 import 'package:nawakes_mobile/features/auth/presentation/auth_controller.dart'
     show describeApiError;
 import 'package:nawakes_mobile/features/reservations/presentation/my_reservations_controller.dart';
@@ -16,6 +17,23 @@ class MyReservationsScreen extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final reservationsState = ref.watch(myReservationsControllerProvider);
     final filter = useState<String>('All');
+    final realtime = ref.watch(reservationRealtimeProvider);
+    final isLive = useState(false);
+
+    // Live updates: refresh the list whenever the hub reports a status change.
+    useEffect(() {
+      final statusSub = realtime.statusEvents.listen(
+        (_) => ref.invalidate(myReservationsControllerProvider),
+      );
+      final connSub = realtime.connectionState.listen(
+        (connected) => isLive.value = connected,
+      );
+      ref.invalidate(myReservationsControllerProvider);
+      return () {
+        statusSub.cancel();
+        connSub.cancel();
+      };
+    }, [realtime]);
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -49,6 +67,29 @@ class MyReservationsScreen extends HookConsumerWidget {
                                   style: TextStyle(
                                       fontSize: 21, fontWeight: FontWeight.w800)),
                             ),
+                            if (isLive.value)
+                              Container(
+                                margin: const EdgeInsets.only(left: 8),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 5),
+                                decoration: BoxDecoration(
+                                  color: AppColors.successBg,
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.sensors_rounded,
+                                        size: 14, color: AppColors.successText),
+                                    SizedBox(width: 4),
+                                    Text('مباشر',
+                                        style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w800,
+                                            color: AppColors.successText)),
+                                  ],
+                                ),
+                              ),
                             IconButton.filledTonal(
                               onPressed: () =>
                                   ref.invalidate(myReservationsControllerProvider),

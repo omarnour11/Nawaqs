@@ -72,6 +72,10 @@ class ImagePickerService {
       return CameraScanResult(
         lines: lines,
         croppedImageBase64: base64Encode(bytes),
+        // HUD screen needs the raw image to send to the parser — without
+        // these the gallery upload path fails with "invalid/empty image".
+        imageFile: imageFile,
+        imageBytes: bytes,
       );
     } finally {
       if (ocrService == null) {

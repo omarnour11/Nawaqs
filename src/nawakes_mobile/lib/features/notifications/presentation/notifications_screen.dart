@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:go_router/go_router.dart';
@@ -43,7 +44,18 @@ class NotificationsScreen extends HookConsumerWidget {
         ],
       ),
       body: state.when(
-        data: (items) {
+        data: (allItems) {
+          // Offer/alternative notifications whose action was already consumed
+          // disappear from the list — they can't be reserved twice, and the
+          // user won't mistake an old offer for a new one.
+          final consumed = ref.watch(consumedActionNotificationsProvider);
+          final items = allItems
+              .where((n) =>
+                  !(consumed.contains(n.id) &&
+                      (n.type == 'AvailabilityOfferSent' ||
+                          n.type == 'ClinicalConflict' ||
+                          n.type == 'MedicationAvailable')))
+              .toList();
           if (items.isEmpty) {
             return Center(
               child: Padding(
@@ -252,6 +264,8 @@ class _NotificationCard extends HookConsumerWidget {
                         style: const TextStyle(fontSize: 10.5, color: AppColors.textHint)),
                     if (item.type == 'ClinicalConflict') ...[
                       () {
+                        final consumed = ref.watch(consumedActionNotificationsProvider);
+                        final alreadyConsumed = consumed.contains(item.id);
                         final match = RegExp(
                           r'(?:ورشح لك بديلاً آمناً|ورشح لك بديلاً|رشح لك بديل|البديل المقترح|بديل):\s*([^.\n]+)',
                           caseSensitive: false,
@@ -267,14 +281,21 @@ class _NotificationCard extends HookConsumerWidget {
                             width: double.infinity,
                             child: FilledButton.icon(
                               style: FilledButton.styleFrom(
-                                backgroundColor: AppColors.brand900,
+                                backgroundColor: alreadyConsumed
+                                    ? AppColors.success
+                                    : AppColors.brand900,
                                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                               ),
-                              onPressed: () async {
+                              onPressed: alreadyConsumed
+                                  ? null
+                                  : () async {
                                 if (item.relatedEntityId != null && item.relatedEntityId!.isNotEmpty) {
                                   try {
                                     await ref.read(apiClientProvider).reserveAlternative(item.relatedEntityId!);
+                                    ref
+                                        .read(consumedActionNotificationsProvider.notifier)
+                                        .mark(item.id);
                                     if (!item.isRead) {
                                       try {
                                         await ref.read(apiClientProvider).markNotificationsRead(MarkReadRequest(id: item.id));
@@ -294,12 +315,27 @@ class _NotificationCard extends HookConsumerWidget {
                                     }
                                   } catch (e) {
                                     if (context.mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(
-                                          content: Text('تعذر حجز البديل: ${describeApiError(e)}'),
-                                          backgroundColor: Colors.red,
-                                        ),
-                                      );
+                                      // 409 → the alternative was already reserved
+                                      // (e.g. from the shell dialog earlier). Treat
+                                      // as done: mark consumed, hide the card.
+                                      final status = (e is DioException) ? e.response?.statusCode : null;
+                                      if (status == 409) {
+                                        ref
+                                            .read(consumedActionNotificationsProvider.notifier)
+                                            .mark(item.id);
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(
+                                            content: Text('البديل ده اتحجز خلاص من قبل كده — التصريح في صفحة التصاريح.'),
+                                          ),
+                                        );
+                                      } else {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text('تعذر حجز البديل: ${describeApiError(e)}'),
+                                            backgroundColor: Colors.red,
+                                          ),
+                                        );
+                                      }
                                     }
                                   }
                                 } else {
@@ -316,9 +352,16 @@ class _NotificationCard extends HookConsumerWidget {
                                   }
                                 }
                               },
-                              icon: const Icon(Icons.flash_on_rounded, size: 16),
+                              icon: Icon(
+                                alreadyConsumed
+                                    ? Icons.check_circle_rounded
+                                    : Icons.flash_on_rounded,
+                                size: 16,
+                              ),
                               label: Text(
-                                'حجز البديل ($alt) بنقرة واحدة',
+                                alreadyConsumed
+                                    ? 'اتحجز البديل ✓'
+                                    : 'حجز البديل ($alt) بنقرة واحدة',
                                 style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
                               ),
                             ),
@@ -327,48 +370,83 @@ class _NotificationCard extends HookConsumerWidget {
                       }(),
                     ],
                     if (item.type == 'AvailabilityOfferSent' && item.relatedEntityId != null) ...[
-                      Padding(
-                        padding: const EdgeInsets.only(top: 8),
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: FilledButton.icon(
-                            style: FilledButton.styleFrom(
-                              backgroundColor: AppColors.success,
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                            ),
-                            onPressed: () async {
-                              try {
-                                await ref.read(apiClientProvider).claimQueueOffer(item.relatedEntityId!);
-                                if (!item.isRead) {
+                      Builder(
+                        builder: (buttonContext) {
+                          final alreadyConsumed =
+                              ref.watch(consumedActionNotificationsProvider).contains(item.id);
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: SizedBox(
+                              width: double.infinity,
+                              child: FilledButton.icon(
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: alreadyConsumed
+                                      ? AppColors.success
+                                      : AppColors.success,
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                ),
+                                onPressed: alreadyConsumed
+                                    ? null
+                                    : () async {
                                   try {
-                                    await ref.read(apiClientProvider).markNotificationsRead(MarkReadRequest(id: item.id));
-                                    ref.read(unreadNotificationsCountProvider.notifier).decrement();
-                                    ref.invalidate(myNotificationsProvider);
-                                    ref.invalidate(unreadNotificationsCountProvider);
-                                  } catch (_) {}
-                                }
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('تم تأكيد حجز العرض بنجاح لمدة ساعتين!')),
-                                  );
-                                  context.go('/passes');
-                                }
-                              } catch (e) {
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('تعذر تأكيد الحجز: ${describeApiError(e)}')),
-                                  );
-                                }
-                              }
-                            },
-                            icon: const Icon(Icons.check_circle_outline_rounded, size: 16),
-                            label: const Text(
-                              'تأكيد حجز العرض الآن (خلال 15 دقيقة)',
-                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                                    await ref.read(apiClientProvider).claimQueueOffer(item.relatedEntityId!);
+                                    ref
+                                        .read(consumedActionNotificationsProvider.notifier)
+                                        .mark(item.id);
+                                    if (!item.isRead) {
+                                      try {
+                                        await ref.read(apiClientProvider).markNotificationsRead(MarkReadRequest(id: item.id));
+                                        ref.read(unreadNotificationsCountProvider.notifier).decrement();
+                                        ref.invalidate(myNotificationsProvider);
+                                        ref.invalidate(unreadNotificationsCountProvider);
+                                      } catch (_) {}
+                                    }
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(content: Text('تم تأكيد حجز العرض بنجاح لمدة ساعتين!')),
+                                      );
+                                      context.go('/passes');
+                                    }
+                                  } catch (e) {
+                                    if (context.mounted) {
+                                      // 409 → offer claimed/expired elsewhere
+                                      // (e.g. via the shell dialog). Mark consumed
+                                      // so it can't be retried.
+                                      final status = (e is DioException) ? e.response?.statusCode : null;
+                                      if (status == 409) {
+                                        ref
+                                            .read(consumedActionNotificationsProvider.notifier)
+                                            .mark(item.id);
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(
+                                            content: Text('العرض ده اتحجز خلاص أو انتهى — التصريح في صفحة التصاريح.'),
+                                          ),
+                                        );
+                                      } else {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(content: Text('تعذر تأكيد الحجز: ${describeApiError(e)}')),
+                                        );
+                                      }
+                                    }
+                                  }
+                                },
+                                icon: Icon(
+                                  alreadyConsumed
+                                      ? Icons.check_circle_rounded
+                                      : Icons.check_circle_outline_rounded,
+                                  size: 16,
+                                ),
+                                label: Text(
+                                  alreadyConsumed
+                                      ? 'اتحجز العرض ✓'
+                                      : 'تأكيد حجز العرض الآن (خلال 15 دقيقة)',
+                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
+                          );
+                        },
                       ),
                     ],
                   ],

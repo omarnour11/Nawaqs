@@ -13,6 +13,7 @@ import 'package:nawakes_mobile/features/search/presentation/search_controller.da
 import 'package:nawakes_mobile/features/search/data/search_models.dart';
 import 'package:nawakes_mobile/features/search/presentation/all_results_screen.dart';
 import 'package:nawakes_mobile/features/search/presentation/shortage_sos_card.dart';
+import 'package:nawakes_mobile/features/search/presentation/widgets/eda_price_badge.dart';
 import 'package:nawakes_mobile/features/search/presentation/pharmacy_details_screen.dart';
 import 'package:nawakes_mobile/core/services/voice_search_service.dart';
 import 'package:nawakes_mobile/core/services/arabic_medication_mapper.dart';
@@ -788,6 +789,13 @@ class _PharmacyRow extends StatelessWidget {
                                 fontWeight: FontWeight.w700,
                                 color: fg)),
                       ],
+                    ),
+                    const SizedBox(height: 5),
+                    EdaPriceBadge(
+                      officialEdaPriceEgp: item.officialEdaPriceEgp,
+                      priceVariancePercent: item.priceVariancePercent,
+                      isEdaPriceVerified: item.isEdaPriceVerified,
+                      edaPriceBadgeText: item.edaPriceBadgeText,
                     ),
                   ],
                 ),
