@@ -266,6 +266,7 @@ class PrescriptionBasketScreen extends HookConsumerWidget {
                       ),
                     )
                   : ListView.separated(
+                      cacheExtent: 1000,
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                       itemCount: items.value.length,
                       separatorBuilder: (context, index) => const SizedBox(height: 12),

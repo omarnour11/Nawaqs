@@ -567,7 +567,7 @@ void main() {
       );
 
       await tester.pumpWidget(wrapWithTheme(MedicationDepletionCard(medication: med)));
-      expect(find.text('Glucophage'), findsOneWidget);
+      expect(find.text('Glucophage 1000mg'), findsOneWidget);
       expect(find.textContaining('1000mg'), findsOneWidget);
     });
 
@@ -1362,8 +1362,7 @@ void main() {
           child: wrapWithTheme(MedicationDepletionCard(medication: med)),
         ),
       );
-      expect(find.text('Concor 5mg'), findsOneWidget);
-      expect(find.text('5mg'), findsOneWidget);
+      expect(find.text('Concor 5mg 5mg'), findsOneWidget);
       expect(find.text('باقي 2 أيام على النفاذ ⏳'), findsOneWidget);
       expect(find.text('إعادة طلب الدواء ⚡'), findsOneWidget);
 

@@ -88,23 +88,11 @@ class MedicationDepletionCard extends HookConsumerWidget {
             Row(
               children: [
                 Expanded(
-                  child: Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          medication.medicationName,
-                          style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      if (medication.strength != null) ...[
-                        const SizedBox(width: 6),
-                        Text(
-                          medication.strength!,
-                          style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ],
+                  child: Text(
+                    medication.strength == null
+                        ? medication.medicationName
+                        : '${medication.medicationName} ${medication.strength}',
+                    style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700),
                   ),
                 ),
                 Text(

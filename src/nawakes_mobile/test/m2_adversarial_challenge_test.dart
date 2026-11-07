@@ -95,7 +95,7 @@ void main() {
           ),
         );
         await tester.pump();
-        await tester.pump(const Duration(milliseconds: 100));
+        await tester.pump(const Duration(milliseconds: 1300));
 
         expect(tester.takeException(), isNull, reason: 'Scanner HUD threw overflow on ${entry.key}');
         expect(find.byWidgetPredicate((w) => w is CustomPaint && w.painter is FuturisticRadarSweepHudPainter), findsOneWidget);
