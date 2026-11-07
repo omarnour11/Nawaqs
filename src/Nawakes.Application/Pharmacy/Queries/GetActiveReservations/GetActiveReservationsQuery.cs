@@ -30,7 +30,7 @@ public sealed class GetActiveReservationsQueryHandler(
             .FirstOrDefaultAsync(p => p.OwnerId == currentUser.UserId, cancellationToken);
 
         if (pharmacy is null)
-            throw new NotFoundException("Pharmacy", currentUser.UserId);
+            return Array.Empty<PharmacyReservationDto>();
 
         var cutoff = DateTime.UtcNow.AddHours(-24);
 

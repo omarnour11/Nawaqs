@@ -10,10 +10,10 @@ class SalesLedgerEntryDto {
   final double price;
   final int quantity;
   final String patientContact;
-  final DateTime completedAt;
+  final dynamic completedAt;
   final String reservationCode;
 
-  SalesLedgerEntryDto({
+  const SalesLedgerEntryDto({
     required this.reservationId,
     this.shortageRequestId,
     required this.medicationName,
@@ -24,9 +24,29 @@ class SalesLedgerEntryDto {
     required this.reservationCode,
   });
 
+  DateTime get completedAtDateTime => completedAt is DateTime
+      ? completedAt as DateTime
+      : (DateTime.tryParse(completedAt?.toString() ?? '') ?? DateTime.now());
+
   factory SalesLedgerEntryDto.fromJson(Map<String, dynamic> json) =>
       _$SalesLedgerEntryDtoFromJson(json);
-  Map<String, dynamic> toJson() => _$SalesLedgerEntryDtoToJson(this);
+
+  Map<String, dynamic> toJson() {
+    try {
+      return _$SalesLedgerEntryDtoToJson(this);
+    } catch (_) {
+      return {
+        'reservationId': reservationId,
+        'shortageRequestId': shortageRequestId,
+        'medicationName': medicationName,
+        'price': price,
+        'quantity': quantity,
+        'patientContact': patientContact,
+        'completedAt': completedAtDateTime.toIso8601String(),
+        'reservationCode': reservationCode,
+      };
+    }
+  }
 }
 
 @JsonSerializable()
@@ -36,7 +56,7 @@ class SalesLedgerDto {
   final int todayCount;
   final List<SalesLedgerEntryDto> entries;
 
-  SalesLedgerDto({
+  const SalesLedgerDto({
     required this.totalCompleted,
     required this.totalRevenue,
     required this.todayCount,

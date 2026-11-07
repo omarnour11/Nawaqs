@@ -73,7 +73,7 @@ class SalesLedgerScreen extends HookConsumerWidget {
                             Expanded(
                               child: _MetricCard(
                                 label: 'إجمالي الإيراد',
-                                value: '${ledger.totalRevenue.toStringAsFixed(0)} ج.م',
+                                value: '${ledger.totalRevenue.toStringAsFixed(2)} ج.م',
                                 color: AppColors.successText,
                               ),
                             ),
@@ -264,7 +264,7 @@ class _LedgerRow extends StatelessWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text('${entry.price.toStringAsFixed(2)} ج.م',
+                      Text('${(entry.price * entry.quantity).toStringAsFixed(2)} ج.م',
                           style: const TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w800,
@@ -272,7 +272,7 @@ class _LedgerRow extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                           DateFormat('d MMM · HH:mm')
-                              .format(entry.completedAt.toLocal()),
+                              .format(entry.completedAtDateTime.toLocal()),
                           style: const TextStyle(
                               fontSize: 11, color: AppColors.textMuted)),
                     ],
@@ -412,7 +412,7 @@ void _showOrderDetailsSheet(BuildContext context, SalesLedgerEntryDto entry) {
             InfoCell(
               label: 'تاريخ الاستلام',
               value: DateFormat('d MMMM yyyy · HH:mm')
-                  .format(entry.completedAt.toLocal()),
+                  .format(entry.completedAtDateTime.toLocal()),
             ),
             const SizedBox(height: 8),
             Row(
@@ -427,7 +427,7 @@ void _showOrderDetailsSheet(BuildContext context, SalesLedgerEntryDto entry) {
                 Expanded(
                   child: InfoCell(
                     label: 'المبلغ المدفوع',
-                    value: '${entry.price.toStringAsFixed(2)} ج.م',
+                    value: '${(entry.price * entry.quantity).toStringAsFixed(2)} ج.م (${entry.quantity} × ${entry.price.toStringAsFixed(2)} ج.م)',
                   ),
                 ),
               ],

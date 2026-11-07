@@ -100,29 +100,31 @@ class PrescriptionBasketScreen extends HookConsumerWidget {
             textAlign: TextAlign.right,
             style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameCtrl,
-                textAlign: TextAlign.right,
-                decoration: InputDecoration(
-                  hintText: 'اسم الدواء (مثلاً Panadol)',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  prefixIcon: const Icon(Icons.medication_rounded, color: AppColors.primary),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameCtrl,
+                  textAlign: TextAlign.right,
+                  decoration: InputDecoration(
+                    hintText: 'اسم الدواء (مثلاً Panadol)',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    prefixIcon: const Icon(Icons.medication_rounded, color: AppColors.primary),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: strengthCtrl,
-                textAlign: TextAlign.right,
-                decoration: InputDecoration(
-                  hintText: 'التركيز إن وجد (مثلاً 500mg)',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  prefixIcon: const Icon(Icons.science_rounded, color: AppColors.accentBlue),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: strengthCtrl,
+                  textAlign: TextAlign.right,
+                  decoration: InputDecoration(
+                    hintText: 'التركيز إن وجد (مثلاً 500mg)',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    prefixIcon: const Icon(Icons.science_rounded, color: AppColors.accentBlue),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           actions: [
             TextButton(
@@ -236,9 +238,8 @@ class PrescriptionBasketScreen extends HookConsumerWidget {
             // Privacy Assurance Banner (Egyptian Law No. 151 compliance)
             _buildPrivacyAssuranceBanner(),
 
-            // Safety Alerts Banner
-            if (safetyAlerts != null && safetyAlerts!.isNotEmpty)
-              _buildSafetyAlertsSection(safetyAlerts!),
+            // Safety Alerts Banner (suppressed when empty or nominal)
+            _buildSafetyAlertsSection(safetyAlerts),
 
             // Medication List
             Expanded(
@@ -606,7 +607,17 @@ class PrescriptionBasketScreen extends HookConsumerWidget {
     );
   }
 
-  Widget _buildSafetyAlertsSection(List<SafetyAlertResponse> alerts) {
+  Widget _buildSafetyAlertsSection(List<SafetyAlertResponse>? alerts) {
+    if (alerts == null) return const SizedBox.shrink();
+    final actionableAlerts = alerts
+        .where((a) =>
+            a.message.trim().isNotEmpty &&
+            a.severity.toLowerCase() != 'nominal')
+        .toList();
+    if (actionableAlerts.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -640,7 +651,7 @@ class PrescriptionBasketScreen extends HookConsumerWidget {
               ),
               const Spacer(),
               Text(
-                '${alerts.length} تنبيه',
+                '${actionableAlerts.length} تنبيه',
                 style: const TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
@@ -650,7 +661,7 @@ class PrescriptionBasketScreen extends HookConsumerWidget {
             ],
           ),
           const SizedBox(height: 8),
-          ...alerts.map((alert) {
+          ...actionableAlerts.map((alert) {
             final isCritical = alert.severity.toLowerCase() == 'critical';
             final isWarning = alert.severity.toLowerCase() == 'warning';
             final bgColor = isCritical
@@ -732,55 +743,29 @@ class PrescriptionBasketScreen extends HookConsumerWidget {
   Widget _buildPrivacyAssuranceBanner() {
     return Container(
       key: const ValueKey('prescription_privacy_assurance_banner'),
+      height: 36,
       width: double.infinity,
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
         color: const Color(0xFFF0FDF4),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(color: const Color(0xFF86EFAC)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.green.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: const Row(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: const Color(0xFF16A34A),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(Icons.verified_user_rounded, color: Colors.white, size: 20),
-          ),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'ضمان الخصوصية والتحقق الآمن (قانون رقم 151)',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF14532D),
-                  ),
-                ),
-                SizedBox(height: 3),
-                Text(
-                  'لحماية بياناتك، يتم إرسال الجزء المخصص للأدوية فقط للصيدليات المنفذة للتأكد من مطابقة الروشتة، مع حجب اسم الطبيب والعيادة وبيانات المريض الشخصية تماماً.',
-                  style: TextStyle(
-                    fontSize: 11.5,
-                    color: Color(0xFF166534),
-                    height: 1.4,
-                  ),
-                ),
-              ],
+          Expanded(
+            child: Text(
+              '🔒 الاسم والرقم اتحجبوا · خصوصية مشفرة بقانون 151',
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF14532D),
+              ),
             ),
           ),
         ],

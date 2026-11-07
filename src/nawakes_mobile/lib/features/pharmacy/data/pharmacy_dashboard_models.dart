@@ -2,6 +2,18 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'pharmacy_dashboard_models.g.dart';
 
+class PharmacyDashboardData {
+  final int todayOrdersCount;
+  final double totalEarningsToday;
+  final int allOrdersCount;
+
+  const PharmacyDashboardData({
+    this.todayOrdersCount = 0,
+    this.totalEarningsToday = 0.0,
+    this.allOrdersCount = 0,
+  });
+}
+
 // ─── Reservation Models ──────────────────────────────────────────────────────
 
 @JsonSerializable()

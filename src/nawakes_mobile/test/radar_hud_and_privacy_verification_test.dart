@@ -269,8 +269,68 @@ void main() {
     });
   });
 
-  group('PrescriptionBasketScreen Privacy Assurance Banner Tests', () {
-    testWidgets('Displays Law No. 151 Privacy Assurance Banner informing user of PII redaction', (tester) async {
+  group('PrescriptionScannerHudScreen Zero RenderFlex Overflow Tests', () {
+    testWidgets('PrescriptionScannerHudScreen does not overflow on 360x640 small viewport', (tester) async {
+      tester.view.physicalSize = const Size(360, 640);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final mockApi = MockVerificationApiClient();
+      mockApi.parseCompleter = Completer<ParsedMedicationResponse>();
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            apiClientProvider.overrideWithValue(mockApi),
+          ],
+          child: MaterialApp(
+            home: PrescriptionScannerHudScreen(
+              imageBytes: kTestImagePng,
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('PrescriptionScannerHudScreen does not overflow on 600x800 medium viewport', (tester) async {
+      tester.view.physicalSize = const Size(600, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final mockApi = MockVerificationApiClient();
+      mockApi.parseCompleter = Completer<ParsedMedicationResponse>();
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            apiClientProvider.overrideWithValue(mockApi),
+          ],
+          child: MaterialApp(
+            home: PrescriptionScannerHudScreen(
+              imageBytes: kTestImagePng,
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(tester.takeException(), isNull);
+    });
+  });
+
+  group('PrescriptionBasketScreen Privacy Assurance Banner & Safety Alert Tests', () {
+    testWidgets('Displays compact single-line privacy ticker with key and Law 151 statement', (tester) async {
       await tester.pumpWidget(
         ProviderScope(
           child: MaterialApp(
@@ -285,11 +345,129 @@ void main() {
         ),
       );
 
-      // 1. Verify privacy assurance banner is visible with Law No. 151 statement
-      expect(find.byKey(const ValueKey('prescription_privacy_assurance_banner')), findsOneWidget);
-      expect(find.textContaining('ضمان الخصوصية والتحقق الآمن (قانون رقم 151)'), findsOneWidget);
-      expect(find.textContaining('حجب اسم الطبيب والعيادة وبيانات المريض الشخصية تماماً'), findsOneWidget);
-      expect(find.byIcon(Icons.verified_user_rounded), findsOneWidget);
+      // 1. Verify privacy assurance banner key
+      final tickerFinder = find.byKey(const ValueKey('prescription_privacy_assurance_banner'));
+      expect(tickerFinder, findsOneWidget);
+
+      // 2. Exact ticker text
+      expect(find.text('🔒 الاسم والرقم اتحجبوا · خصوصية مشفرة بقانون 151'), findsOneWidget);
+
+      // 3. Container height is compact between 34 and 38px
+      final renderBox = tester.renderObject<RenderBox>(tickerFinder);
+      expect(renderBox.size.height, inInclusiveRange(34.0, 38.0));
+    });
+
+    testWidgets('PrescriptionBasketScreen does not overflow on 360x640 and 600x800 viewports', (tester) async {
+      for (final size in [const Size(360, 640), const Size(600, 800)]) {
+        tester.view.physicalSize = size;
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() {
+          tester.view.resetPhysicalSize();
+          tester.view.resetDevicePixelRatio();
+        });
+
+        await tester.pumpWidget(
+          ProviderScope(
+            child: MaterialApp(
+              home: PrescriptionBasketScreen(
+                initialItems: [
+                  PrescriptionBasketItem(tradeName: 'Concor', strength: '5mg', quantity: 1),
+                  PrescriptionBasketItem(tradeName: 'Augmentin', strength: '1g', quantity: 1),
+                ],
+                sanitizedCropBase64: 'dGVzdF9iYXNlNjQ=',
+              ),
+            ),
+          ),
+        );
+        await tester.pump();
+
+        expect(tester.takeException(), isNull);
+        // Medication list is uncovered and visible without scrolling
+        expect(find.text('Concor'), findsOneWidget);
+        expect(find.text('Augmentin'), findsOneWidget);
+      }
+    });
+
+    testWidgets('showAddDialog wraps content in SingleChildScrollView preventing keyboard overflow', (tester) async {
+      tester.view.physicalSize = const Size(360, 640);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            home: PrescriptionBasketScreen(
+              initialItems: [
+                PrescriptionBasketItem(tradeName: 'Concor', strength: '5mg', quantity: 1),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      final addBtn = find.byTooltip('إضافة دواء يدوي');
+      expect(addBtn, findsOneWidget);
+      await tester.tap(addBtn);
+      await tester.pumpAndSettle();
+
+      expect(find.text('إضافة دواء للروشتة'), findsOneWidget);
+      expect(find.byType(SingleChildScrollView), findsWidgets);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('Suppresses empty or nominal safety alerts using SizedBox.shrink()', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            home: PrescriptionBasketScreen(
+              initialItems: [
+                PrescriptionBasketItem(tradeName: 'Concor', strength: '5mg', quantity: 1),
+              ],
+              safetyAlerts: [
+                SafetyAlertResponse(message: '', severity: 'nominal', recommendation: ''),
+                SafetyAlertResponse(message: '  ', severity: 'low', recommendation: ''),
+                SafetyAlertResponse(message: 'كل المؤشرات طبيعية', severity: 'nominal', recommendation: ''),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      // No safety alert header is rendered
+      expect(find.text('تدقيق الأمان والجرعات الدوائية'), findsNothing);
+      // Medication list is visible immediately above the fold
+      expect(find.text('Concor'), findsOneWidget);
+    });
+
+    testWidgets('Renders actionable critical or warning safety alerts when present', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            home: PrescriptionBasketScreen(
+              initialItems: [
+                PrescriptionBasketItem(tradeName: 'Concor', strength: '5mg', quantity: 1),
+              ],
+              safetyAlerts: [
+                SafetyAlertResponse(
+                  message: 'تحذير تداخل دوائي خطير',
+                  severity: 'critical',
+                  recommendation: 'استشر الطبيب قبل الاستخدام',
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text('تدقيق الأمان والجرعات الدوائية'), findsOneWidget);
+      expect(find.text('تحذير تداخل دوائي خطير'), findsOneWidget);
+      expect(find.text('استشر الطبيب قبل الاستخدام'), findsOneWidget);
     });
   });
 

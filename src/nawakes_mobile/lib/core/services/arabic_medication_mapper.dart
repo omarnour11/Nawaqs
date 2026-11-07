@@ -201,6 +201,8 @@ class ArabicMedicationMapper {
   /// Splits spoken voice transcript into distinct medication tokens.
   /// Handles:
   /// - " و " (standalone Egyptian 'and')
+  /// - Egyptian conjunction "مع"
+  /// - English conjunction "and"
   /// - Comma (Arabic '،' and English ',')
   /// - Newline or semicolon or plus ('+')
   static List<String> splitMedications(String rawText) {
@@ -210,15 +212,28 @@ class ArabicMedicationMapper {
     var cleaned = rawText.trim();
     cleaned = cleaned.replaceFirst(_fillerWordsRegex, '');
 
+    // Strip trailing conjunctions before splitting (e.g. 'بنادول و', 'بانادول و كتافلام و')
+    cleaned = cleaned.replaceFirst(RegExp(r'(?:\s+(?:و|مع|and|\+))+$', caseSensitive: false), '').trim();
+
     // Split on separators: Arabic comma '،', English comma ',', newlines, plus,
-    // standalone ' و ' or space followed by 'و' attached to next word (e.g. 'بانادول وكونكور')
-    final parts = cleaned.split(RegExp(r'[\n\r,،;+]|\s+و\s+|\s+و(?=[\u0621-\u064A])'));
+    // Egyptian conjunctions ' و ', ' مع ', English ' and ', '+',
+    // or space followed by 'و' attached to next word (e.g. 'بانادول وكونكور')
+    final parts = cleaned.split(
+      RegExp(r'[\n\r,،;+]|\s+(?:و|مع|and|\+)\s+|\s+و(?=[\u0621-\u064A])', caseSensitive: false),
+    );
 
     final results = <String>[];
     for (var part in parts) {
       var item = part.trim();
       // Remove any trailing or leading fillers on individual segments
       item = item.replaceFirst(_fillerWordsRegex, '').trim();
+
+      // Strip any trailing conjunction from item
+      item = item.replaceFirst(RegExp(r'(?:\s+(?:و|مع|and|\+))+$', caseSensitive: false), '').trim();
+
+      // Strip any leading conjunction from item (e.g. 'و كتافلام', 'مع كتافلام', '+ كتافلام', '+كتافلام')
+      item = item.replaceFirst(RegExp(r'^(?:(?:و|مع|and)\s+|\+\s*)', caseSensitive: false), '').trim();
+
       // If starts with 'و' followed by a known medication or word (e.g. 'وكونكور' without space)
       if (item.length > 3 && item.startsWith('و')) {
         final stripped = item.substring(1).trim();

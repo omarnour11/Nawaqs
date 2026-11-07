@@ -691,4 +691,94 @@ void main() {
       expect(find.text('Augmentin 1g', skipOffstage: false), findsOneWidget);
     });
   });
+
+  group('Milestone 3: Dynamic Egyptian Governorates & Delivery Sorting', () {
+    test('LocationService.detectGovernorate correctly classifies Banha as Qalyubia', () {
+      final gov = LocationService.detectGovernorate(30.4660, 31.1853);
+      expect(gov, 'القليوبية');
+    });
+
+    test('LocationService.detectGovernorate correctly classifies 6th of October as Giza', () {
+      final gov = LocationService.detectGovernorate(29.9735, 30.9380);
+      expect(gov, 'الجيزة');
+    });
+
+    test('LocationService.detectGovernorate correctly classifies Alexandria', () {
+      final gov = LocationService.detectGovernorate(31.2001, 29.9010);
+      expect(gov, 'الإسكندرية');
+    });
+
+    test('LocationService.detectGovernorate correctly classifies Mansoura as Dakahlia', () {
+      final gov = LocationService.detectGovernorate(31.0409, 31.3785);
+      expect(gov, 'الدقهلية');
+    });
+
+    test('LocationService.detectGovernorate correctly classifies Asyut', () {
+      final gov = LocationService.detectGovernorate(27.1783, 31.1859);
+      expect(gov, 'أسيوط');
+    });
+
+    test('LocationService.curatedEgyptianPlaces contains Qalyubia hubs (Benha, Toukh)', () {
+      final places = LocationService.curatedEgyptianPlaces;
+      final qalyubiaPlaces = places.where((p) => p.governorate == 'القليوبية').toList();
+      expect(qalyubiaPlaces.any((p) => p.nameAr.contains('بنها')), isTrue);
+      expect(qalyubiaPlaces.any((p) => p.nameAr.contains('طوخ')), isTrue);
+    });
+
+    testWidgets('NearbyPharmacyOptionsSheet sorts delivery pharmacies to top with badge توصيل متاح 🛵', (tester) async {
+      final product = NearbyProduct(
+        id: 'p-test',
+        tradeName: 'Panadol',
+        price: 30.0,
+        availablePharmaciesCount: 2,
+        minDistanceKm: 1.0,
+        pharmacies: [
+          NearbyPharmacyOption(
+            pharmacyId: 'ph-no-deliv',
+            pharmacyName: 'صيدلية قريبة بدون توصيل',
+            address: 'شارع 1',
+            distanceKm: 0.5,
+            price: 30.0,
+            inStockQuantity: 10,
+            supportsDelivery: false,
+          ),
+          NearbyPharmacyOption(
+            pharmacyId: 'ph-deliv',
+            pharmacyName: 'صيدلية أبعد مع توصيل',
+            address: 'شارع 2',
+            distanceKm: 2.5,
+            price: 30.0,
+            inStockQuantity: 10,
+            supportsDelivery: true,
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            home: Scaffold(
+              body: Builder(
+                builder: (ctx) => ElevatedButton(
+                  onPressed: () => NearbyPharmacyOptionsSheet.show(ctx, product),
+                  child: const Text('OpenSheet'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('OpenSheet'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('توصيل متاح 🛵'), findsOneWidget);
+      expect(find.text('استلام فقط'), findsOneWidget);
+
+      // Verify delivery pharmacy is rendered ahead of non-delivery pharmacy
+      final phDelivY = tester.getTopLeft(find.text('صيدلية أبعد مع توصيل')).dy;
+      final phNoDelivY = tester.getTopLeft(find.text('صيدلية قريبة بدون توصيل')).dy;
+      expect(phDelivY, lessThan(phNoDelivY));
+    });
+  });
 }

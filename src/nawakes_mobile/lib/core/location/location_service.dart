@@ -9,17 +9,18 @@ class LocationSuggestion {
   final String subtitle;
   final double latitude;
   final double longitude;
-  final String? governorate;
+  final String governorate;
 
   const LocationSuggestion({
     required this.title,
     required this.subtitle,
     required this.latitude,
     required this.longitude,
-    this.governorate,
-  });
+    String? governorate,
+  }) : governorate = governorate ?? '';
 
   String get fullLabel => subtitle.isNotEmpty ? '$title، $subtitle' : title;
+  String get nameAr => title;
 }
 
 String normalizeArabic(String text) {
@@ -36,7 +37,7 @@ String normalizeArabic(String text) {
       .toLowerCase();
 }
 
-const List<LocationSuggestion> curatedEgyptianPlaces = [
+const List<LocationSuggestion> nawakesCuratedEgyptianPlaces = [
   // ── 6th of October & Sheikh Zayed ─────────────────────────
   LocationSuggestion(
     title: 'الحي المتميز',
@@ -334,6 +335,20 @@ const List<LocationSuggestion> curatedEgyptianPlaces = [
     governorate: 'القليوبية',
   ),
   LocationSuggestion(
+    title: 'طوخ',
+    subtitle: 'ميدان المحطة ومجلس المدينة، القليوبية',
+    latitude: 30.3550,
+    longitude: 31.1990,
+    governorate: 'القليوبية',
+  ),
+  LocationSuggestion(
+    title: 'قليوب',
+    subtitle: 'وسط البلد ومحطة القطار، القليوبية',
+    latitude: 30.1790,
+    longitude: 31.2050,
+    governorate: 'القليوبية',
+  ),
+  LocationSuggestion(
     title: 'شبين الكوم',
     subtitle: 'البر الشرقي والجامعة، المنوفية',
     latitude: 30.5526,
@@ -379,10 +394,80 @@ const List<LocationSuggestion> curatedEgyptianPlaces = [
   ),
 ];
 
+const List<LocationSuggestion> curatedEgyptianPlaces = nawakesCuratedEgyptianPlaces;
+
 class LocationService {
   final Dio _dio;
 
   LocationService({Dio? dio}) : _dio = dio ?? Dio();
+
+  /// Curated Egyptian places static accessor conforming to PROJECT.md & E2E tests
+  static List<LocationSuggestion> get curatedEgyptianPlaces => nawakesCuratedEgyptianPlaces;
+
+  /// 27 Egyptian Governorates reference coordinates (centroids)
+  static const Map<String, ({double lat, double lng})> egyptianGovernorates = {
+    'القليوبية': (lat: 30.4660, lng: 31.1853),
+    'الجيزة': (lat: 29.9870, lng: 30.9420),
+    'القاهرة': (lat: 30.0444, lng: 31.2357),
+    'الإسكندرية': (lat: 31.2001, lng: 29.9010),
+    'الدقهلية': (lat: 31.0409, lng: 31.3785),
+    'الغربية': (lat: 30.7865, lng: 31.0004),
+    'الشرقية': (lat: 30.5877, lng: 31.5020),
+    'المنوفية': (lat: 30.5526, lng: 31.0101),
+    'البحيرة': (lat: 31.0400, lng: 30.4700),
+    'كفر الشيخ': (lat: 31.1100, lng: 30.9400),
+    'دمياط': (lat: 31.4170, lng: 31.8140),
+    'بورسعيد': (lat: 31.2653, lng: 32.3019),
+    'الإسماعيلية': (lat: 30.5965, lng: 32.2715),
+    'السويس': (lat: 29.9668, lng: 32.5498),
+    'الفيوم': (lat: 29.3080, lng: 30.8420),
+    'بني سويف': (lat: 29.0660, lng: 31.0990),
+    'المنيا': (lat: 28.1090, lng: 30.7500),
+    'أسيوط': (lat: 27.1783, lng: 31.1859),
+    'سوهاج': (lat: 26.5590, lng: 31.6957),
+    'قنا': (lat: 26.1550, lng: 32.7160),
+    'الأقصر': (lat: 25.6870, lng: 32.6390),
+    'أسوان': (lat: 24.0880, lng: 32.8990),
+    'البحر الأحمر': (lat: 27.2570, lng: 33.8120),
+    'جنوب سيناء': (lat: 27.9150, lng: 34.3290),
+    'شمال سيناء': (lat: 31.1320, lng: 33.8030),
+    'مطروح': (lat: 31.3540, lng: 27.2370),
+    'الوادي الجديد': (lat: 25.4510, lng: 30.5460),
+  };
+
+  /// Dynamically detects the Egyptian governorate matching the GPS coordinates.
+  /// 1. Prioritizes nearest curated catalog place if within 15 km.
+  /// 2. Calculates geodesic distance to Egyptian governorates centroids.
+  static String detectGovernorate(double lat, double lng) {
+    try {
+      LocationSuggestion? closestPlace;
+      double closestPlaceDist = 15000.0; // 15 km threshold
+      for (final place in nawakesCuratedEgyptianPlaces) {
+        if (place.governorate.isEmpty) continue;
+        final d = Geolocator.distanceBetween(lat, lng, place.latitude, place.longitude);
+        if (d < closestPlaceDist) {
+          closestPlaceDist = d;
+          closestPlace = place;
+        }
+      }
+      if (closestPlace != null) {
+        return closestPlace.governorate;
+      }
+
+      String bestGov = 'القاهرة';
+      double minCentroidDist = double.infinity;
+      for (final entry in egyptianGovernorates.entries) {
+        final d = Geolocator.distanceBetween(lat, lng, entry.value.lat, entry.value.lng);
+        if (d < minCentroidDist) {
+          minCentroidDist = d;
+          bestGov = entry.key;
+        }
+      }
+      return bestGov;
+    } catch (_) {
+      return 'القاهرة';
+    }
+  }
 
   Future<Position?> getCurrentLocation() async {
     try {

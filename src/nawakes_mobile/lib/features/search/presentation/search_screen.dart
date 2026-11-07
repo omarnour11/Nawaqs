@@ -28,6 +28,7 @@ import 'package:nawakes_mobile/features/search/presentation/prescription_scanner
 import 'package:nawakes_mobile/features/search/presentation/widgets/home_catalog_view.dart';
 import 'package:nawakes_mobile/core/ui/nawaqss_brand_widgets.dart';
 import 'package:nawakes_mobile/features/onboarding/presentation/patient_onboarding_sheet.dart';
+import 'package:nawakes_mobile/features/search/presentation/widgets/mandatory_location_prompt_dialog.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 
@@ -100,63 +101,55 @@ class SearchScreen extends HookConsumerWidget {
       if (query.trim().length < 2) return;
       focusNode.unfocus();
 
-      // Enforce GPS location
-      try {
-        final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-        if (!serviceEnabled && context.mounted) {
-          final openSettings = await showDialog<bool>(
-            context: context,
-            builder: (dCtx) => AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              title: const Row(
-                children: [
-                  Icon(Icons.location_off_rounded, color: AppColors.danger, size: 24),
-                  SizedBox(width: 8),
-                  Text('تفعيل خدمة الموقع (GPS)', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-                ],
-              ),
-              content: const Text(
-                'لتحديد الصيدليات المتاحة حولك بدقة ومعرفة المسافة الحقيقية، يجب تفعيل خدمة الموقع الجغرافي (GPS) قبل البحث.',
-                style: TextStyle(fontSize: 13, height: 1.4),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dCtx, false),
-                  child: const Text('إلغاء'),
-                ),
-                FilledButton.icon(
-                  style: FilledButton.styleFrom(backgroundColor: AppColors.brand900),
-                  icon: const Icon(Icons.settings, size: 16),
-                  label: const Text('فتح إعدادات الموقع'),
-                  onPressed: () {
-                    Geolocator.openLocationSettings();
-                    Navigator.pop(dCtx, true);
-                  },
-                ),
-              ],
+      // Enforce GPS location via Mandatory Location Prompt ("سماح")
+      final hasLocationPermission = await ensureLocationPermission(context, ref);
+      if (!hasLocationPermission) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('البحث متوقف: يجب منح صلاحية الموقع (GPS) لعرض الصيدليات الأقرب إليك بدقة.'),
+              backgroundColor: AppColors.danger,
+              duration: Duration(seconds: 3),
             ),
           );
-          if (openSettings != true) return;
+        }
+        return;
+      }
+
+      // ── Check multi-medication query (e.g. "بنادول و كتافلام", "أوجمنتين، كونكور") ──
+      var tokens = ArabicMedicationMapper.splitMedications(query);
+      if (tokens.length < 2) {
+        final delimiterRegex = RegExp(r'\s+(?:و|\+|مع|and)\s+|[,\u060C+]+', caseSensitive: false);
+        final manualParts = query
+            .split(delimiterRegex)
+            .map((s) => s.trim())
+            .where((s) => s.isNotEmpty && s.length >= 2)
+            .toList();
+        if (manualParts.length >= 2) {
+          tokens = manualParts;
+        }
+      }
+
+      if (tokens.length >= 2) {
+        suggestions.value = [];
+        final api = ref.read(apiClientProvider);
+        final List<BatchSearchItemDto> batchItems = [];
+        for (final token in tokens) {
+          final resolved = await ArabicMedicationMapper.resolveSingleMedication(token, api);
+          final finalName = resolved.isNotEmpty ? resolved : token;
+          batchItems.add(BatchSearchItemDto(
+            medication: finalName,
+            quantity: 1,
+          ));
         }
 
-        var permission = await Geolocator.checkPermission();
-        if (permission == LocationPermission.denied) {
-          permission = await Geolocator.requestPermission();
+        if (context.mounted) {
+          Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => BatchSearchResultsScreen(items: batchItems),
+          ));
         }
-        if (permission == LocationPermission.deniedForever && context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('يجب إعطاء إذن الموقع لإظهار الصيدليات القريبة بدقة.'),
-              action: SnackBarAction(
-                label: 'الإعدادات',
-                textColor: Colors.white,
-                onPressed: () => Geolocator.openAppSettings(),
-              ),
-            ),
-          );
-          return;
-        }
-      } catch (_) {}
+        return;
+      }
 
       suggestions.value = [];
       hasSearched.value = true;

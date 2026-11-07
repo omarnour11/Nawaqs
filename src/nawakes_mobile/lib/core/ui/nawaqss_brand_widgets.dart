@@ -178,6 +178,7 @@ enum NuqousMood {
   welcome,
   searching,
   celebrating,
+  worried,
 }
 
 /// Official Nuqous Mascot ("نقوص") Vector Widget
@@ -187,16 +188,31 @@ class NuqousMascot extends StatelessWidget {
 
   const NuqousMascot({
     super.key,
-    this.height = 100,
+    this.height = 110,
     this.mood = NuqousMood.welcome,
   });
 
+  const NuqousMascot.welcome({super.key, this.height = 110})
+      : mood = NuqousMood.welcome;
+
+  const NuqousMascot.searching({super.key, this.height = 110})
+      : mood = NuqousMood.searching;
+
+  const NuqousMascot.celebrating({super.key, this.height = 110})
+      : mood = NuqousMood.celebrating;
+
+  const NuqousMascot.worried({super.key, this.height = 110})
+      : mood = NuqousMood.worried;
+
   @override
   Widget build(BuildContext context) {
-    final width = height * 0.8;
+    final safeHeight = (height < 16.0 || height.isNaN || height.isInfinite)
+        ? 16.0
+        : height;
+    final width = safeHeight * 0.8;
     return SizedBox(
       width: width,
-      height: height,
+      height: safeHeight,
       child: CustomPaint(
         painter: _NuqousPainter(mood: mood),
       ),
@@ -213,6 +229,8 @@ class _NuqousPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final w = size.width;
     final h = size.height;
+
+    if (w < 12.0 || h < 16.0) return;
 
     // Body capsule
     final capH = h * 0.72;
@@ -291,8 +309,26 @@ class _NuqousPainter extends CustomPainter {
         bellyRadius,
         Paint()..color = NawaqsColors.stickerYellow,
       );
+    } else if (mood == NuqousMood.worried) {
+      // Worried belly: Empty tummy hole (Brand Kit page 7: "الفتحة فاضية")
+      final holeStroke = math.max(2.0, w * 0.035);
+      canvas.drawCircle(
+        Offset(bellyCenterX, bellyCenterY),
+        bellyRadius,
+        Paint()
+          ..color = Colors.white
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = holeStroke,
+      );
+      canvas.drawCircle(
+        Offset(bellyCenterX, bellyCenterY),
+        bellyRadius * 0.85,
+        Paint()
+          ..color = NawaqsColors.ink.withValues(alpha: 0.12)
+          ..style = PaintingStyle.fill,
+      );
     } else {
-      // Normal belly: White with Coral dot or light ring
+      // Normal / Welcome belly: White with Coral dot or light ring
       canvas.drawCircle(
         Offset(bellyCenterX, bellyCenterY),
         bellyRadius,
@@ -316,28 +352,69 @@ class _NuqousPainter extends CustomPainter {
     canvas.drawCircle(Offset(eye1X, eyeY), eyeRadius, eyeWhite);
     canvas.drawCircle(Offset(eye2X, eyeY), eyeRadius, eyeWhite);
 
-    // Pupils (Ink)
+    // Pupils (Ink) - in searching mood, look towards magnifying glass on the left (-X)
     final pupilPaint = Paint()..color = NawaqsColors.ink;
-    final pupilOffset = mood == NuqousMood.searching ? 2.0 : 0.0;
+    final pupilOffset = mood == NuqousMood.searching ? -eyeRadius * 0.35 : 0.0;
     canvas.drawCircle(Offset(eye1X + pupilOffset, eyeY), eyeRadius * 0.45, pupilPaint);
     canvas.drawCircle(Offset(eye2X + pupilOffset, eyeY), eyeRadius * 0.45, pupilPaint);
 
-    // Smile
-    final smilePaint = Paint()
+    // Worried Eyebrows
+    if (mood == NuqousMood.worried) {
+      final browPaint = Paint()
+        ..color = Colors.white
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = math.max(1.8, w * 0.035)
+        ..strokeCap = StrokeCap.round;
+      canvas.drawLine(
+        Offset(eye1X - eyeRadius * 0.7, eyeY - eyeRadius * 0.9),
+        Offset(eye1X + eyeRadius * 0.6, eyeY - eyeRadius * 1.3),
+        browPaint,
+      );
+      canvas.drawLine(
+        Offset(eye2X + eyeRadius * 0.7, eyeY - eyeRadius * 0.9),
+        Offset(eye2X - eyeRadius * 0.6, eyeY - eyeRadius * 1.3),
+        browPaint,
+      );
+    }
+
+    // Mouth / Expression
+    final mouthPaint = Paint()
       ..color = Colors.white
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0
+      ..strokeWidth = math.max(1.8, w * 0.03)
       ..strokeCap = StrokeCap.round;
 
-    final smilePath = Path()
-      ..moveTo(eye1X + 2, eyeY + eyeRadius + 3)
-      ..quadraticBezierTo(
-        bellyCenterX,
-        eyeY + eyeRadius + 7,
-        eye2X - 2,
-        eyeY + eyeRadius + 3,
-      );
-    canvas.drawPath(smilePath, smilePaint);
+    final mouthPath = Path();
+    final mouthInset = math.max(0.5, capW * 0.05);
+    final mouthStartX = eye1X + mouthInset;
+    final mouthEndX = eye2X - mouthInset;
+
+    if (mood == NuqousMood.worried) {
+      // Worried / sad expression (downturned)
+      final mouthBaseY = eyeY + eyeRadius + math.max(1.5, capH * 0.06);
+      final mouthCurveY = eyeY + eyeRadius + math.max(1.0, capH * 0.02);
+      mouthPath
+        ..moveTo(mouthStartX, mouthBaseY)
+        ..quadraticBezierTo(
+          bellyCenterX,
+          mouthCurveY,
+          mouthEndX,
+          mouthBaseY,
+        );
+    } else {
+      // Friendly smile
+      final mouthBaseY = eyeY + eyeRadius + math.max(1.5, capH * 0.03);
+      final mouthCurveY = eyeY + eyeRadius + math.max(2.0, capH * 0.08);
+      mouthPath
+        ..moveTo(mouthStartX, mouthBaseY)
+        ..quadraticBezierTo(
+          bellyCenterX,
+          mouthCurveY,
+          mouthEndX,
+          mouthBaseY,
+        );
+    }
+    canvas.drawPath(mouthPath, mouthPaint);
 
     // Arms
     final armPaint = Paint()
@@ -355,6 +432,33 @@ class _NuqousPainter extends CustomPainter {
       canvas.drawLine(
         Offset(capLeft + capW - 2, capTop + capH * 0.48),
         Offset(capLeft + capW + w * 0.12, capTop + capH * 0.28),
+        armPaint,
+      );
+    } else if (mood == NuqousMood.searching) {
+      // Left arm holds magnifying glass within [0..w] bounds
+      final lensRadius = w * 0.07;
+      final lensCenterX = math.max(lensRadius + 1.5, capLeft - w * 0.06);
+      final lensCenterY = capTop + capH * 0.35;
+      final lensCenter = Offset(lensCenterX, lensCenterY);
+
+      canvas.drawLine(
+        Offset(capLeft + 2, capTop + capH * 0.48),
+        Offset(lensCenter.dx + lensRadius * 0.5, lensCenter.dy + lensRadius * 0.5),
+        armPaint,
+      );
+      // Mini lens (strictly within canvas bounds)
+      canvas.drawCircle(
+        lensCenter,
+        lensRadius,
+        Paint()
+          ..color = Colors.white
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = math.max(1.8, w * 0.03),
+      );
+      // Right arm down
+      canvas.drawLine(
+        Offset(capLeft + capW - 2, capTop + capH * 0.48),
+        Offset(capLeft + capW + w * 0.1, capTop + capH * 0.62),
         armPaint,
       );
     } else {
@@ -375,6 +479,331 @@ class _NuqousPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _NuqousPainter oldDelegate) =>
       oldDelegate.mood != mood;
+}
+
+// ============================================================================
+// BRAND KIT v3 STICKERS
+// ============================================================================
+
+/// Found Medicine Sticker ("لقيناه!")
+class NawaqssFoundSticker extends StatelessWidget {
+  final String label;
+  final double? fontSize;
+  final bool enableTilt;
+  final VoidCallback? onTap;
+
+  const NawaqssFoundSticker({
+    super.key,
+    this.label = 'لقيناه!',
+    this.fontSize,
+    this.enableTilt = false,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final effectiveLabel = label.trim().isEmpty ? 'لقيناه!' : label.trim();
+    Widget content = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: NawaqsColors.mint,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: NawaqsColors.mintDeep, width: 1.0),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const Icon(
+            Icons.check_circle_rounded,
+            size: 14,
+            color: NawaqsColors.teal,
+          ),
+          const SizedBox(width: 5),
+          Flexible(
+            child: Text(
+              effectiveLabel,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontFamily: 'Cairo',
+                fontSize: fontSize ?? 12,
+                fontWeight: FontWeight.w800,
+                color: NawaqsColors.tealDark,
+                height: 1.2,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (enableTilt) {
+      content = Transform.rotate(angle: -0.04, child: content);
+    }
+    if (onTap != null) {
+      content = GestureDetector(onTap: onTap, child: content);
+    }
+    return content;
+  }
+}
+
+/// Shortage Alert Sticker ("ناقص!")
+class NawaqssShortageSticker extends StatelessWidget {
+  final String label;
+  final double? fontSize;
+  final bool enableTilt;
+  final VoidCallback? onTap;
+
+  const NawaqssShortageSticker({
+    super.key,
+    this.label = 'ناقص!',
+    this.fontSize,
+    this.enableTilt = false,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final effectiveLabel = label.trim().isEmpty ? 'ناقص!' : label.trim();
+    Widget content = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: NawaqsColors.coralSoft,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: NawaqsColors.coral,
+          width: 1.0,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const Icon(
+            Icons.error_outline_rounded,
+            size: 14,
+            color: NawaqsColors.coral,
+          ),
+          const SizedBox(width: 5),
+          Flexible(
+            child: Text(
+              effectiveLabel,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontFamily: 'Cairo',
+                fontSize: fontSize ?? 12,
+                fontWeight: FontWeight.w800,
+                color: NawaqsColors.coral,
+                height: 1.2,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (enableTilt) {
+      content = Transform.rotate(angle: 0.04, child: content);
+    }
+    if (onTap != null) {
+      content = GestureDetector(onTap: onTap, child: content);
+    }
+    return content;
+  }
+}
+
+/// Law 151 Data Privacy Sticker ("الاسم والرقم اتحجبوا 🔒")
+class NawaqssPrivacySticker extends StatelessWidget {
+  final String label;
+  final double? fontSize;
+  final bool enableTilt;
+  final VoidCallback? onTap;
+
+  const NawaqssPrivacySticker({
+    super.key,
+    this.label = 'الاسم والرقم اتحجبوا 🔒',
+    this.fontSize,
+    this.enableTilt = false,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final effectiveLabel =
+        label.trim().isEmpty ? 'الاسم والرقم اتحجبوا 🔒' : label.trim();
+    Widget content = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0FDF4),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFF86EFAC), width: 1.0),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const Icon(
+            Icons.lock_rounded,
+            size: 13,
+            color: Color(0xFF14532D),
+          ),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
+              effectiveLabel,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontFamily: 'Cairo',
+                fontSize: fontSize ?? 11.5,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF14532D),
+                height: 1.2,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (enableTilt) {
+      content = Transform.rotate(angle: -0.03, child: content);
+    }
+    if (onTap != null) {
+      content = GestureDetector(onTap: onTap, child: content);
+    }
+    return content;
+  }
+}
+
+/// Single Medication Rapid Match Sticker ("دوا واحد بس")
+class NawaqssSingleMedSticker extends StatelessWidget {
+  final String label;
+  final double? fontSize;
+  final bool enableTilt;
+  final VoidCallback? onTap;
+
+  const NawaqssSingleMedSticker({
+    super.key,
+    this.label = 'دوا واحد بس',
+    this.fontSize,
+    this.enableTilt = false,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final effectiveLabel = label.trim().isEmpty ? 'دوا واحد بس' : label.trim();
+    Widget content = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: NawaqsColors.stickerYellow.withValues(alpha: 0.28),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: NawaqsColors.stickerYellow, width: 1.0),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const Icon(
+            Icons.medication_outlined,
+            size: 14,
+            color: Color(0xFF8C6500),
+          ),
+          const SizedBox(width: 5),
+          Flexible(
+            child: Text(
+              effectiveLabel,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontFamily: 'Cairo',
+                fontSize: fontSize ?? 11.5,
+                fontWeight: FontWeight.w800,
+                color: const Color(0xFF8C6500),
+                height: 1.2,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (enableTilt) {
+      content = Transform.rotate(angle: 0.03, child: content);
+    }
+    if (onTap != null) {
+      content = GestureDetector(onTap: onTap, child: content);
+    }
+    return content;
+  }
+}
+
+/// Dynamic Counter Sticker Badge (e.g. "3 صيدليات", "2")
+class NawaqssCounterSticker extends StatelessWidget {
+  final int count;
+  final String? suffix;
+  final Color? backgroundColor;
+  final Color? textColor;
+  final double? fontSize;
+  final bool hideZero;
+
+  const NawaqssCounterSticker({
+    super.key,
+    required this.count,
+    this.suffix,
+    this.backgroundColor,
+    this.textColor,
+    this.fontSize,
+    this.hideZero = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (hideZero && count <= 0) {
+      return const SizedBox.shrink();
+    }
+
+    final safeCount = count < 0 ? 0 : count;
+    final countText = safeCount > 99 ? '99+' : safeCount.toString();
+    final hasSuffix = suffix != null && suffix!.trim().isNotEmpty;
+    final text = hasSuffix ? '$countText ${suffix!.trim()}' : countText;
+
+    return Container(
+      constraints: BoxConstraints(
+        minWidth: hasSuffix ? 0 : 20,
+        minHeight: 20,
+      ),
+      padding: EdgeInsets.symmetric(
+        horizontal: hasSuffix ? 8 : 6,
+        vertical: 2,
+      ),
+      decoration: BoxDecoration(
+        color: backgroundColor ?? NawaqsColors.teal,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.3),
+          width: 0.8,
+        ),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          fontFamily: 'Cairo',
+          fontSize: fontSize ?? 11,
+          fontWeight: FontWeight.w900,
+          color: textColor ?? Colors.white,
+          height: 1.1,
+        ),
+      ),
+    );
+  }
 }
 
 /// Official Pill Status Badge (متاح / قريب / ناقص)

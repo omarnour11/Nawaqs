@@ -9,6 +9,7 @@ import 'package:nawakes_mobile/core/ui/medication_image_view.dart';
 import 'package:nawakes_mobile/core/location/location_service.dart';
 import 'package:nawakes_mobile/features/search/presentation/nearby_products_provider.dart';
 import 'package:nawakes_mobile/features/search/presentation/widgets/nearby_pharmacy_options_sheet.dart';
+import 'package:nawakes_mobile/features/search/presentation/widgets/mandatory_location_prompt_dialog.dart';
 
 /// The El-Ezaby-styled Home Catalog View for Nawakes.
 /// Displays delivery mode toggle, address bar, promotional banners, quick services,
@@ -91,7 +92,12 @@ class _HomeCatalogViewState extends ConsumerState<HomeCatalogView> {
                   title: 'توصيل منزلي',
                   icon: Icons.delivery_dining_rounded,
                   isSelected: _deliveryModeIndex == 0,
-                  onTap: () => setState(() => _deliveryModeIndex = 0),
+                  onTap: () async {
+                    final allowed = await ensureLocationPermission(context, ref);
+                    if (allowed && mounted) {
+                      setState(() => _deliveryModeIndex = 0);
+                    }
+                  },
                 ),
               ),
               Expanded(
@@ -913,6 +919,11 @@ class _LocationPickerBottomSheetState
     if (_isLoadingGps) return;
     setState(() => _isLoadingGps = true);
     try {
+      final allowed = await ensureLocationPermission(context, ref);
+      if (!allowed) {
+        if (mounted) setState(() => _isLoadingGps = false);
+        return;
+      }
       final locService = ref.read(locationServiceProvider);
       final pos = _cachedGpsPosition ?? await locService.getCurrentLocation();
       if (pos == null) {
@@ -1251,7 +1262,21 @@ class _LocationPickerBottomSheetState
 
   Widget _buildListContent(bool isQueryEmpty) {
     if (isQueryEmpty) {
-      final places = curatedEgyptianPlaces;
+      final currentLoc = ref.watch(deliveryLocationProvider);
+      final detectedGov = (currentLoc.governorate != null && currentLoc.governorate!.isNotEmpty)
+          ? currentLoc.governorate!
+          : LocationService.detectGovernorate(currentLoc.latitude, currentLoc.longitude);
+
+      final matchingPlaces = curatedEgyptianPlaces
+          .where((p) => p.governorate.contains(detectedGov) || detectedGov.contains(p.governorate))
+          .toList();
+      final otherPlaces = curatedEgyptianPlaces
+          .where((p) => !p.governorate.contains(detectedGov) && !detectedGov.contains(p.governorate))
+          .toList();
+      final places = matchingPlaces.isNotEmpty
+          ? [...matchingPlaces, ...otherPlaces]
+          : curatedEgyptianPlaces;
+
       return ListView.separated(
         shrinkWrap: true,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),

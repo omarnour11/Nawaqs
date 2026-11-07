@@ -43,11 +43,11 @@ public sealed class GetActiveReservationsQueryHandlerTests
     };
 
     [Fact]
-    public async Task Handle_PharmacyNotFound_ThrowsNotFoundException()
+    public async Task Handle_PharmacyNotFound_ReturnsEmptyList()
     {
         _currentUserMock.Setup(u => u.UserId).Returns(Guid.NewGuid());
-        await FluentActions.Invoking(() => _handler.Handle(new GetActiveReservationsQuery(), CancellationToken.None))
-            .Should().ThrowAsync<NotFoundException>();
+        var result = await _handler.Handle(new GetActiveReservationsQuery(), CancellationToken.None);
+        result.Should().BeEmpty();
     }
 
     [Fact]

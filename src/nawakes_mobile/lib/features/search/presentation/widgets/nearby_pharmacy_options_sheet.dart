@@ -428,16 +428,25 @@ class _NearbyPharmacyOptionsSheetState
             ),
           ),
 
-          // List of Pharmacies
-          Flexible(
-            child: ListView.separated(
-              shrinkWrap: true,
-              padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
-              itemCount: p.pharmacies.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 10),
-              itemBuilder: (context, index) {
-                final opt = p.pharmacies[index];
-                final isReserving = _reservingPharmacyId == opt.pharmacyId;
+          // List of Pharmacies (Delivery-first priority, then nearest distance)
+          Builder(
+            builder: (context) {
+              final sortedPharmacies = List<NearbyPharmacyOption>.from(p.pharmacies)..sort((a, b) {
+                if (a.supportsDelivery != b.supportsDelivery) {
+                  return a.supportsDelivery ? -1 : 1;
+                }
+                return a.distanceKm.compareTo(b.distanceKm);
+              });
+
+              return Flexible(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
+                  itemCount: sortedPharmacies.length,
+                  separatorBuilder: (context, index) => const SizedBox(height: 10),
+                  itemBuilder: (context, index) {
+                    final opt = sortedPharmacies[index];
+                    final isReserving = _reservingPharmacyId == opt.pharmacyId;
 
                 return Container(
                   padding: const EdgeInsets.all(14),
@@ -542,7 +551,7 @@ class _NearbyPharmacyOptionsSheetState
                                       const SizedBox(width: 3),
                                       Text(
                                         opt.supportsDelivery
-                                            ? 'توصيل متاح'
+                                            ? 'توصيل متاح 🛵'
                                             : 'استلام فقط',
                                         style: TextStyle(
                                           fontSize: 9.5,
@@ -635,9 +644,11 @@ class _NearbyPharmacyOptionsSheetState
                 );
               },
             ),
-          ),
-        ],
+          );
+        },
       ),
-    );
-  }
+    ],
+  ),
+);
+}
 }

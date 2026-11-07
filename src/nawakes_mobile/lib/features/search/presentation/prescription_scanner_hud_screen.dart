@@ -282,7 +282,7 @@ class _PrescriptionScannerHudScreenState
               animation: _laserAnim,
               builder: (context, _) {
                 final topPos = (size.height * 0.15) +
-                    (_laserAnim.value * (size.height * 0.55));
+                    (_laserAnim.value * (size.height * 0.45));
                 return Positioned(
                   top: topPos,
                   left: 20,
@@ -337,7 +337,7 @@ class _PrescriptionScannerHudScreenState
                 24,
                 size.height * 0.15,
                 size.width - 48,
-                size.height * 0.55,
+                size.height * 0.45,
               );
               return Stack(
                 children: [
@@ -453,6 +453,8 @@ class _PrescriptionScannerHudScreenState
                       children: [
                         Text(
                           'مسح الروشتة الذكي',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 16,
@@ -461,6 +463,8 @@ class _PrescriptionScannerHudScreenState
                         ),
                         Text(
                           'Google Gemini Vision AI • تحليل متعدد الأدوية',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             color: Color(0xFF94A3B8),
                             fontSize: 11,
@@ -480,11 +484,14 @@ class _PrescriptionScannerHudScreenState
 
           // 6. Bottom Glassmorphic Progress HUD Panel
           Positioned(
-            bottom: 30,
+            bottom: 20,
             left: 20,
             right: 20,
             child: Container(
-              padding: const EdgeInsets.all(20),
+              padding: EdgeInsets.symmetric(
+                horizontal: size.width < 380 ? 14.0 : 18.0,
+                vertical: size.height < 700 ? 12.0 : 16.0,
+              ),
               decoration: BoxDecoration(
                 color: const Color(0xFF1E293B).withValues(alpha: 0.92),
                 borderRadius: BorderRadius.circular(22),
@@ -526,7 +533,11 @@ class _PrescriptionScannerHudScreenState
                                       color: Colors.white.withValues(alpha: 0.3)),
                                 ),
                                 onPressed: () => Navigator.of(context).pop(),
-                                child: const Text('إلغاء'),
+                                child: const Text(
+                                  'إلغاء',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -536,7 +547,11 @@ class _PrescriptionScannerHudScreenState
                                   backgroundColor: AppColors.primary,
                                 ),
                                 icon: const Icon(Icons.refresh_rounded, size: 18),
-                                label: const Text('إعادة المحاولة'),
+                                label: const Text(
+                                  'إعادة المحاولة',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                                 onPressed: () {
                                   setState(() {
                                     _errorMessage = null;
@@ -570,9 +585,11 @@ class _PrescriptionScannerHudScreenState
                                 child: Text(
                                   _stages[_currentStage],
                                   key: ValueKey(_currentStage),
-                                  style: const TextStyle(
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
                                     color: Colors.white,
-                                    fontSize: 14,
+                                    fontSize: size.height < 700 ? 13 : 14,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -580,7 +597,7 @@ class _PrescriptionScannerHudScreenState
                             ),
                           ],
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: size.height < 700 ? 10 : 16),
                         // Linear multi-stage progress track
                         Row(
                           children: List.generate(_stages.length, (index) {

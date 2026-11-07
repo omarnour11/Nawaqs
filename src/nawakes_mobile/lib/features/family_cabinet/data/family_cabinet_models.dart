@@ -44,10 +44,30 @@ class FamilyMedicationModel {
     required this.daysRemaining,
     required this.alertThresholdDays,
     this.lastRefillDate,
+    this.expiryDate,
   });
 
-  factory FamilyMedicationModel.fromJson(Map<String, dynamic> json) =>
-      _$FamilyMedicationModelFromJson(json);
+  factory FamilyMedicationModel.fromJson(Map<String, dynamic> json) {
+    final base = _$FamilyMedicationModelFromJson(json);
+    if (json['expiryDate'] != null) {
+      final exp = DateTime.tryParse(json['expiryDate'].toString());
+      if (exp != null) {
+        return FamilyMedicationModel(
+          id: base.id,
+          medicationName: base.medicationName,
+          strength: base.strength,
+          stripsCount: base.stripsCount,
+          unitsPerStrip: base.unitsPerStrip,
+          dailyDoseUnits: base.dailyDoseUnits,
+          daysRemaining: base.daysRemaining,
+          alertThresholdDays: base.alertThresholdDays,
+          lastRefillDate: base.lastRefillDate,
+          expiryDate: exp,
+        );
+      }
+    }
+    return base;
+  }
 
   final String id;
   final String medicationName;
@@ -58,6 +78,7 @@ class FamilyMedicationModel {
   final int daysRemaining;
   final int alertThresholdDays;
   final DateTime? lastRefillDate;
+  final DateTime? expiryDate;
 }
 
 @JsonSerializable()

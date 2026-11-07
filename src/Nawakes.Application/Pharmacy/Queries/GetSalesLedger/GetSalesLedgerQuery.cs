@@ -37,9 +37,12 @@ public sealed class GetSalesLedgerQueryHandler(
     {
         var pharmacy = await context.Pharmacies
             .AsNoTracking()
-            .FirstOrDefaultAsync(p => p.OwnerId == currentUser.UserId, cancellationToken)
-            ?? throw new Nawakes.Application.Common.Exceptions.NotFoundException(
-                nameof(Domain.Entities.Pharmacy), currentUser.UserId);
+            .FirstOrDefaultAsync(p => p.OwnerId == currentUser.UserId, cancellationToken);
+
+        if (pharmacy is null)
+        {
+            return new SalesLedgerDto(0, 0m, 0, Array.Empty<SalesLedgerEntryDto>());
+        }
 
         var today = DateTime.UtcNow.Date;
 
@@ -76,7 +79,7 @@ public sealed class GetSalesLedgerQueryHandler(
             e.CompletedAt ?? DateTime.UtcNow,
             e.ReservationCode)).ToList();
 
-        var totalRevenue = dtos.Sum(d => d.Price);
+        var totalRevenue = dtos.Sum(d => d.Price * d.Quantity);
         var todayCount = dtos.Count(d => d.CompletedAt >= today);
 
         return new SalesLedgerDto(dtos.Count, totalRevenue, todayCount, dtos);

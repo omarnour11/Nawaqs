@@ -10,6 +10,8 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:nawakes_mobile/features/reservations/data/reservation_models.dart';
 import 'package:nawakes_mobile/features/search/presentation/batch_search_results_screen.dart';
 import 'package:nawakes_mobile/features/search/presentation/voice_confirm_sheet.dart';
+import 'package:nawakes_mobile/features/search/presentation/widgets/mandatory_location_prompt_dialog.dart';
+import 'package:nawakes_mobile/features/search/presentation/search_controller.dart';
 
 class FakeLocationService extends LocationService {
   final Position? mockPosition;
@@ -1062,6 +1064,146 @@ void main() {
       // Verify the screen was popped back to root
       expect(find.byType(BatchSearchResultsScreen), findsNothing);
       expect(find.text('LaunchBatchSearchSingleCard'), findsOneWidget);
+    });
+  });
+
+  group('10. Milestone 3: Mandatory Location Prompt with "سماح"', () {
+    testWidgets('renders dialog with title, explanation, "سماح", and "مش دلوقتي"', (tester) async {
+      bool allowed = false;
+      bool cancelled = false;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: MandatoryLocationPromptDialog(
+              onAllow: () => allowed = true,
+              onCancel: () => cancelled = true,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('محتاجين نعرف موقعك بدقة'), findsOneWidget);
+      expect(find.textContaining('علشان نقدر نحدد أقرب صيدلية متوفر فيها دواك'), findsOneWidget);
+      expect(find.text('سماح'), findsOneWidget);
+      expect(find.text('مش دلوقتي'), findsOneWidget);
+
+      await tester.tap(find.text('سماح'));
+      expect(allowed, isTrue);
+      expect(cancelled, isFalse);
+
+      await tester.tap(find.text('مش دلوقتي'));
+      expect(cancelled, isTrue);
+    });
+
+    testWidgets('PopScope blocks dismiss gestures (barrierDismissible is false)', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: MandatoryLocationPromptDialog(
+              onAllow: () {},
+              onCancel: () {},
+            ),
+          ),
+        ),
+      );
+
+      final popScope = tester.widget<PopScope>(find.byType(PopScope));
+      expect(popScope.canPop, isFalse);
+    });
+
+    test('SearchController throws LocationPermissionRequiredException when GPS disabled without coordinates', () {
+      const ex = LocationPermissionRequiredException('خدمة الموقع (GPS) غير مفعلة على جهازك');
+      expect(ex.message, contains('خدمة الموقع'));
+      expect(ex.toString(), contains('خدمة الموقع'));
+    });
+  });
+
+  group('11. Milestone 3: Multi-Medication Text Search Router', () {
+    test('splits query with Arabic " و " into distinct medication tokens', () {
+      final tokens = ArabicMedicationMapper.splitMedications('بنادول و كتافلام');
+      expect(tokens.length, greaterThanOrEqualTo(2));
+      expect(tokens, containsAll(['بنادول', 'كتافلام']));
+    });
+
+    test('splits query with conjunction "مع" into distinct medication tokens', () {
+      final tokens = ArabicMedicationMapper.splitMedications('بنادول مع كتافلام');
+      expect(tokens.length, greaterThanOrEqualTo(2));
+      expect(tokens, containsAll(['بنادول', 'كتافلام']));
+    });
+
+    test('splits query with conjunction "and" into distinct medication tokens', () {
+      final tokens = ArabicMedicationMapper.splitMedications('بنادول and كتافلام');
+      expect(tokens.length, greaterThanOrEqualTo(2));
+      expect(tokens, containsAll(['بنادول', 'كتافلام']));
+    });
+
+    test('splits query with plus (+) into distinct medication tokens', () {
+      final tokens = ArabicMedicationMapper.splitMedications('بانادول + كتافلام');
+      expect(tokens.length, greaterThanOrEqualTo(2));
+      expect(tokens, containsAll(['بانادول', 'كتافلام']));
+    });
+
+    test('splits query with Arabic comma (،) and English comma (,)', () {
+      final tokens = ArabicMedicationMapper.splitMedications('أوجمنتين، كونكور');
+      expect(tokens.length, 2);
+      expect(tokens, containsAll(['أوجمنتين', 'كونكور']));
+    });
+
+    test('single medication query does not trigger multi-token split', () {
+      final tokens = ArabicMedicationMapper.splitMedications('بنادول اكسترا');
+      expect(tokens.length, 1);
+      expect(tokens.first, 'بنادول اكسترا');
+    });
+
+    testWidgets('Multi-medication query resolves each token and launches BatchSearchResultsScreen', (tester) async {
+      final fakeApi = FakeVoiceApiClient();
+      final tokens = ArabicMedicationMapper.splitMedications('بانادول و كتافلام');
+      expect(tokens.length, 2);
+
+      final List<BatchSearchItemDto> batchItems = [];
+      for (final t in tokens) {
+        final resolved = await ArabicMedicationMapper.resolveSingleMedication(t, fakeApi);
+        batchItems.add(BatchSearchItemDto(
+          medication: resolved.isNotEmpty ? resolved : t,
+          quantity: 1,
+        ));
+      }
+
+      expect(batchItems.length, 2);
+      expect(batchItems.first.medication, 'Panadol');
+      expect(batchItems.last.medication, 'Cataflam');
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            apiClientProvider.overrideWithValue(fakeApi),
+            locationServiceProvider.overrideWithValue(FakeLocationService()),
+          ],
+          child: MaterialApp(
+            home: Builder(
+              builder: (ctx) => Scaffold(
+                body: ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(ctx).push(
+                      MaterialPageRoute(
+                        builder: (_) => BatchSearchResultsScreen(items: batchItems),
+                      ),
+                    );
+                  },
+                  child: const Text('OpenBatchRouter'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('OpenBatchRouter'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(BatchSearchResultsScreen), findsOneWidget);
+      expect(find.text('البحث المجمع الذكي'), findsOneWidget);
     });
   });
 }

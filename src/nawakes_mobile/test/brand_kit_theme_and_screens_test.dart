@@ -62,13 +62,17 @@ void main() {
       expect(find.byType(CustomPaint), findsWidgets);
     });
 
-    testWidgets('NuqousMascot renders in all mood states', (tester) async {
+    testWidgets('NuqousMascot renders in all mood states and defaults to height 110', (tester) async {
+      const defaultMascot = NuqousMascot();
+      expect(defaultMascot.height, 110);
+      expect(defaultMascot.mood, NuqousMood.welcome);
+
       for (final mood in NuqousMood.values) {
         await tester.pumpWidget(
           MaterialApp(
             home: Scaffold(
               body: Center(
-                child: NuqousMascot(height: 100, mood: mood),
+                child: NuqousMascot(height: 110, mood: mood),
               ),
             ),
           ),
@@ -76,6 +80,58 @@ void main() {
         await tester.pump();
         expect(find.byType(NuqousMascot), findsOneWidget);
         expect(find.byType(CustomPaint), findsWidgets);
+      }
+    });
+
+    testWidgets('NuqousMascot clamps sub-16px heights (e.g. height: 0.5) to safe 16.0 dimensions and renders cleanly', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: NuqousMascot(height: 0.5),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(tester.takeException(), isNull);
+      expect(find.byType(NuqousMascot), findsOneWidget);
+
+      final sizedBox = tester.widget<SizedBox>(
+        find.descendant(
+          of: find.byType(NuqousMascot),
+          matching: find.byType(SizedBox),
+        ),
+      );
+      expect(sizedBox.height, 16.0);
+      expect(sizedBox.width, 12.8);
+
+      final renderBox = tester.renderObject<RenderBox>(find.byType(NuqousMascot));
+      expect(renderBox.size.height, 16.0);
+      expect(renderBox.size.width, 12.8);
+
+      for (final mood in NuqousMood.values) {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: Center(
+                child: NuqousMascot(height: 0.5, mood: mood),
+              ),
+            ),
+          ),
+        );
+        await tester.pump();
+        expect(tester.takeException(), isNull);
+
+        final moodSizedBox = tester.widget<SizedBox>(
+          find.descendant(
+            of: find.byType(NuqousMascot),
+            matching: find.byType(SizedBox),
+          ),
+        );
+        expect(moodSizedBox.height, 16.0);
+        expect(moodSizedBox.width, 12.8);
       }
     });
 
@@ -117,6 +173,189 @@ void main() {
     });
   });
 
+  group('Brand Kit v3 Stickers Widget Tests', () {
+    testWidgets('NawaqssFoundSticker renders default, custom label, and icon', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: Column(
+              children: [
+                NawaqssFoundSticker(),
+                NawaqssFoundSticker(label: 'متوفر فوراً!'),
+                NawaqssFoundSticker(label: '   '),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text('لقيناه!'), findsNWidgets(2));
+      expect(find.text('متوفر فوراً!'), findsOneWidget);
+      expect(find.byIcon(Icons.check_circle_rounded), findsNWidgets(3));
+    });
+
+    testWidgets('NawaqssShortageSticker renders default, custom label, and icon', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: Column(
+              children: [
+                NawaqssShortageSticker(),
+                NawaqssShortageSticker(label: 'غير متاح'),
+                NawaqssShortageSticker(label: ''),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text('ناقص!'), findsNWidgets(2));
+      expect(find.text('غير متاح'), findsOneWidget);
+      expect(find.byIcon(Icons.error_outline_rounded), findsNWidgets(3));
+    });
+
+    testWidgets('NawaqssPrivacySticker renders Law 151 compliance copy and lock icon', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: Column(
+              children: [
+                NawaqssPrivacySticker(),
+                NawaqssPrivacySticker(label: 'خصوصية مشفرة بقانون 151 🔒'),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text('الاسم والرقم اتحجبوا 🔒'), findsOneWidget);
+      expect(find.text('خصوصية مشفرة بقانون 151 🔒'), findsOneWidget);
+      expect(find.byIcon(Icons.lock_rounded), findsNWidgets(2));
+    });
+
+    testWidgets('NawaqssSingleMedSticker renders prompt and medication icon', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: Column(
+              children: [
+                NawaqssSingleMedSticker(),
+                NawaqssSingleMedSticker(label: 'صنف وحيد'),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text('دوا واحد بس'), findsOneWidget);
+      expect(find.text('صنف وحيد'), findsOneWidget);
+      expect(find.byIcon(Icons.medication_outlined), findsNWidgets(2));
+    });
+
+    testWidgets('NawaqssCounterSticker handles positive, zero, negative clamping, suffix, and 99+ cap', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: Column(
+              children: [
+                NawaqssCounterSticker(count: 3),
+                NawaqssCounterSticker(count: 5, suffix: 'صيدليات'),
+                NawaqssCounterSticker(count: 0),
+                NawaqssCounterSticker(count: 0, hideZero: true),
+                NawaqssCounterSticker(count: -4),
+                NawaqssCounterSticker(count: 142),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text('3'), findsOneWidget);
+      expect(find.text('5 صيدليات'), findsOneWidget);
+      expect(find.text('0'), findsNWidgets(2)); // count: 0 and count: -4 clamped
+      expect(find.text('99+'), findsOneWidget);
+    });
+
+    testWidgets('Stickers support enableTilt, onTap callback, and constrained boundaries', (tester) async {
+      var tapped = false;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Column(
+              children: [
+                NawaqssFoundSticker(
+                  enableTilt: true,
+                  onTap: () => tapped = true,
+                ),
+                NawaqssShortageSticker(enableTilt: true),
+                NawaqssPrivacySticker(enableTilt: true),
+                NawaqssSingleMedSticker(enableTilt: true),
+                const SizedBox(width: 50, child: NawaqssSingleMedSticker()),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      await tester.tap(find.byType(NawaqssFoundSticker));
+      await tester.pump();
+      expect(tapped, isTrue);
+      expect(tester.takeException(), isNull);
+    });
+  });
+
+  group('NuqousMascot Named Constructors & Robustness Tests', () {
+    testWidgets('Named constructors initialize correct moods', (tester) async {
+      const welcome = NuqousMascot.welcome(height: 110);
+      const searching = NuqousMascot.searching(height: 110);
+      const celebrating = NuqousMascot.celebrating(height: 110);
+      const worried = NuqousMascot.worried(height: 110);
+
+      expect(welcome.mood, NuqousMood.welcome);
+      expect(searching.mood, NuqousMood.searching);
+      expect(celebrating.mood, NuqousMood.celebrating);
+      expect(worried.mood, NuqousMood.worried);
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: Column(
+              children: [welcome, searching, celebrating, worried],
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(find.byType(NuqousMascot), findsNWidgets(4));
+    });
+
+    testWidgets('NuqousMascot paints safely at edge dimensions (0, negative, 16px, 500px)', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: Column(
+              children: [
+                NuqousMascot(height: 0),
+                NuqousMascot(height: -20),
+                NuqousMascot(height: 0.5),
+                NuqousMascot(height: 16),
+                NuqousMascot(height: 500),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+    });
+  });
+
   group('Patient Onboarding Sheet (Page 14) Tests', () {
     testWidgets('PatientOnboardingSheet navigates from Intro to Permissions step', (tester) async {
       tester.view.physicalSize = const Size(800, 1400);
@@ -152,4 +391,3 @@ void main() {
     });
   });
 }
-
