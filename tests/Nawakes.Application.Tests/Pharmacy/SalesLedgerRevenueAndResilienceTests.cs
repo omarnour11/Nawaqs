@@ -88,7 +88,6 @@ public sealed class SalesLedgerRevenueAndResilienceTests
 
         var pharmacy = new Domain.Entities.Pharmacy
         {
-            Id = Guid.NewGuid(),
             Name = "صيدلية النور الحديثة",
             GeoPoint = new Point(31.2357, 30.0444) { SRID = 4326 },
             OwnerId = ownerId
@@ -97,7 +96,6 @@ public sealed class SalesLedgerRevenueAndResilienceTests
 
         var inventoryItem1 = new InventoryItem
         {
-            Id = Guid.NewGuid(),
             PharmacyId = pharmacy.Id,
             MedicationName = "Augmentin 1g",
             Price = 120.00m,
@@ -105,7 +103,6 @@ public sealed class SalesLedgerRevenueAndResilienceTests
         };
         var inventoryItem2 = new InventoryItem
         {
-            Id = Guid.NewGuid(),
             PharmacyId = pharmacy.Id,
             MedicationName = "Concor 5mg",
             Price = 50.00m,
@@ -115,7 +112,6 @@ public sealed class SalesLedgerRevenueAndResilienceTests
 
         var reservation1 = new Reservation
         {
-            Id = Guid.NewGuid(),
             PharmacyId = pharmacy.Id,
             InventoryItemId = inventoryItem1.Id,
             UserId = Guid.NewGuid(),
@@ -125,7 +121,6 @@ public sealed class SalesLedgerRevenueAndResilienceTests
         };
         var reservation2 = new Reservation
         {
-            Id = Guid.NewGuid(),
             PharmacyId = pharmacy.Id,
             InventoryItemId = inventoryItem2.Id,
             UserId = Guid.NewGuid(),
@@ -154,7 +149,6 @@ public sealed class SalesLedgerRevenueAndResilienceTests
 
         var pharmacy = new Domain.Entities.Pharmacy
         {
-            Id = Guid.NewGuid(),
             Name = "صيدلية النصر",
             GeoPoint = new Point(31.2, 30.0) { SRID = 4326 },
             OwnerId = ownerId
@@ -163,7 +157,6 @@ public sealed class SalesLedgerRevenueAndResilienceTests
 
         var inventoryItem = new InventoryItem
         {
-            Id = Guid.NewGuid(),
             PharmacyId = pharmacy.Id,
             MedicationName = "Insulin Mixtard",
             Price = 150.75m,
@@ -173,7 +166,6 @@ public sealed class SalesLedgerRevenueAndResilienceTests
 
         var reservation = new Reservation
         {
-            Id = Guid.NewGuid(),
             PharmacyId = pharmacy.Id,
             InventoryItemId = inventoryItem.Id,
             UserId = Guid.NewGuid(),
@@ -200,7 +192,6 @@ public sealed class SalesLedgerRevenueAndResilienceTests
 
         var pharmacy = new Domain.Entities.Pharmacy
         {
-            Id = Guid.NewGuid(),
             Name = "صيدلية الإخلاص",
             GeoPoint = new Point(31.2, 30.0) { SRID = 4326 },
             OwnerId = ownerId
@@ -209,7 +200,6 @@ public sealed class SalesLedgerRevenueAndResilienceTests
 
         var inventoryItem = new InventoryItem
         {
-            Id = Guid.NewGuid(),
             PharmacyId = pharmacy.Id,
             MedicationName = "Cataflam 50mg",
             Price = 40.00m,
@@ -219,7 +209,6 @@ public sealed class SalesLedgerRevenueAndResilienceTests
 
         var activeReservation = new Reservation
         {
-            Id = Guid.NewGuid(),
             PharmacyId = pharmacy.Id,
             InventoryItemId = inventoryItem.Id,
             UserId = Guid.NewGuid(),
@@ -229,7 +218,6 @@ public sealed class SalesLedgerRevenueAndResilienceTests
         };
         var cancelledReservation = new Reservation
         {
-            Id = Guid.NewGuid(),
             PharmacyId = pharmacy.Id,
             InventoryItemId = inventoryItem.Id,
             UserId = Guid.NewGuid(),
