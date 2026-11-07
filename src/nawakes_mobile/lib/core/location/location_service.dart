@@ -38,6 +38,35 @@ String normalizeArabic(String text) {
 }
 
 const List<LocationSuggestion> nawakesCuratedEgyptianPlaces = [
+  // ── Red Sea Governorate (حلايب وشلاتين ومرسى علم والغردقة) ───
+  LocationSuggestion(
+    title: 'حلايب',
+    subtitle: 'مدينة حلايب، محافظة البحر الأحمر',
+    latitude: 22.2212,
+    longitude: 36.6473,
+    governorate: 'البحر الأحمر',
+  ),
+  LocationSuggestion(
+    title: 'شلاتين',
+    subtitle: 'مدينة شلاتين، محافظة البحر الأحمر',
+    latitude: 23.1317,
+    longitude: 35.5869,
+    governorate: 'البحر الأحمر',
+  ),
+  LocationSuggestion(
+    title: 'مرسى علم',
+    subtitle: 'مدينة مرسى علم، محافظة البحر الأحمر',
+    latitude: 25.0676,
+    longitude: 34.8790,
+    governorate: 'البحر الأحمر',
+  ),
+  LocationSuggestion(
+    title: 'الغردقة',
+    subtitle: 'مدينة الغردقة، محافظة البحر الأحمر',
+    latitude: 27.2570,
+    longitude: 33.8120,
+    governorate: 'البحر الأحمر',
+  ),
   // ── 6th of October & Sheikh Zayed ─────────────────────────
   LocationSuggestion(
     title: 'الحي المتميز',
@@ -583,7 +612,7 @@ class LocationService {
 
     final localMatches = curatedEgyptianPlaces.where((p) {
       if (queryTokens.isEmpty) return false;
-      final combined = normalizeArabic('${p.title} ${p.subtitle} ${p.governorate ?? ''}');
+      final combined = normalizeArabic('${p.title} ${p.subtitle} ${p.governorate}');
       return queryTokens.every((token) => combined.contains(token));
     }).toList();
 

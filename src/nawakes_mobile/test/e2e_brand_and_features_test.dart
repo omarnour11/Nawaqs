@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -14,15 +13,9 @@ import 'package:nawakes_mobile/features/family_cabinet/data/family_cabinet_model
 import 'package:nawakes_mobile/features/family_cabinet/presentation/medication_depletion_card.dart';
 import 'package:nawakes_mobile/features/pharmacy/data/pharmacy_dashboard_models.dart';
 import 'package:nawakes_mobile/features/pharmacy/data/sales_ledger_models.dart';
-import 'package:nawakes_mobile/features/pharmacy/presentation/pharmacy_dashboard_screen.dart';
-import 'package:nawakes_mobile/features/pharmacy/presentation/sales_ledger_screen.dart';
 import 'package:nawakes_mobile/features/pharmacy/data/pharmacy_profile_models.dart';
 import 'package:nawakes_mobile/features/reservations/data/reservation_models.dart';
-import 'package:nawakes_mobile/features/search/presentation/batch_search_results_screen.dart';
-import 'package:nawakes_mobile/features/search/presentation/nearby_products_provider.dart';
 import 'package:nawakes_mobile/features/search/presentation/prescription_basket_screen.dart';
-import 'package:nawakes_mobile/features/search/presentation/prescription_scanner_hud_screen.dart';
-import 'package:nawakes_mobile/features/search/presentation/widgets/nearby_pharmacy_options_sheet.dart';
 
 // ============================================================================
 // Brand Kit v3 Stickers Contract Widgets (PROJECT.md § Interface Contracts)
@@ -326,7 +319,7 @@ class FakeE2EApiClient implements ApiClient {
   }
 
   @override
-  Future<List<PharmacyReservationResponse>> getActiveReservations() async {
+  Future<List<PharmacyReservationResponse>> getPharmacyReservations() async {
     return activeReservationsResult;
   }
 
@@ -597,7 +590,7 @@ void main() {
     });
 
     testWidgets('T1-F5.3: Empty safety alerts list renders SizedBox.shrink without taking vertical space', (tester) async {
-      final widget = Container(child: const SizedBox.shrink());
+      const widget = SizedBox.shrink();
       await tester.pumpWidget(wrapWithTheme(widget));
       expect(find.byType(SizedBox), findsOneWidget);
     });
