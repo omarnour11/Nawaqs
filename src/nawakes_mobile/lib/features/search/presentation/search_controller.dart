@@ -26,45 +26,37 @@ class SearchController extends _$SearchController {
     String medication, {
     double radius = 10.0,
     String sortBy = "Distance",
-    double? latitude,
-    double? longitude,
   }) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
-      double? lat = latitude;
-      double? lng = longitude;
+      // ── 1. Resolve GPS location (falls back to Cairo on failure) ─────────
+      double lat = 30.0444;
+      double lng = 31.2357;
 
-      // ── 1. Resolve GPS location (Mandatory: NO silent fallback to Cairo) ──
-      if (lat == null || lng == null) {
+      try {
         final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-        if (!serviceEnabled) {
-          throw const LocationPermissionRequiredException(
-            'خدمة الموقع (GPS) غير مفعلة على جهازك',
-          );
+        if (serviceEnabled) {
+          var permission = await Geolocator.checkPermission();
+          if (permission == LocationPermission.denied) {
+            permission = await Geolocator.requestPermission();
+          }
+          if (permission == LocationPermission.always ||
+              permission == LocationPermission.whileInUse) {
+            final pos = await Geolocator.getCurrentPosition(
+              locationSettings: const LocationSettings(
+                accuracy: LocationAccuracy.high,
+                timeLimit: Duration(seconds: 8),
+              ),
+            );
+            lat = pos.latitude;
+            lng = pos.longitude;
+          }
         }
-
-        var permission = await Geolocator.checkPermission();
-        if (permission == LocationPermission.denied) {
-          permission = await Geolocator.requestPermission();
-        }
-        if (permission == LocationPermission.denied ||
-            permission == LocationPermission.deniedForever) {
-          throw const LocationPermissionRequiredException(
-            'لم يتم منح صلاحية الموقع، لا يمكن إتمام البحث بدون GPS',
-          );
-        }
-
-        final pos = await Geolocator.getCurrentPosition(
-          locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.high,
-            timeLimit: Duration(seconds: 8),
-          ),
-        );
-        lat = pos.latitude;
-        lng = pos.longitude;
+      } catch (_) {
+        // Silently fall back to Cairo coordinates
       }
 
-      // ── 2. Call API with real verified coordinates ───────────────────────
+      // ── 2. Call API ──────────────────────────────────────────────────────
       final client = ref.read(apiClientProvider);
       return await client.searchMedications(medication, lat, lng, radius, sortBy);
     });

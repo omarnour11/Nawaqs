@@ -14,7 +14,7 @@ SalesLedgerEntryDto _$SalesLedgerEntryDtoFromJson(Map<String, dynamic> json) =>
       price: (json['price'] as num).toDouble(),
       quantity: (json['quantity'] as num).toInt(),
       patientContact: json['patientContact'] as String,
-      completedAt: DateTime.parse(json['completedAt'] as String),
+      completedAt: json['completedAt'],
       reservationCode: json['reservationCode'] as String,
     );
 
@@ -27,7 +27,7 @@ Map<String, dynamic> _$SalesLedgerEntryDtoToJson(
   'price': instance.price,
   'quantity': instance.quantity,
   'patientContact': instance.patientContact,
-  'completedAt': instance.completedAt.toIso8601String(),
+  'completedAt': instance.completedAt,
   'reservationCode': instance.reservationCode,
 };
 

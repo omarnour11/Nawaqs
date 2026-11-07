@@ -40,6 +40,9 @@ FamilyMedicationModel _$FamilyMedicationModelFromJson(
   lastRefillDate: json['lastRefillDate'] == null
       ? null
       : DateTime.parse(json['lastRefillDate'] as String),
+  expiryDate: json['expiryDate'] == null
+      ? null
+      : DateTime.parse(json['expiryDate'] as String),
 );
 
 CreateFamilyProfileRequest _$CreateFamilyProfileRequestFromJson(
