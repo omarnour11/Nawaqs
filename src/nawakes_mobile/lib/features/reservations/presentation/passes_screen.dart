@@ -770,7 +770,7 @@ class PassDetailScreen extends HookConsumerWidget {
                             ),
                             icon: const Icon(Icons.phone_in_talk_rounded, size: 18),
                             label: const Text(
-                              'اتصل',
+                              'اتصال بالصيدلية',
                               style: TextStyle(
                                 fontFamily: 'Cairo',
                                 fontSize: 14,

@@ -943,7 +943,6 @@ class BatchSearchResultsScreen extends HookConsumerWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        const NawaqssClinicalDisclaimer(),
         if (sanitizedCropBase64 != null)
           Container(
             key: const ValueKey('batch_sanitized_rx_badge'),
@@ -1122,6 +1121,8 @@ class BatchSearchResultsScreen extends HookConsumerWidget {
           );
         }),
 
+        const SizedBox(height: 16),
+        const NawaqssClinicalDisclaimer(),
         const SizedBox(height: 30),
       ],
     );

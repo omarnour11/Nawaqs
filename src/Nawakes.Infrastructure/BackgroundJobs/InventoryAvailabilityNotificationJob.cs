@@ -119,7 +119,7 @@ public sealed class InventoryAvailabilityNotificationJob(
         var offeredSubscriptions = new List<(Domain.Entities.Subscription Sub, DateTime ExpiresAt)>();
 
         // Touch item so concurrency token (RowVersion) enforces optimistic concurrency across parallel jobs
-        item.LastUpdatedAt = DateTime.UtcNow;
+        item.UpdatedAt = DateTime.UtcNow;
 
         for (var i = 0; i < offerCount; i++)
         {
