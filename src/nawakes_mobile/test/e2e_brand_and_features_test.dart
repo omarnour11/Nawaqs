@@ -16,6 +16,7 @@ import 'package:nawakes_mobile/features/pharmacy/data/pharmacy_dashboard_models.
 import 'package:nawakes_mobile/features/pharmacy/data/sales_ledger_models.dart';
 import 'package:nawakes_mobile/features/pharmacy/presentation/pharmacy_dashboard_screen.dart';
 import 'package:nawakes_mobile/features/pharmacy/presentation/sales_ledger_screen.dart';
+import 'package:nawakes_mobile/features/pharmacy/data/pharmacy_profile_models.dart';
 import 'package:nawakes_mobile/features/reservations/data/reservation_models.dart';
 import 'package:nawakes_mobile/features/search/presentation/batch_search_results_screen.dart';
 import 'package:nawakes_mobile/features/search/presentation/nearby_products_provider.dart';
@@ -332,7 +333,7 @@ class FakeE2EApiClient implements ApiClient {
   @override
   Future<MyPharmacyDto?> getMyPharmacy() async {
     return myPharmacyResult ??
-        const MyPharmacyDto(
+        MyPharmacyDto(
           id: 'pharm_e2e_new',
           name: 'صيدلية النور الجديدة',
           addressLine: 'شارع الهرم',
@@ -340,9 +341,12 @@ class FakeE2EApiClient implements ApiClient {
           phone: '01012345678',
           latitude: 30.01,
           longitude: 31.20,
+          verificationStatus: 'Approved',
           trustScore: 5.0,
-          totalDispensedOrders: 0,
-          isActive: true,
+          averageRating: 5.0,
+          ratingCount: 1,
+          createdAt: DateTime.now().toUtc(),
+          offersDelivery: true,
         );
   }
 }
@@ -1328,11 +1332,11 @@ void main() {
       final fakeApi = FakeE2EApiClient();
       final batchReq = BatchSearchRequest(
         items: [
-          BatchMedicationItem(medication: 'بنادول', quantity: 1),
-          BatchMedicationItem(medication: 'كتافلام', quantity: 1),
+          BatchSearchItemDto(medication: 'بنادول', quantity: 1),
+          BatchSearchItemDto(medication: 'كتافلام', quantity: 1),
         ],
-        latitude: 30.466,
-        longitude: 31.185,
+        lat: 30.466,
+        lng: 31.185,
         radiusKm: 10.0,
       );
       final res = await fakeApi.batchSearch(batchReq);
@@ -1342,9 +1346,9 @@ void main() {
     testWidgets('T3-C3: Delivery sorting with توصيل متاح 🛵 (F7) prioritizes complete-match pharmacy (Invariant #2)', (tester) async {
       final fakeApi = FakeE2EApiClient();
       final batchReq = BatchSearchRequest(
-        items: [BatchMedicationItem(medication: 'بنادول', quantity: 1)],
-        latitude: 30.0,
-        longitude: 31.0,
+        items: [BatchSearchItemDto(medication: 'بنادول', quantity: 1)],
+        lat: 30.0,
+        lng: 31.0,
         radiusKm: 5.0,
       );
       final res = await fakeApi.batchSearch(batchReq);
@@ -1374,7 +1378,7 @@ void main() {
             children: [
               const Text('Concor 5mg'),
               const SizedBox(width: 8),
-              Container(child: const Text('توصيل متاح 🛵')),
+              const Text('توصيل متاح 🛵'),
             ],
           ),
         ),
@@ -1486,9 +1490,9 @@ void main() {
       // Step 4: Batch search locates delivery pharmacy
       final fakeApi = FakeE2EApiClient();
       final batchRes = await fakeApi.batchSearch(BatchSearchRequest(
-        items: [BatchMedicationItem(medication: med.medicationName, quantity: 1)],
-        latitude: pos.latitude,
-        longitude: pos.longitude,
+        items: [BatchSearchItemDto(medication: med.medicationName, quantity: 1)],
+        lat: pos.latitude,
+        lng: pos.longitude,
         radiusKm: 5.0,
       ));
       expect(batchRes.completePharmacies, isNotEmpty);
@@ -1509,9 +1513,9 @@ void main() {
       // Step 2: System routes to batch search and finds single complete pharmacy
       final fakeApi = FakeE2EApiClient();
       final batchRes = await fakeApi.batchSearch(BatchSearchRequest(
-        items: tokens.map((t) => BatchMedicationItem(medication: t, quantity: 1)).toList(),
-        latitude: 30.466,
-        longitude: 31.185,
+        items: tokens.map((t) => BatchSearchItemDto(medication: t, quantity: 1)).toList(),
+        lat: 30.466,
+        lng: 31.185,
         radiusKm: 10.0,
       ));
       expect(batchRes.completePharmacies.first.isCompleteMatch, isTrue);

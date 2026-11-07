@@ -150,13 +150,13 @@ class MedicationDepletionCard extends HookConsumerWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 margin: const EdgeInsets.only(bottom: 6),
                 decoration: BoxDecoration(
-                  color: NawaqsColors.amberSoft,
+                  color: AppColors.warningBg,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Text(
                   'ينتهي اليوم! يرجى التخلص منه وإعادة الطلب ⚠️',
                   style: TextStyle(
-                    color: NawaqsColors.amber,
+                    color: AppColors.warningText,
                     fontWeight: FontWeight.w800,
                     fontSize: 12,
                   ),

@@ -3,7 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:nawakes_mobile/core/services/arabic_medication_mapper.dart';
 import 'package:nawakes_mobile/core/ui/nawaqss_brand_widgets.dart';
 import 'package:nawakes_mobile/core/location/location_service.dart';
-import 'package:nawakes_mobile/features/search/presentation/widgets/mandatory_location_prompt_dialog.dart';
 import 'package:nawakes_mobile/features/family_cabinet/presentation/medication_depletion_card.dart';
 import 'package:nawakes_mobile/features/family_cabinet/data/family_cabinet_models.dart';
 
@@ -99,10 +98,12 @@ void main() {
       final med = FamilyMedicationModel(
         id: 'med_today',
         medicationName: 'بانادول إكسترا',
+        stripsCount: 1,
+        unitsPerStrip: 10,
+        dailyDoseUnits: 1,
         daysRemaining: 1,
         alertThresholdDays: 3,
         expiryDate: todayDate,
-        createdAt: now,
       );
 
       await tester.pumpWidget(
@@ -115,14 +116,14 @@ void main() {
     });
 
     testWidgets('T5-6.2: Depleted medication displays 0-day ticker and worried mascot', (tester) async {
-      final now = DateTime.now();
-
       final med = FamilyMedicationModel(
         id: 'med_depleted',
         medicationName: 'كونكور 5 مجم',
+        stripsCount: 0,
+        unitsPerStrip: 10,
+        dailyDoseUnits: 1,
         daysRemaining: 0,
         alertThresholdDays: 3,
-        createdAt: now,
       );
 
       await tester.pumpWidget(
