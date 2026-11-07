@@ -98,7 +98,7 @@ void main() {
         await tester.pump(const Duration(milliseconds: 100));
 
         expect(tester.takeException(), isNull, reason: 'Scanner HUD threw overflow on ${entry.key}');
-        expect(find.byType(FuturisticRadarSweepHudPainter), findsOneWidget);
+        expect(find.byWidgetPredicate((w) => w is CustomPaint && w.painter is FuturisticRadarSweepHudPainter), findsOneWidget);
         expect(find.text('مسح الروشتة الذكي'), findsOneWidget);
       });
 

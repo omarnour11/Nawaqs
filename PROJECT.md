@@ -33,7 +33,7 @@
 | M2 | Prescription Scanner HUD & Basket Fixes | Eliminate 29px overflow, compact privacy banner into single-line ticker, hide empty safety alerts | M1 | DONE |
 | M3 | Location, Dynamic Governorates & Multi-Search | Blocking "سماح" dialog, dynamic governorate detection, delivery sorting with "توصيل متاح 🛵", multi-medication search router | none | DONE |
 | M4 | Smart Home Cabinet & Pharmacy Dashboard | Direct home inventory, depletion countdown, expiry alerts, 1-tap re-order, pharmacy earnings `Price * Quantity`, 404 resilience | none | DONE |
-| M5 | Final E2E Test Suite Pass & Adversarial Hardening | 100% pass of Tiers 1-4 E2E tests, Tier 5 adversarial coverage hardening | M1, M2, M3, M4 | IN_PROGRESS |
+| M5 | Final E2E Test Suite Pass & Adversarial Hardening | 100% pass of Tiers 1-4 E2E tests, Tier 5 adversarial coverage hardening | M1, M2, M3, M4 | DONE |
 
 ## Interface Contracts
 

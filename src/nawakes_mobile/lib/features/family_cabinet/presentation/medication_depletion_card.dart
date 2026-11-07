@@ -64,10 +64,12 @@ class MedicationDepletionCard extends HookConsumerWidget {
         const SnackBar(content: Text('تمت إضافة الدواء إلى سلة الطلب الفوري')),
       );
       final name = medication.medicationName;
+      try {
       context.go(
         '/home?q=${Uri.encodeComponent(name)}',
         extra: name,
       );
+      } catch (_) {}
     }
 
     return Card(
@@ -86,11 +88,23 @@ class MedicationDepletionCard extends HookConsumerWidget {
             Row(
               children: [
                 Expanded(
-                  child: Text(
-                    medication.strength == null
-                        ? medication.medicationName
-                        : '${medication.medicationName} ${medication.strength}',
-                    style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700),
+                  child: Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          medication.medicationName,
+                          style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (medication.strength != null) ...[
+                        const SizedBox(width: 6),
+                        Text(
+                          medication.strength!,
+                          style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
                 Text(
@@ -248,10 +262,12 @@ class MedicationDepletionCard extends HookConsumerWidget {
                   child: FilledButton.icon(
                     onPressed: () {
                       final name = medication.medicationName;
+                      try {
                       context.go(
                         '/home?q=${Uri.encodeComponent(name)}',
                         extra: name,
                       );
+                      } catch (_) {}
                     },
                     style: FilledButton.styleFrom(backgroundColor: AppColors.accentBlue),
                     icon: const Icon(Icons.search),

@@ -158,6 +158,7 @@ class PrescriptionBasketScreen extends HookConsumerWidget {
     }
 
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text(
@@ -441,31 +442,39 @@ class PrescriptionBasketScreen extends HookConsumerWidget {
                                               borderRadius: BorderRadius.circular(8),
                                               border: Border.all(color: const Color(0xFF80CBC4)),
                                             ),
-                                            child: Row(
-                                              children: [
-                                                const Icon(Icons.access_time_rounded, size: 15, color: Color(0xFF004D40)),
-                                                const SizedBox(width: 6),
-                                                Expanded(
-                                                  child: Text(
-                                                    item.arabicSig!,
-                                                    style: const TextStyle(
-                                                      fontSize: 12,
-                                                      fontWeight: FontWeight.w600,
-                                                      color: Color(0xFF004D40),
-                                                    ),
-                                                  ),
-                                                ),
-                                                if (item.rawSig != null && item.rawSig!.isNotEmpty && item.rawSig != item.arabicSig)
-                                                  Text(
-                                                    '(${item.rawSig})',
-                                                    style: TextStyle(
-                                                      fontSize: 10,
-                                                      color: Colors.teal.shade700,
-                                                      fontFamily: 'monospace',
-                                                    ),
-                                                  ),
-                                              ],
-                                            ),
+                                             child: Column(
+                                               crossAxisAlignment: CrossAxisAlignment.start,
+                                               children: [
+                                                 Row(
+                                                   crossAxisAlignment: CrossAxisAlignment.start,
+                                                   children: [
+                                                     const Icon(Icons.access_time_rounded, size: 15, color: Color(0xFF004D40)),
+                                                     const SizedBox(width: 6),
+                                                     Expanded(
+                                                       child: Text(
+                                                         item.arabicSig!,
+                                                         style: const TextStyle(
+                                                           fontSize: 12,
+                                                           fontWeight: FontWeight.w600,
+                                                           color: Color(0xFF004D40),
+                                                         ),
+                                                       ),
+                                                     ),
+                                                   ],
+                                                 ),
+                                                 if (item.rawSig != null && item.rawSig!.isNotEmpty && item.rawSig != item.arabicSig) ...[
+                                                   const SizedBox(height: 2),
+                                                   Text(
+                                                     '(${item.rawSig})',
+                                                     style: TextStyle(
+                                                       fontSize: 10,
+                                                       color: Colors.teal.shade700,
+                                                       fontFamily: 'monospace',
+                                                     ),
+                                                   ),
+                                                 ],
+                                               ],
+                                             ),
                                           ),
                                         ],
                                       ],
@@ -487,14 +496,17 @@ class PrescriptionBasketScreen extends HookConsumerWidget {
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  const Text(
+                                   const Flexible(
+                                     child: Text(
                                     'الكمية المطلوبة:',
+                                       overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w600,
                                       color: AppColors.textDark,
                                     ),
-                                  ),
+                                     ),
+                                   ),
                                   Container(
                                     decoration: BoxDecoration(
                                       color: Colors.grey.shade100,

@@ -73,7 +73,7 @@ class SalesLedgerScreen extends HookConsumerWidget {
                             Expanded(
                               child: _MetricCard(
                                 label: 'إجمالي الإيراد',
-                                value: '${ledger.totalRevenue.toStringAsFixed(2)} ج.م',
+                                value: '${ledger.totalRevenue % 1 == 0 ? ledger.totalRevenue.toStringAsFixed(0) : ledger.totalRevenue.toStringAsFixed(2)} ج.م',
                                 color: AppColors.successText,
                               ),
                             ),

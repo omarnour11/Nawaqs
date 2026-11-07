@@ -1080,9 +1080,20 @@ void main() {
     testWidgets('T2-F8.10: Re-order validation displays feedback cleanly', (tester) async {
       await tester.pumpWidget(
         wrapWithTheme(
-          const SnackBar(content: Text('تمت إضافة الدواء إلى سلة الطلب الفوري')),
+          Builder(
+            builder: (ctx) => ElevatedButton(
+              onPressed: () {
+                ScaffoldMessenger.of(ctx).showSnackBar(
+                  const SnackBar(content: Text('تمت إضافة الدواء إلى سلة الطلب الفوري')),
+                );
+              },
+              child: const Text('طلب'),
+            ),
+          ),
         ),
       );
+      await tester.tap(find.text('طلب'));
+      await tester.pump();
       expect(find.text('تمت إضافة الدواء إلى سلة الطلب الفوري'), findsOneWidget);
     });
   });
@@ -1351,7 +1362,8 @@ void main() {
           child: wrapWithTheme(MedicationDepletionCard(medication: med)),
         ),
       );
-      expect(find.text('Concor 5mg 5mg'), findsOneWidget);
+      expect(find.text('Concor 5mg'), findsOneWidget);
+      expect(find.text('5mg'), findsOneWidget);
       expect(find.text('باقي 2 أيام على النفاذ ⏳'), findsOneWidget);
       expect(find.text('إعادة طلب الدواء ⚡'), findsOneWidget);
 
@@ -1477,6 +1489,7 @@ void main() {
       // Step 2: Basket screen displays single-line privacy ticker
       await tester.pumpWidget(
         ProviderScope(
+          key: UniqueKey(),
           child: wrapWithTheme(PrescriptionBasketScreen(
             initialItems: [
               PrescriptionBasketItem(tradeName: 'Augmentin', strength: '1g', quantity: 1),
