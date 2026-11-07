@@ -292,14 +292,14 @@ class PatientShell extends HookConsumerWidget {
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         destinations: [
           NavigationDestination(
-            icon: Icon(Icons.explore_outlined),
-            selectedIcon: Icon(Icons.explore_rounded),
-            label: 'البحث',
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home_rounded),
+            label: 'الرئيسية',
           ),
           NavigationDestination(
-            icon: Icon(Icons.qr_code_2_outlined),
-            selectedIcon: Icon(Icons.qr_code_2_rounded),
-            label: 'التصاريح',
+            icon: Icon(Icons.receipt_long_outlined),
+            selectedIcon: Icon(Icons.receipt_long_rounded),
+            label: 'الحجوزات',
           ),
           NavigationDestination(
             icon: Icon(Icons.person_2_outlined),
@@ -307,9 +307,9 @@ class PatientShell extends HookConsumerWidget {
             label: 'الحساب',
           ),
           NavigationDestination(
-            icon: Icon(Icons.assignment_outlined),
-            selectedIcon: Icon(Icons.assignment_rounded),
-            label: 'التذاكر والدعم',
+            icon: Icon(Icons.support_agent_outlined),
+            selectedIcon: Icon(Icons.support_agent_rounded),
+            label: 'الدعم',
           ),
         ].map((d) => d).toList(),
       ),

@@ -6,6 +6,7 @@ import 'package:nawakes_mobile/core/location/location_service.dart';
 import 'package:nawakes_mobile/core/network/api_client.dart';
 import 'package:nawakes_mobile/core/network/api_response_models.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
+import 'package:nawakes_mobile/core/ui/nawaqss_brand_widgets.dart';
 import 'package:nawakes_mobile/features/reservations/presentation/passes_screen.dart'
     show passesControllerProvider;
 import 'package:url_launcher/url_launcher.dart';
@@ -942,6 +943,7 @@ class BatchSearchResultsScreen extends HookConsumerWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        const NawaqssClinicalDisclaimer(),
         if (sanitizedCropBase64 != null)
           Container(
             key: const ValueKey('batch_sanitized_rx_badge'),

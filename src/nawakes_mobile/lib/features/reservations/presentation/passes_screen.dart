@@ -14,6 +14,7 @@ import 'package:nawakes_mobile/features/reservations/data/offline_reservation_pa
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart' show DateFormat;
+import 'package:nawakes_mobile/core/ui/nawaqss_brand_widgets.dart';
 
 part 'passes_screen.g.dart';
 
@@ -323,9 +324,70 @@ class PassDetailScreen extends HookConsumerWidget {
               back: true,
               showBell: false,
             ),
-            ScreenSubtitle(expired
-                ? 'التصريح انتهى'
-                : 'اعرضه وقت الاستلام · محجوز لمدة $minutesLeft دقيقة'),
+            // ── Brand Kit Page 16: Nuqous Celebrating Header & Countdown ──
+            Center(
+              child: Column(
+                children: [
+                  const SizedBox(height: 8),
+                  const NuqousMascot(height: 76, mood: NuqousMood.celebrating),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'اتحجز!',
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
+                      fontSize: 24,
+                      fontWeight: FontWeight.w900,
+                      color: NawaqsColors.ink,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'الدوا محجوز في ${reservation.pharmacyName}',
+                    style: const TextStyle(
+                      fontFamily: 'Cairo',
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: NawaqsColors.coralSoft,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: NawaqsColors.coral.withValues(alpha: 0.3)),
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          expired
+                              ? '00:00:00'
+                              : '${remaining.inHours.toString().padLeft(2, '0')}:${(remaining.inMinutes % 60).toString().padLeft(2, '0')}:${(remaining.inSeconds % 60).toString().padLeft(2, '0')}',
+                          style: const TextStyle(
+                            fontFamily: 'Cairo',
+                            fontSize: 28,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 2,
+                            color: NawaqsColors.coral,
+                          ),
+                        ),
+                        const Text(
+                          'الوقت المتبقي للاستلام (ساعتين)',
+                          style: TextStyle(
+                            fontFamily: 'Cairo',
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: NawaqsColors.coral,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+              ),
+            ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Column(
@@ -651,12 +713,43 @@ class PassDetailScreen extends HookConsumerWidget {
                   ),
                   const SizedBox(height: 12),
 
-                  // ── Actions ───────────────────────────────────────────────
+                  // ── Brand Kit Page 16: Primary Action Buttons (اتجاه / اتصل) ──
                   if (!isDone && !expired) ...[
                     Row(
                       children: [
                         Expanded(
-                          child: OutlinedButton.icon(
+                          child: FilledButton.icon(
+                            onPressed: () async {
+                              final lat = reservation.latitude;
+                              final lng = reservation.longitude;
+                              final url = Uri.parse(
+                                  'https://www.google.com/maps/dir/?api=1&destination=$lat,$lng');
+                              if (await canLaunchUrl(url)) {
+                                await launchUrl(url, mode: LaunchMode.externalApplication);
+                              }
+                            },
+                            style: FilledButton.styleFrom(
+                              backgroundColor: NawaqsColors.coral,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(AppRadius.md),
+                              ),
+                              minimumSize: const Size(double.infinity, 48),
+                            ),
+                            icon: const Icon(Icons.navigation_rounded, size: 18),
+                            label: const Text(
+                              'اتجاه',
+                              style: TextStyle(
+                                fontFamily: 'Cairo',
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: FilledButton.icon(
                             onPressed: reservation.pharmacyPhone.isEmpty
                                 ? null
                                 : () async {
@@ -667,25 +760,37 @@ class PassDetailScreen extends HookConsumerWidget {
                                       await launchUrl(url);
                                     }
                                   },
-                            icon: const Icon(Icons.call_outlined, size: 17),
-                            label: const Text('اتصال بالصيدلية'),
-                            style: OutlinedButton.styleFrom(
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(13))),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () => context.go('/support'),
-                            icon: const Icon(Icons.help_outline_rounded, size: 17),
-                            label: const Text('محتاج مساعدة؟'),
-                            style: OutlinedButton.styleFrom(
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(13))),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: NawaqsColors.teal,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(AppRadius.md),
+                              ),
+                              minimumSize: const Size(double.infinity, 48),
+                            ),
+                            icon: const Icon(Icons.phone_in_talk_rounded, size: 18),
+                            label: const Text(
+                              'اتصل',
+                              style: TextStyle(
+                                fontFamily: 'Cairo',
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
                           ),
                         ),
                       ],
+                    ),
+                    const SizedBox(height: 10),
+                    OutlinedButton.icon(
+                      onPressed: () => context.go('/support'),
+                      icon: const Icon(Icons.help_outline_rounded, size: 17),
+                      label: const Text('محتاج مساعدة مع الحجز؟'),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 44),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(AppRadius.md)),
+                      ),
                     ),
                     const SizedBox(height: 10),
                   ],

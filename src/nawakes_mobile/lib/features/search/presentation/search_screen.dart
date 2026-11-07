@@ -26,6 +26,8 @@ import 'package:nawakes_mobile/core/network/api_response_models.dart';
 import 'package:nawakes_mobile/features/search/presentation/medication_equivalents_card.dart';
 import 'package:nawakes_mobile/features/search/presentation/prescription_scanner_hud_screen.dart';
 import 'package:nawakes_mobile/features/search/presentation/widgets/home_catalog_view.dart';
+import 'package:nawakes_mobile/core/ui/nawaqss_brand_widgets.dart';
+import 'package:nawakes_mobile/features/onboarding/presentation/patient_onboarding_sheet.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 
@@ -263,6 +265,9 @@ class SearchScreen extends HookConsumerWidget {
         Future.microtask(() => doSearch(initialQuery!));
       }
       Future.microtask(() async {
+        if (context.mounted) {
+          PatientOnboardingSheet.showIfFirstTime(context, ref);
+        }
         try {
           final serviceEnabled = await Geolocator.isLocationServiceEnabled();
           var permission = await Geolocator.checkPermission();
@@ -332,12 +337,50 @@ class SearchScreen extends HookConsumerWidget {
         child: ListView(
           padding: const EdgeInsets.only(bottom: 16),
           children: [
-            NawaqsTopBar(
-              eyebrow: 'نواقص',
-              title: 'إيجاد دواء',
-              onBell: () => context.push('/notifications'),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const NawaqssLogo(size: 18),
+                          const SizedBox(width: 6),
+                          const Text(
+                            'أهلاً بيك 👋',
+                            style: TextStyle(
+                              fontFamily: 'Cairo',
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      const Text(
+                        'أي دوا ناقص؟',
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                          color: NawaqsColors.ink,
+                        ),
+                      ),
+                    ],
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.notifications_none_rounded,
+                        size: 24, color: NawaqsColors.ink),
+                    onPressed: () => context.push('/notifications'),
+                  ),
+                ],
+              ),
             ),
-            const ScreenSubtitle('توفر الصيدليات المباشر حوالينك'),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Column(
@@ -366,7 +409,7 @@ class SearchScreen extends HookConsumerWidget {
                             onSubmitted: doSearch,
                             style: const TextStyle(fontSize: 13.5),
                             decoration: const InputDecoration(
-                              hintText: 'ابحث عن دواء… مثلاً بانادول',
+                              hintText: 'دوّر باسم الدوا…',
                               border: InputBorder.none,
                               enabledBorder: InputBorder.none,
                               focusedBorder: InputBorder.none,
@@ -607,6 +650,151 @@ class SearchScreen extends HookConsumerWidget {
                       ],
                     ),
                   ] else ...[
+                    // ── Brand Kit Page 15: Big Prescription Scan Hero Banner ──
+                    Container(
+                      margin: const EdgeInsets.only(top: 8, bottom: 14),
+                      padding: const EdgeInsets.all(18),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [NawaqsColors.teal, NawaqsColors.tealDark],
+                          begin: Alignment.topRight,
+                          end: Alignment.bottomLeft,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: NawaqsColors.teal.withValues(alpha: 0.22),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'صوّر روشتتك',
+                                  style: TextStyle(
+                                    fontFamily: 'Cairo',
+                                    fontSize: 19,
+                                    fontWeight: FontWeight.w900,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  'وتلاقيلك الأدوية في ثواني',
+                                  style: TextStyle(
+                                    fontFamily: 'Cairo',
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white.withValues(alpha: 0.9),
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                FilledButton.icon(
+                                  key: const ValueKey('home_hero_scan_button'),
+                                  onPressed: () => PrescriptionSourceSheet.show(
+                                    context,
+                                    onScanned: (result) async {
+                                      final raw = result.lines.join('\n');
+                                      await PrescriptionScannerHudScreen.start(
+                                        context,
+                                        imageFile: result.imageFile,
+                                        imageBytes: result.imageBytes,
+                                        ocrHintText: raw.isNotEmpty ? raw : null,
+                                      );
+                                    },
+                                  ),
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: NawaqsColors.coral,
+                                    foregroundColor: Colors.white,
+                                    elevation: 2,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 16, vertical: 10),
+                                  ),
+                                  icon: const Icon(Icons.camera_alt_rounded, size: 17),
+                                  label: const Text(
+                                    'ابدأ المسح',
+                                    style: TextStyle(
+                                      fontFamily: 'Cairo',
+                                      fontSize: 13.5,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const NuqousMascot(height: 94, mood: NuqousMood.welcome),
+                        ],
+                      ),
+                    ),
+
+                    // ── Brand Kit Page 15: Recent Searches (آخر بحث) ──
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'آخر بحث',
+                            style: TextStyle(
+                              fontFamily: 'Cairo',
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              color: NawaqsColors.ink,
+                            ),
+                          ),
+                          const NawaqssStatusPill(status: 'متاح'),
+                        ],
+                      ),
+                    ),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          _buildRecentSearchChip(
+                            medName: 'أوجمنتين 1 جم',
+                            timeAgo: 'إمبارح',
+                            pharmacyCount: 3,
+                            onTap: () {
+                              searchCtrl.text = 'أوجمنتين 1 جم';
+                              doSearch('أوجمنتين 1 جم');
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          _buildRecentSearchChip(
+                            medName: 'كونكور 5 مجم',
+                            timeAgo: 'اليوم',
+                            pharmacyCount: 5,
+                            onTap: () {
+                              searchCtrl.text = 'كونكور 5 مجم';
+                              doSearch('كونكور 5 مجم');
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          _buildRecentSearchChip(
+                            medName: 'بانادول إكسترا',
+                            timeAgo: 'منذ يومين',
+                            pharmacyCount: 7,
+                            onTap: () {
+                              searchCtrl.text = 'بانادول إكسترا';
+                              doSearch('بانادول إكسترا');
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
                     // ── Home Catalog View (El-Ezaby style with Nawakes Identity) ──
                     HomeCatalogView(
                       onOpenScanner: () => PrescriptionSourceSheet.show(
@@ -849,4 +1037,61 @@ class _EquivalentsLoader extends HookConsumerWidget {
 
     return MedicationEquivalentsCard(response: response);
   }
+}
+
+Widget _buildRecentSearchChip({
+  required String medName,
+  required String timeAgo,
+  required int pharmacyCount,
+  required VoidCallback onTap,
+}) {
+  return InkWell(
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(12),
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.hairline),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: NawaqsColors.mint,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(Icons.history_rounded, size: 16, color: NawaqsColors.teal),
+          ),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                medName,
+                style: const TextStyle(
+                  fontFamily: 'Cairo',
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  color: NawaqsColors.ink,
+                ),
+              ),
+              Text(
+                '$timeAgo · $pharmacyCount صيدليات',
+                style: const TextStyle(
+                  fontFamily: 'Cairo',
+                  fontSize: 10.5,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    ),
+  );
 }
