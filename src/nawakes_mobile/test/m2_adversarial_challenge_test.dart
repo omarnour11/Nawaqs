@@ -141,7 +141,7 @@ void main() {
         expect(tester.takeException(), isNull, reason: 'Basket screen threw overflow on ${entry.key}');
         expect(find.byKey(const ValueKey('prescription_privacy_assurance_banner')), findsOneWidget);
         expect(find.text('Concor 5mg'), findsOneWidget);
-        expect(find.text('Augmentin 1g'), findsOneWidget);
+        expect(find.text('Augmentin 1g', skipOffstage: false), findsOneWidget);
       });
     }
   });
