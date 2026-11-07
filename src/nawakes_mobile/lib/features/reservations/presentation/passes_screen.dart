@@ -308,7 +308,6 @@ class PassDetailScreen extends HookConsumerWidget {
 
     final remaining = reservation.expiresAt.toUtc().difference(now.value);
     final expired = remaining.isNegative;
-    final minutesLeft = remaining.inMinutes;
     final isReady = reservation.status == 'Ready';
     final isDone = reservation.status == 'Completed';
     return Scaffold(
@@ -720,10 +719,11 @@ class PassDetailScreen extends HookConsumerWidget {
                         Expanded(
                           child: FilledButton.icon(
                             onPressed: () async {
-                              final lat = reservation.latitude;
-                              final lng = reservation.longitude;
+                              final query = reservation.pharmacyName.isNotEmpty
+                                  ? Uri.encodeComponent(reservation.pharmacyName)
+                                  : 'pharmacy';
                               final url = Uri.parse(
-                                  'https://www.google.com/maps/dir/?api=1&destination=$lat,$lng');
+                                  'https://www.google.com/maps/dir/?api=1&destination=$query');
                               if (await canLaunchUrl(url)) {
                                 await launchUrl(url, mode: LaunchMode.externalApplication);
                               }

@@ -614,7 +614,8 @@ class _AlertRow extends HookConsumerWidget {
                       child: CircularProgressIndicator(strokeWidth: 2))
                   : Switch(
                       value: alert.isActive,
-                      activeColor: AppColors.accentBlue,
+                      activeThumbColor: Colors.white,
+                      activeTrackColor: AppColors.accentBlue,
                       onChanged: toggle,
                     ),
             ],

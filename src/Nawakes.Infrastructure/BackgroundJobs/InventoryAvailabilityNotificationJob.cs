@@ -102,9 +102,24 @@ public sealed class InventoryAvailabilityNotificationJob(
             return;
         }
 
-        var offerCount = Math.Min(Math.Max(item.Quantity, 1), waiting.Count);
+        var activeOffersCount = await context.Subscriptions
+            .CountAsync(s => s.OfferedInventoryItemId == item.Id &&
+                             s.QueueStatus == QueueStatus.Offered &&
+                             s.OfferExpiresAt > DateTime.UtcNow, cancellationToken);
+
+        var availableSlots = Math.Max(0, item.Quantity - activeOffersCount);
+        if (availableSlots <= 0)
+        {
+            logger.LogInformation("No available queue slots for Item {ItemId} ({Name}).", inventoryItemId, item.MedicationName);
+            return;
+        }
+
+        var offerCount = Math.Min(availableSlots, waiting.Count);
         var offeredUserIds = new List<Guid>();
         var offeredSubscriptions = new List<(Domain.Entities.Subscription Sub, DateTime ExpiresAt)>();
+
+        // Touch item so concurrency token (RowVersion) enforces optimistic concurrency across parallel jobs
+        item.LastUpdatedAt = DateTime.UtcNow;
 
         for (var i = 0; i < offerCount; i++)
         {

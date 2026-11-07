@@ -27,7 +27,7 @@ class ToggleAlertRequest {
   ToggleAlertRequest({required this.isActive});
 
   factory ToggleAlertRequest.fromJson(Map<String, dynamic> json) => _$ToggleAlertRequestFromJson(json);
-  Map<String, dynamic> toJson() => {'isActive': isActive};
+  Map<String, dynamic> toJson() => _$ToggleAlertRequestToJson(this);
 }
 
 @JsonSerializable()

@@ -269,7 +269,8 @@ class _PatientOnboardingSheetState extends ConsumerState<PatientOnboardingSheet>
           ),
           Switch(
             value: value,
-            activeColor: NawaqsColors.teal,
+            activeThumbColor: Colors.white,
+            activeTrackColor: NawaqsColors.teal,
             onChanged: onChanged,
           ),
         ],
