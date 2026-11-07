@@ -16,203 +16,9 @@ import 'package:nawakes_mobile/features/pharmacy/data/sales_ledger_models.dart';
 import 'package:nawakes_mobile/features/pharmacy/data/pharmacy_profile_models.dart';
 import 'package:nawakes_mobile/features/reservations/data/reservation_models.dart';
 import 'package:nawakes_mobile/features/search/presentation/prescription_basket_screen.dart';
-
-// ============================================================================
-// Brand Kit v3 Stickers Contract Widgets (PROJECT.md § Interface Contracts)
-// ============================================================================
-
-/// Found sticker: "لقيناه!" in Cairo bold with Mint background & Dark Teal text
-class NawaqssFoundSticker extends StatelessWidget {
-  final String label;
-  const NawaqssFoundSticker({super.key, this.label = 'لقيناه!'});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: NawaqsColors.mint,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: NawaqsColors.mintDeep, width: 1.2),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          fontFamily: 'Cairo',
-          fontSize: 12,
-          fontWeight: FontWeight.w800,
-          color: NawaqsColors.tealDark,
-        ),
-      ),
-    );
-  }
-}
-
-/// Shortage sticker: "ناقص!" in Cairo bold with Soft Coral background & Coral text
-class NawaqssShortageSticker extends StatelessWidget {
-  final String label;
-  const NawaqssShortageSticker({super.key, this.label = 'ناقص!'});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: NawaqsColors.coralSoft,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: NawaqsColors.coral, width: 1.2),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          fontFamily: 'Cairo',
-          fontSize: 12,
-          fontWeight: FontWeight.w800,
-          color: NawaqsColors.coral,
-        ),
-      ),
-    );
-  }
-}
-
-/// Privacy sticker: "الاسم والرقم اتحجبوا 🔒" with lock glyph
-class NawaqssPrivacySticker extends StatelessWidget {
-  final String label;
-  const NawaqssPrivacySticker({super.key, this.label = 'الاسم والرقم اتحجبوا 🔒'});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF0FDF4),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF86EFAC), width: 1.0),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.lock_rounded, size: 14, color: Color(0xFF14532D)),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: const TextStyle(
-              fontFamily: 'Cairo',
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF14532D),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Single medication sticker: "دوا واحد بس"
-class NawaqssSingleMedSticker extends StatelessWidget {
-  final String label;
-  const NawaqssSingleMedSticker({super.key, this.label = 'دوا واحد بس'});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: NawaqsColors.stickerYellow.withValues(alpha: 0.25),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE5B800), width: 1.0),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          fontFamily: 'Cairo',
-          fontSize: 11.5,
-          fontWeight: FontWeight.w800,
-          color: Color(0xFF8C6500),
-        ),
-      ),
-    );
-  }
-}
-
-/// Dynamic counter badge sticker
-class NawaqssCounterSticker extends StatelessWidget {
-  final int count;
-  final String? suffix;
-  const NawaqssCounterSticker({super.key, required this.count, this.suffix});
-
-  @override
-  Widget build(BuildContext context) {
-    final display = count < 0 ? '0' : (count > 99 ? '99+' : '$count');
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: NawaqsColors.teal,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        suffix != null ? '$display $suffix' : display,
-        style: const TextStyle(
-          fontFamily: 'Cairo',
-          fontSize: 11,
-          fontWeight: FontWeight.w800,
-          color: Colors.white,
-        ),
-      ),
-    );
-  }
-}
-
-// ============================================================================
-// Mandatory Location Prompt Dialog Contract Widget (PROJECT.md)
-// ============================================================================
-
-class MandatoryLocationPromptDialog extends StatelessWidget {
-  final VoidCallback onAllow;
-  final VoidCallback onCancel;
-
-  const MandatoryLocationPromptDialog({
-    super.key,
-    required this.onAllow,
-    required this.onCancel,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return PopScope(
-      canPop: false,
-      child: AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
-          children: [
-            Icon(Icons.location_on_rounded, color: NawaqsColors.teal),
-            SizedBox(width: 8),
-            Text(
-              'محتاجين نعرف موقعك بدقة',
-              style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800, fontSize: 16),
-            ),
-          ],
-        ),
-        content: const Text(
-          'علشان نقدر نحدد أقرب صيدلية متوفر فيها دواك ونحسب المسافة الحقيقية ومصاريف التوصيل، التطبيق محتاج صلاحية الموقع (GPS).',
-          style: TextStyle(fontFamily: 'Cairo', fontSize: 13),
-        ),
-        actions: [
-          TextButton(
-            onPressed: onCancel,
-            child: const Text('مش دلوقتي', style: TextStyle(fontFamily: 'Cairo', color: Colors.grey)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: NawaqsColors.teal),
-            onPressed: onAllow,
-            child: const Text('سماح', style: TextStyle(fontFamily: 'Cairo', color: Colors.white, fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
-  }
-}
+import 'package:nawakes_mobile/features/search/presentation/widgets/mandatory_location_prompt_dialog.dart';
+import 'package:nawakes_mobile/features/search/presentation/widgets/nearby_pharmacy_options_sheet.dart';
+import 'package:nawakes_mobile/features/search/presentation/prescription_scanner_hud_screen.dart';
 
 // ============================================================================
 // Test Doubles & Mock ApiClient
@@ -670,16 +476,38 @@ void main() {
     });
 
     testWidgets('T1-F7.4: Delivery badge displays توصيل متاح 🛵 for delivery pharmacies', (tester) async {
+      final productWithDelivery = NearbyProduct(
+        id: 'prod-delivery-1',
+        tradeName: 'Concor 5mg',
+        commercialNameAr: 'كونكور 5 مجم',
+        dosageForm: 'أقراص',
+        strength: '5mg',
+        price: 45.0,
+        availablePharmaciesCount: 1,
+        minDistanceKm: 1.2,
+        pharmacies: [
+          NearbyPharmacyOption(
+            pharmacyId: 'pharm-delivery-1',
+            pharmacyName: 'صيدلية النيل مع توصيل',
+            address: 'الدقي، الجيزة',
+            distanceKm: 1.2,
+            price: 45.0,
+            inStockQuantity: 10,
+            supportsDelivery: true,
+          ),
+        ],
+      );
+
       await tester.pumpWidget(
-        wrapWithTheme(
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(color: NawaqsColors.mint, borderRadius: BorderRadius.circular(8)),
-            child: const Text('توصيل متاح 🛵', style: TextStyle(fontFamily: 'Cairo')),
+        ProviderScope(
+          child: wrapWithTheme(
+            NearbyPharmacyOptionsSheet(product: productWithDelivery),
           ),
         ),
       );
+
       expect(find.text('توصيل متاح 🛵'), findsOneWidget);
+      expect(find.byType(NearbyPharmacyOptionsSheet), findsOneWidget);
     });
 
     testWidgets('T1-F7.5: Pharmacies with delivery are sorted ahead of distance', (tester) async {
@@ -712,6 +540,16 @@ void main() {
       });
 
       expect(pharmacies.first.pharmacyId, 'p2');
+    });
+
+    test('T1-F7.6: Halaib coordinates resolve to Red Sea governorate', () {
+      final gov = LocationService.detectGovernorate(22.2212, 36.6473);
+      expect(gov, 'البحر الأحمر');
+    });
+
+    test('T1-F7.7: Shalateen coordinates resolve to Red Sea governorate', () {
+      final gov = LocationService.detectGovernorate(23.1317, 35.5869);
+      expect(gov, 'البحر الأحمر');
     });
   });
 
@@ -1365,15 +1203,51 @@ void main() {
     });
 
     testWidgets('T3-C5: Cabinet 1-tap re-order (F8) displays delivery pharmacies with توصيل متاح 🛵 (F7)', (tester) async {
-      await tester.pumpWidget(
-        wrapWithTheme(
-          Row(
-            children: [
-              const Text('Concor 5mg'),
-              const SizedBox(width: 8),
-              const Text('توصيل متاح 🛵'),
-            ],
+      final med = FamilyMedicationModel(
+        id: 'med-c5',
+        medicationName: 'Concor 5mg',
+        strength: '5mg',
+        stripsCount: 0,
+        unitsPerStrip: 10,
+        dailyDoseUnits: 1,
+        daysRemaining: 0,
+        alertThresholdDays: 5,
+      );
+
+      final deliveryProduct = NearbyProduct(
+        id: 'prod-c5',
+        tradeName: 'Concor 5mg',
+        commercialNameAr: 'كونكور 5 مجم',
+        dosageForm: 'أقراص',
+        strength: '5mg',
+        price: 50.0,
+        availablePharmaciesCount: 1,
+        minDistanceKm: 1.0,
+        pharmacies: [
+          NearbyPharmacyOption(
+            pharmacyId: 'p-c5',
+            pharmacyName: 'صيدلية الأمل',
+            address: 'الدقي',
+            distanceKm: 1.0,
+            price: 50.0,
+            inStockQuantity: 5,
+            supportsDelivery: true,
           ),
+        ],
+      );
+
+      // Step 1: Render cabinet depletion card with 1-tap re-order button
+      await tester.pumpWidget(
+        ProviderScope(
+          child: wrapWithTheme(MedicationDepletionCard(medication: med)),
+        ),
+      );
+      expect(find.text('إعادة طلب الدواء ⚡'), findsOneWidget);
+
+      // Step 2: Show nearby pharmacy options with delivery badge
+      await tester.pumpWidget(
+        ProviderScope(
+          child: wrapWithTheme(NearbyPharmacyOptionsSheet(product: deliveryProduct)),
         ),
       );
       expect(find.text('توصيل متاح 🛵'), findsOneWidget);
@@ -1456,7 +1330,7 @@ void main() {
   // --------------------------------------------------------------------------
   group('Tier 4: Real-World Scenarios (End-to-End User Journeys)', () {
     testWidgets('T4-S1: Chronic patient monthly refill journey from cabinet depletion to delivery reservation', (tester) async {
-      // Step 1: Patient checks cabinet and sees depleted chronic med
+      final fakeApi = FakeE2EApiClient();
       final med = FamilyMedicationModel(
         id: 'chronic-1',
         medicationName: 'Concor 5mg',
@@ -1467,13 +1341,38 @@ void main() {
         daysRemaining: 2,
         alertThresholdDays: 5,
       );
-      expect(med.daysRemaining, lessThanOrEqualTo(3));
+
+      // Step 1: Patient checks cabinet and sees depleted chronic med in genuine MedicationDepletionCard
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            apiClientProvider.overrideWithValue(fakeApi),
+          ],
+          child: wrapWithTheme(MedicationDepletionCard(medication: med)),
+        ),
+      );
+      expect(find.text('Concor 5mg 5mg'), findsOneWidget);
+      expect(find.text('باقي 2 أيام على النفاذ ⏳'), findsOneWidget);
+      expect(find.text('إعادة طلب الدواء ⚡'), findsOneWidget);
 
       // Step 2: User taps 1-tap re-order button
-      bool reordered = true;
-      expect(reordered, isTrue);
+      await tester.tap(find.text('إعادة طلب الدواء ⚡'));
+      await tester.pump();
 
-      // Step 3: Location prompt verifies GPS in Giza
+      // Step 3: Mandatory location prompt verifies GPS before search/delivery
+      bool permissionAllowed = false;
+      await tester.pumpWidget(
+        wrapWithTheme(
+          MandatoryLocationPromptDialog(
+            onAllow: () => permissionAllowed = true,
+            onCancel: () {},
+          ),
+        ),
+      );
+      expect(find.text('محتاجين نعرف موقعك بدقة'), findsOneWidget);
+      await tester.tap(find.text('سماح'));
+      expect(permissionAllowed, isTrue);
+
       final fakeLoc = FakeE2ELocationService(
         positionOverride: Position(latitude: 29.987, longitude: 30.942, timestamp: DateTime.now(), accuracy: 10, altitude: 0, altitudeAccuracy: 0, heading: 0, headingAccuracy: 0, speed: 0, speedAccuracy: 0),
       );
@@ -1481,7 +1380,6 @@ void main() {
       expect(pos!.latitude, 29.987);
 
       // Step 4: Batch search locates delivery pharmacy
-      final fakeApi = FakeE2EApiClient();
       final batchRes = await fakeApi.batchSearch(BatchSearchRequest(
         items: [BatchSearchItemDto(medication: med.medicationName, quantity: 1)],
         lat: pos.latitude,
@@ -1490,7 +1388,35 @@ void main() {
       ));
       expect(batchRes.completePharmacies, isNotEmpty);
 
-      // Step 5: Reservation created successfully
+      // Step 5: Nearby pharmacy options sheet shows delivery badge & reservation
+      final deliveryProduct = NearbyProduct(
+        id: 'prod-chronic-refill',
+        tradeName: 'Concor 5mg',
+        commercialNameAr: 'كونكور 5 مجم',
+        dosageForm: 'أقراص',
+        strength: '5mg',
+        price: 45.0,
+        availablePharmaciesCount: 1,
+        minDistanceKm: 1.2,
+        pharmacies: [
+          NearbyPharmacyOption(
+            pharmacyId: 'p_complete_1',
+            pharmacyName: 'صيدلية الأمل النموذجية',
+            address: 'شارع جمال عبد الناصر، بنها',
+            distanceKm: 0.9,
+            price: 45.0,
+            inStockQuantity: 10,
+            supportsDelivery: true,
+          ),
+        ],
+      );
+      await tester.pumpWidget(
+        ProviderScope(
+          child: wrapWithTheme(NearbyPharmacyOptionsSheet(product: deliveryProduct)),
+        ),
+      );
+      expect(find.text('توصيل متاح 🛵'), findsOneWidget);
+
       final res = await fakeApi.createReservation(CreateReservationRequest(
         inventoryItemId: 'inv_concor',
       ));
@@ -1529,13 +1455,24 @@ void main() {
     });
 
     testWidgets('T4-S3: Prescription OCR camera scan to uncovered basket with privacy ticker', (tester) async {
-      // Step 1: Scanner HUD initializes without overflow
+      final fakeApi = FakeE2EApiClient();
+
+      // Step 1: Genuine PrescriptionScannerHudScreen initializes without overflow
       await tester.pumpWidget(
-        wrapWithTheme(
-          const SafeArea(child: Text('Scanner HUD Active')),
+        ProviderScope(
+          overrides: [
+            apiClientProvider.overrideWithValue(fakeApi),
+          ],
+          child: wrapWithTheme(
+            const PrescriptionScannerHudScreen(
+              ocrHintText: 'Augmentin',
+            ),
+          ),
         ),
       );
+      await tester.pump();
       expect(tester.takeException(), isNull);
+      expect(find.byType(PrescriptionScannerHudScreen), findsOneWidget);
 
       // Step 2: Basket screen displays single-line privacy ticker
       await tester.pumpWidget(
@@ -1549,6 +1486,7 @@ void main() {
         ),
       );
       expect(find.byKey(const ValueKey('prescription_privacy_assurance_banner')), findsOneWidget);
+      expect(find.text('🔒 الاسم والرقم اتحجبوا · خصوصية مشفرة بقانون 151'), findsOneWidget);
       expect(find.text('Augmentin'), findsOneWidget);
       expect(find.text('Panadol'), findsOneWidget);
     });
@@ -1585,33 +1523,62 @@ void main() {
     });
 
     testWidgets('T4-S5: Expired medicine warning, safe disposal notice, and 1-tap re-order with delivery', (tester) async {
-      // Step 1: Patient observes expired medication alert in cabinet
-      await tester.pumpWidget(
-        wrapWithTheme(
-          const Column(
-            children: [
-              NuqousMascot(mood: NuqousMood.worried, height: 80),
-              Text('منتهي الصلاحية ⛔'),
-              Text('لا تتناول الدواء. اسأل الصيدلي عن الطريقة الآمنة للتخلص منه.'),
-            ],
+      final expiredMed = FamilyMedicationModel(
+        id: 'med-expired-1',
+        medicationName: 'Panadol Extra',
+        strength: '500mg',
+        stripsCount: 0,
+        unitsPerStrip: 10,
+        dailyDoseUnits: 2,
+        daysRemaining: 0,
+        alertThresholdDays: 5,
+        expiryDate: DateTime.now().subtract(const Duration(days: 10)),
+      );
+
+      final deliveryProduct = NearbyProduct(
+        id: 'prod-delivery-s5',
+        tradeName: 'Panadol Extra',
+        commercialNameAr: 'بانادول اكسترا',
+        dosageForm: 'أقراص',
+        strength: '500mg',
+        price: 45.0,
+        availablePharmaciesCount: 1,
+        minDistanceKm: 1.5,
+        pharmacies: [
+          NearbyPharmacyOption(
+            pharmacyId: 'pharm-delivery-s5',
+            pharmacyName: 'صيدلية النيل',
+            address: 'الدقي، الجيزة',
+            distanceKm: 1.5,
+            price: 45.0,
+            inStockQuantity: 10,
+            supportsDelivery: true,
           ),
+        ],
+      );
+
+      // Step 1: Patient observes expired medication alert in genuine MedicationDepletionCard
+      await tester.pumpWidget(
+        ProviderScope(
+          child: wrapWithTheme(MedicationDepletionCard(medication: expiredMed)),
         ),
       );
       expect(find.text('منتهي الصلاحية ⛔'), findsOneWidget);
+      expect(find.text('لا تتناول الدواء. اسأل الصيدلي عن الطريقة الآمنة للتخلص منه.'), findsOneWidget);
+      expect(find.text('دواك خلص! باقي 0 يوم ⏳'), findsOneWidget);
+      expect(find.text('إعادة طلب الدواء ⚡'), findsOneWidget);
 
-      // Step 2: 1-tap re-order fresh medication with delivery
+      // Step 2: 1-tap re-order fresh medication with delivery options sheet
+      await tester.tap(find.text('إعادة طلب الدواء ⚡'));
+      await tester.pump();
+
       await tester.pumpWidget(
-        wrapWithTheme(
-          Row(
-            children: [
-              ElevatedButton(onPressed: () {}, child: const Text('إعادة طلب الدواء ⚡')),
-              const Text('توصيل متاح 🛵'),
-            ],
-          ),
+        ProviderScope(
+          child: wrapWithTheme(NearbyPharmacyOptionsSheet(product: deliveryProduct)),
         ),
       );
-      expect(find.text('إعادة طلب الدواء ⚡'), findsOneWidget);
       expect(find.text('توصيل متاح 🛵'), findsOneWidget);
+      expect(find.byType(NearbyPharmacyOptionsSheet), findsOneWidget);
     });
   });
 }

@@ -401,12 +401,16 @@ class _PrescriptionScannerHudScreenState
                               ),
                             ),
                             const SizedBox(width: 8),
-                            Text(
-                              _hudMicrocopy[_currentStage],
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
+                            Flexible(
+                              child: Text(
+                                _hudMicrocopy[_currentStage],
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
                           ],

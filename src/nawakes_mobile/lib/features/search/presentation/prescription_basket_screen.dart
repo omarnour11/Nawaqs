@@ -418,14 +418,14 @@ class PrescriptionBasketScreen extends HookConsumerWidget {
                                                     children: [
                                                       const Icon(Icons.sell_outlined, size: 12, color: Color(0xFF2E7D32)),
                                                       const SizedBox(width: 4),
-                                                      Text(
+                                                      Flexible(child: Text(
                                                         'السعر: ${item.priceEgp!.toStringAsFixed(item.priceEgp! % 1 == 0 ? 0 : 2)} ج.م',
                                                         style: const TextStyle(
                                                           fontSize: 11,
                                                           fontWeight: FontWeight.w700,
                                                           color: Color(0xFF2E7D32),
                                                         ),
-                                                      ),
+                                                      )),
                                                     ],
                                                   ),
                                                 ),
@@ -620,7 +620,7 @@ class PrescriptionBasketScreen extends HookConsumerWidget {
 
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -745,7 +745,7 @@ class PrescriptionBasketScreen extends HookConsumerWidget {
       key: const ValueKey('prescription_privacy_assurance_banner'),
       height: 36,
       width: double.infinity,
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
         color: const Color(0xFFF0FDF4),

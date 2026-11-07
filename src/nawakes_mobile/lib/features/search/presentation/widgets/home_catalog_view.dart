@@ -919,10 +919,12 @@ class _LocationPickerBottomSheetState
     if (_isLoadingGps) return;
     setState(() => _isLoadingGps = true);
     try {
-      final allowed = await ensureLocationPermission(context, ref);
-      if (!allowed) {
-        if (mounted) setState(() => _isLoadingGps = false);
-        return;
+      if (_cachedGpsPosition == null) {
+        final allowed = await ensureLocationPermission(context, ref);
+        if (!allowed) {
+          if (mounted) setState(() => _isLoadingGps = false);
+          return;
+        }
       }
       final locService = ref.read(locationServiceProvider);
       final pos = _cachedGpsPosition ?? await locService.getCurrentLocation();

@@ -483,6 +483,12 @@ class LocationService {
         return closestPlace.governorate;
       }
 
+      // Red Sea coastal strip anchor check (Halaib, Shalateen, Marsa Alam)
+      // Longitudes >= 33.5°E and latitudes between 22.0°N and 27.0°N belong exclusively to Red Sea Governorate
+      if (lng >= 33.5 && lat < 27.0 && lat >= 22.0) {
+        return 'البحر الأحمر';
+      }
+
       String bestGov = 'القاهرة';
       double minCentroidDist = double.infinity;
       for (final entry in egyptianGovernorates.entries) {

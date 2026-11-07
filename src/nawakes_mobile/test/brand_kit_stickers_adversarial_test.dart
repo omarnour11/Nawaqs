@@ -259,7 +259,9 @@ void main() {
       );
       await tester.pump();
 
-      final transforms = tester.widgetList<Transform>(find.byType(Transform)).toList();
+      final transforms = tester.widgetList<Transform>(
+        find.descendant(of: find.byType(Column), matching: find.byType(Transform)),
+      ).toList();
       // Exactly 4 tilted stickers have a Transform widget
       expect(transforms.length, equals(4));
 

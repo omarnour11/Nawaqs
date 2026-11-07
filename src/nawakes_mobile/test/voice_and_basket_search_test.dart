@@ -1203,7 +1203,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(BatchSearchResultsScreen), findsOneWidget);
-      expect(find.text('البحث المجمع الذكي'), findsOneWidget);
+      expect(find.text('نتائج البحث الذكي عن الروشتة'), findsOneWidget);
     });
   });
 }
