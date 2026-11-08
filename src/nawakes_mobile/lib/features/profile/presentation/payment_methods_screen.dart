@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:nawakes_mobile/core/services/payment_methods_service.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
+import 'package:nawakes_mobile/core/ui/paymob_gateway_dialog.dart';
 
 class PaymentMethodsScreen extends ConsumerWidget {
   const PaymentMethodsScreen({super.key});
@@ -345,6 +346,35 @@ class PaymentMethodsScreen extends ConsumerWidget {
                   ),
                 ),
               ],
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // ── Paymob Live Gateway Simulator ──
+          FilledButton.icon(
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF1E3A8A),
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            ),
+            onPressed: () {
+              showPaymobGatewaySheet(
+                context: context,
+                paymentType: paymentState.defaultType == PaymentType.cash
+                    ? PaymentType.vodafoneCash
+                    : paymentState.defaultType,
+                amountEgp: 150.0,
+                medicationName: 'أوجمنتين 1 جم (تجريبي)',
+                pharmacyName: 'صيدلية رشدي - الدقي',
+                initialPhone: paymentState.vodafoneCashNumber.isNotEmpty
+                    ? paymentState.vodafoneCashNumber
+                    : '01029834112',
+              );
+            },
+            icon: const Icon(Icons.payment_rounded, color: Colors.white),
+            label: const Text(
+              'تجربة بوابة مدفوعات Paymob الآن 🚀',
+              style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800, fontSize: 14),
             ),
           ),
           const SizedBox(height: 30),

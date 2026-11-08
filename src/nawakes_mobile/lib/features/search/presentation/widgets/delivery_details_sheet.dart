@@ -5,6 +5,7 @@ import 'package:nawakes_mobile/core/network/api_client.dart';
 import 'package:nawakes_mobile/core/services/payment_methods_service.dart';
 import 'package:nawakes_mobile/core/services/paymob_payment_service.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
+import 'package:nawakes_mobile/core/ui/paymob_gateway_dialog.dart';
 import 'package:nawakes_mobile/features/reservations/data/reservation_models.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -441,21 +442,24 @@ class DeliveryDetailsSheet extends HookConsumerWidget {
                           '${streetCtrl.text.trim()}، عمارة ${buildingCtrl.text.trim()}، شقة ${aptCtrl.text.trim()}${landmarkCtrl.text.trim().isNotEmpty ? " (علامة: ${landmarkCtrl.text.trim()})" : ""}';
 
                       String paymentName = 'كاش عند الاستلام';
-                      String gatewayRef = '';
 
-                      // Process through Paymob if E-Wallet is selected
-                      if (selectedPayment.value == PaymentType.vodafoneCash) {
-                        final paymobResult = await ref.read(paymobPaymentServiceProvider).payWithMobileWallet(
-                          walletNumber: phoneCtrl.text.trim(),
+                      // Launch interactive Egyptian payment gateway (Paymob / InstaPay)
+                      if (selectedPayment.value != PaymentType.cash) {
+                        final gatewayResult = await showPaymobGatewaySheet(
+                          context: context,
+                          paymentType: selectedPayment.value,
                           amountEgp: grandTotal,
-                          patientName: 'عميل نواقص',
+                          medicationName: medicationName,
+                          pharmacyName: pharmacyName,
+                          initialPhone: phoneCtrl.text.trim(),
                         );
-                        gatewayRef = ' · مرجع Paymob: ${paymobResult.referenceNumber} (${paymobResult.ussdCode})';
-                        paymentName = 'محفظة إلكترونية عبر Paymob$gatewayRef';
-                      } else if (selectedPayment.value == PaymentType.card) {
-                        paymentName = 'بطاقة بنكية عبر Paymob Gateway';
-                      } else if (selectedPayment.value == PaymentType.instapay) {
-                        paymentName = 'إنستاباي (InstaPay IPN)';
+
+                        if (gatewayResult == null || !gatewayResult.success) {
+                          // User dismissed or cancelled payment gateway
+                          return;
+                        }
+
+                        paymentName = gatewayResult.notes;
                       }
 
                       final effectiveLat = latitude ?? 30.0444;
