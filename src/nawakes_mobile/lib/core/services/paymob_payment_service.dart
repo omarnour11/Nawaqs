@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nawakes_mobile/core/services/payment_methods_service.dart';
@@ -260,7 +259,6 @@ class PaymobPaymentService {
     required String patientPhone,
   }) async {
     // 1. Strict Luhn & Card verification
-    final cleanNumber = card.maskedNumber.replaceAll(RegExp(r'\D'), '');
     if (!CardValidator.isValidCVV(cvv)) {
       throw ArgumentError('رمز أمان البطاقة (CVV) غير صالح.');
     }

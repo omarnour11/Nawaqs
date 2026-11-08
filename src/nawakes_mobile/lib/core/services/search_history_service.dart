@@ -13,7 +13,7 @@ class SearchHistoryNotifier extends Notifier<List<String>> {
   @override
   List<String> build() {
     // Reactively watch auth status changes (e.g. login/logout)
-    final authState = ref.watch(authControllerProvider).valueOrNull;
+    final authState = ref.watch(authControllerProvider).asData?.value;
     if (authState == null || !authState.isAuthenticated) {
       _currentStorageKey = 'nawaqs_recent_search_history_guest';
       _loadFromDisk();
@@ -94,6 +94,8 @@ class SearchHistoryNotifier extends Notifier<List<String>> {
       await prefs.remove(_currentStorageKey);
     } catch (_) {}
   }
+
+  Future<void> clearAll() => clearHistory();
 }
 
 final searchHistoryProvider =

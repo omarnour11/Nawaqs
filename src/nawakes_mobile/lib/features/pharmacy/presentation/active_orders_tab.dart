@@ -16,6 +16,7 @@ class ActiveOrdersTab extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(pharmacyReservationsControllerProvider);
+    final selectedTab = useState(0);
 
     return state.when(
       loading: () => const _LoadingShimmer(),
@@ -30,34 +31,114 @@ class ActiveOrdersTab extends HookConsumerWidget {
                 (r.status == 'Ready' || r.expiresAt.toUtc().isAfter(DateTime.now().toUtc())))
             .toList();
 
-        if (activeReservations.isEmpty) {
-          return RefreshIndicator(
-            color: AppColors.primary,
-            onRefresh: () async => ref.invalidate(pharmacyReservationsControllerProvider),
-            child: ListView(
-              children: const [
-                SizedBox(height: 160),
-                _EmptyOrders(),
-              ],
-            ),
-          );
-        }
+        final failedReservations = reservations
+            .where((r) =>
+                r.status == 'Cancelled' ||
+                r.status == 'Expired' ||
+                (r.clinicalContraindicationReason != null &&
+                    r.clinicalContraindicationReason!.isNotEmpty))
+            .toList();
 
-        return RefreshIndicator(
-          color: AppColors.primary,
-          onRefresh: () async => ref.invalidate(pharmacyReservationsControllerProvider),
-          child: ListView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-            itemCount: activeReservations.length,
-            itemBuilder: (context, i) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _OrderCard(
-                reservation: activeReservations[i],
-                ref: ref,
-                initiallyExpanded: activeReservations.length == 1,
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: ChoiceChip(
+                      label: Text(
+                        'الطلبات الجارية ()',
+                        style: const TextStyle(
+                          fontFamily: 'Cairo',
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12.5,
+                        ),
+                      ),
+                      selected: selectedTab.value == 0,
+                      onSelected: (val) {
+                        if (val) selectedTab.value = 0;
+                      },
+                      selectedColor: NawaqsColors.tealMedium.withValues(alpha: 0.25),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ChoiceChip(
+                      label: Text(
+                        'المتعثرة والملغية ()',
+                        style: const TextStyle(
+                          fontFamily: 'Cairo',
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12.5,
+                        ),
+                      ),
+                      selected: selectedTab.value == 1,
+                      onSelected: (val) {
+                        if (val) selectedTab.value = 1;
+                      },
+                      selectedColor: const Color(0xFFFEF2F2),
+                    ),
+                  ),
+                ],
               ),
             ),
-          ),
+            Expanded(
+              child: RefreshIndicator(
+                color: AppColors.primary,
+                onRefresh: () async =>
+                    ref.invalidate(pharmacyReservationsControllerProvider),
+                child: selectedTab.value == 0
+                    ? (activeReservations.isEmpty
+                        ? ListView(
+                            children: const [
+                              SizedBox(height: 140),
+                              _EmptyOrders(),
+                            ],
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                            itemCount: activeReservations.length,
+                            itemBuilder: (context, i) => Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: _OrderCard(
+                                reservation: activeReservations[i],
+                                ref: ref,
+                                initiallyExpanded: activeReservations.length == 1,
+                              ),
+                            ),
+                          ))
+                    : (failedReservations.isEmpty
+                        ? ListView(
+                            children: const [
+                              SizedBox(height: 140),
+                              Center(
+                                child: Text(
+                                  'لا توجد طلبات متعثرة أو ملغية',
+                                  style: TextStyle(
+                                    fontFamily: 'Cairo',
+                                    color: AppColors.textSecondary,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                            itemCount: failedReservations.length,
+                            itemBuilder: (context, i) => Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: _FailedOrderCard(
+                                reservation: failedReservations[i],
+                                ref: ref,
+                              ),
+                            ),
+                          )),
+              ),
+            ),
+          ],
         );
       },
     );

@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
@@ -593,7 +593,7 @@ class PassDetailScreen extends HookConsumerWidget {
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Text(
-                                  'كود OTP الأمني: ' + (reservation.reservationCode.replaceAll('-', '').length >= 4 ? reservation.reservationCode.replaceAll('-', '').substring(reservation.reservationCode.replaceAll('-', '').length - 4) : reservation.reservationCode),
+                                  'كود OTP الأمني: ${reservation.reservationCode.replaceAll('-', '').length >= 4 ? reservation.reservationCode.replaceAll('-', '').substring(reservation.reservationCode.replaceAll('-', '').length - 4) : reservation.reservationCode}',
                                   style: const TextStyle(
                                     color: Color(0xFFDFF3EA),
                                     fontSize: 11.5,

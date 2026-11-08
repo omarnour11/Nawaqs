@@ -332,10 +332,15 @@ class PaymentMethodsScreen extends ConsumerWidget {
                       return null;
                     },
                     onSave: (val) {
-                      if (val.startsWith('012')) notifier.updateOrangeCash(val);
-                      else if (val.startsWith('011')) notifier.updateEtisalatCash(val);
-                      else if (val.startsWith('015')) notifier.updateWePay(val);
-                      else notifier.updateVodafoneCash(val);
+                      if (val.startsWith('012')) {
+                        notifier.updateOrangeCash(val);
+                      } else if (val.startsWith('011')) {
+                        notifier.updateEtisalatCash(val);
+                      } else if (val.startsWith('015')) {
+                        notifier.updateWePay(val);
+                      } else {
+                        notifier.updateVodafoneCash(val);
+                      }
                     },
                   ),
                 ),
