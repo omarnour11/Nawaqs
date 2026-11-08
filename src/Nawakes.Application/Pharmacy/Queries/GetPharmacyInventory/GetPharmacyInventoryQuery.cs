@@ -72,7 +72,7 @@ public sealed class GetPharmacyInventoryQueryHandler(
 
         var query = context.InventoryItems
             .AsNoTracking()
-            .Where(i => i.PharmacyId == pharmacyId);
+            .Where(i => i.PharmacyId == pharmacyId && !i.IsDeleted);
 
         // Optional search filter applied server-side
         if (!string.IsNullOrWhiteSpace(request.Search))

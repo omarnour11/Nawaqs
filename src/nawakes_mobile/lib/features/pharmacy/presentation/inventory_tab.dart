@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
@@ -1125,5 +1125,51 @@ class _CsvImportSheet extends HookConsumerWidget {
         ),
       ),
     );
+  }
+}
+
+
+void _confirmDeleteItem(
+    BuildContext context, WidgetRef ref, PharmacyInventoryItemDto item) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (dCtx) => AlertDialog(
+      title: const Text('حذف الصنف من المخزون'),
+      content: Text(
+          'هل تريد بالتأكيد حذف "${item.medicationName}" نهائياً من قائمة الأدوية بالصيدلية؟'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(dCtx, false),
+          child: const Text('إلغاء'),
+        ),
+        FilledButton(
+          style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
+          onPressed: () => Navigator.pop(dCtx, true),
+          child: const Text('حذف الصنف'),
+        ),
+      ],
+    ),
+  );
+
+  if (confirmed == true) {
+    try {
+      await ref
+          .read(pharmacyInventoryControllerProvider.notifier)
+          .deleteItem(item.id);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('تم حذف "${item.medicationName}" بنجاح من قائمة الصيدلية.'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(describeApiError(e))),
+        );
+      }
+    }
   }
 }

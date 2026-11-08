@@ -54,6 +54,8 @@ class ReservationResponse {
   final String? deliveryContactPhone;
   final String? deliveryNotes;
   final String? deliveryStatus;
+  final double? pharmacyLatitude;
+  final double? pharmacyLongitude;
 
   ReservationResponse({
     required this.id,
@@ -77,6 +79,8 @@ class ReservationResponse {
     this.deliveryContactPhone,
     this.deliveryNotes,
     this.deliveryStatus,
+    this.pharmacyLatitude,
+    this.pharmacyLongitude,
   });
 
   factory ReservationResponse.fromJson(Map<String, dynamic> json) =>

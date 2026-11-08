@@ -46,7 +46,17 @@ public sealed class GetPatientReservationsQueryHandler(
                 r.ClinicalContraindicationReason,
                 r.RecommendedAlternativeMedication,
                 r.RecommendedAlternativeItemId,
-                crop
+                crop,
+                r.FulfillmentType.ToString(),
+                r.DeliveryAddress,
+                r.DeliveryLatitude,
+                r.DeliveryLongitude,
+                r.DeliveryContactPhone,
+                r.DeliveryNotes,
+                r.DeliveryStatus?.ToString(),
+                null,
+                r.InventoryItem.Pharmacy.Latitude,
+                r.InventoryItem.Pharmacy.Longitude
             );
         }).ToList();
     }

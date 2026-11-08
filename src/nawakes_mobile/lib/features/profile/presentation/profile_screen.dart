@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -10,6 +10,7 @@ import 'package:nawakes_mobile/features/profile/data/profile_models.dart';
 import 'package:nawakes_mobile/features/profile/presentation/profile_controller.dart';
 import 'package:nawakes_mobile/features/profile/presentation/medications_section.dart';
 import 'package:nawakes_mobile/features/favorites/data/favorite_models.dart';
+import 'package:nawakes_mobile/features/profile/presentation/payment_methods_screen.dart';
 
 
 const List<String> _standardAllergies = [
@@ -554,7 +555,7 @@ class _ProfileBody extends HookConsumerWidget {
               _LinkCard(
                 icon: Icons.account_balance_wallet_outlined,
                 label: 'طرق الدفع ومحفظة الحساب (إنستاباي، فودافون كاش، الفيزا)',
-                onTap: () => context.push('/payment-methods'),
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PaymentMethodsScreen())),
               ),
               const SizedBox(height: 8),
               _LinkCard(

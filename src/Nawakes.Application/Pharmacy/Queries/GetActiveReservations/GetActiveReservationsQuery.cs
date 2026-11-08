@@ -39,7 +39,8 @@ public sealed class GetActiveReservationsQueryHandler(
             .Include(r => r.InventoryItem)
             .Where(r => r.PharmacyId == pharmacy.Id &&
                         ((r.Status == ReservationStatus.Active && r.ExpiresAt > DateTime.UtcNow) ||
-                         r.Status == ReservationStatus.Ready))
+                         r.Status == ReservationStatus.Ready ||
+                         ((r.Status == ReservationStatus.Cancelled || r.Status == ReservationStatus.Expired) && r.CreatedAt >= cutoff)))
             .OrderByDescending(r => r.ExpiresAt)
             .ToListAsync(cancellationToken);
 

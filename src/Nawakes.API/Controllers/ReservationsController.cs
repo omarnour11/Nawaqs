@@ -171,7 +171,9 @@ public sealed class ReservationsController(ISender mediator) : ControllerBase
         dto.DeliveryContactPhone,
         dto.DeliveryNotes,
         dto.DeliveryStatus,
-        dto.SafetyAlerts);
+        dto.SafetyAlerts,
+        dto.PharmacyLatitude,
+        dto.PharmacyLongitude);
 }
 
 // ── API-layer DTOs ─────────────────────────────────────────────────────────────
@@ -219,5 +221,7 @@ public sealed record ReservationResponse(
     string? DeliveryContactPhone = null,
     string? DeliveryNotes = null,
     string? DeliveryStatus = null,
-    IReadOnlyList<SafetyAlertDto>? SafetyAlerts = null);
+    IReadOnlyList<SafetyAlertDto>? SafetyAlerts = null,
+    double? PharmacyLatitude = null,
+    double? PharmacyLongitude = null);
 

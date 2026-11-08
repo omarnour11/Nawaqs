@@ -1,20 +1,41 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:nawakes_mobile/features/auth/presentation/auth_controller.dart';
 
-const String _kSearchHistoryKey = 'nawaqs_recent_search_history_v1';
 const int _kMaxHistoryItems = 15;
 
+/// Isolated Recent Search History Service:
+/// Strictly isolates search logs per authenticated user account, preventing cross-account leaks.
 class SearchHistoryNotifier extends Notifier<List<String>> {
+  String _currentStorageKey = 'nawaqs_recent_search_history_guest';
+
   @override
   List<String> build() {
+    // Isolate search history per authenticated user account
+    final authVal = ref.watch(authControllerProvider).value;
+    final userId = authVal?.userId;
+    _currentStorageKey = (userId != null && userId.isNotEmpty)
+        ? 'nawaqs_recent_search_history_user_$userId'
+        : 'nawaqs_recent_search_history_guest';
+
     _loadFromDisk();
     return const [];
   }
 
+  /// Explicitly scope search history to a user ID (for isolated account testing & switching)
+  Future<void> scopeToUser(String? userId) async {
+    _currentStorageKey = (userId != null && userId.isNotEmpty)
+        ? 'nawaqs_recent_search_history_user_$userId'
+        : 'nawaqs_recent_search_history_guest';
+    await _loadFromDisk();
+  }
+
+  String get activeStorageKey => _currentStorageKey;
+
   Future<void> _loadFromDisk() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final list = prefs.getStringList(_kSearchHistoryKey) ?? [];
+      final list = prefs.getStringList(_currentStorageKey) ?? [];
       state = list;
     } catch (_) {
       // SharedPreferences unavailable or testing fallback
@@ -38,7 +59,7 @@ class SearchHistoryNotifier extends Notifier<List<String>> {
 
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setStringList(_kSearchHistoryKey, updated);
+      await prefs.setStringList(_currentStorageKey, updated);
     } catch (_) {}
   }
 
@@ -48,7 +69,7 @@ class SearchHistoryNotifier extends Notifier<List<String>> {
 
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setStringList(_kSearchHistoryKey, updated);
+      await prefs.setStringList(_currentStorageKey, updated);
     } catch (_) {}
   }
 
@@ -56,7 +77,7 @@ class SearchHistoryNotifier extends Notifier<List<String>> {
     state = const [];
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(_kSearchHistoryKey);
+      await prefs.remove(_currentStorageKey);
     } catch (_) {}
   }
 }

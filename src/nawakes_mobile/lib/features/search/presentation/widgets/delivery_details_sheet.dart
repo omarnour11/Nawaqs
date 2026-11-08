@@ -3,8 +3,10 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:nawakes_mobile/core/network/api_client.dart';
 import 'package:nawakes_mobile/core/services/payment_methods_service.dart';
+import 'package:nawakes_mobile/core/services/paymob_payment_service.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
 import 'package:nawakes_mobile/features/reservations/data/reservation_models.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class DeliveryDetailsSheet extends HookConsumerWidget {
   final String inventoryItemId;
@@ -154,7 +156,7 @@ class DeliveryDetailsSheet extends HookConsumerWidget {
           ),
           const SizedBox(height: 16),
 
-          // ── Courier & ETA Banner (Motorcycle Delivery) ──
+          // ── Courier & ETA Banner (Motorcycle Delivery & Click-to-Call) ──
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
@@ -181,30 +183,47 @@ class DeliveryDetailsSheet extends HookConsumerWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    const Icon(Icons.phone_in_talk_rounded, color: Color(0xFF15803D), size: 16),
-                    const SizedBox(width: 6),
-                    Text(
-                      'رقم تيار الدليفري للمتابعة: $courierPhone',
-                      style: const TextStyle(
-                        fontFamily: 'Cairo',
-                        fontWeight: FontWeight.w700,
-                        fontSize: 12,
-                        color: Color(0xFF15803D),
-                      ),
+                const SizedBox(height: 10),
+                InkWell(
+                  onTap: () async {
+                    final uri = Uri.parse('tel:$courierPhone');
+                    if (await canLaunchUrl(uri)) {
+                      await launchUrl(uri);
+                    }
+                  },
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFDCFCE7),
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                  ],
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.phone_in_talk_rounded, color: Color(0xFF15803D), size: 16),
+                        const SizedBox(width: 6),
+                        Text(
+                          'اتصال مباشر بالطيار: $courierPhone 📞',
+                          style: const TextStyle(
+                            fontFamily: 'Cairo',
+                            fontWeight: FontWeight.w800,
+                            fontSize: 12,
+                            color: Color(0xFF15803D),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 16),
 
-          // ── Address Fields (Talabat-Style Egypt) ──
+          // ── Address Fields (Mandatory Egyptian Address: Street, Building, Apt) ──
           const Text(
-            'تفاصيل عنوان التوصيل (بدون تعقيد)',
+            'تفاصيل عنوان التوصيل الإلزامية',
             style: TextStyle(
               fontFamily: 'Cairo',
               fontWeight: FontWeight.w800,
@@ -217,7 +236,7 @@ class DeliveryDetailsSheet extends HookConsumerWidget {
           TextField(
             controller: streetCtrl,
             decoration: const InputDecoration(
-              labelText: 'اسم الشارع والمنطقة *',
+              labelText: 'اسم الشارع والحي (إجباري) *',
               hintText: 'مثال: شارع التحرير، الدقي',
               prefixIcon: Icon(Icons.edit_road_rounded, size: 20),
               isDense: true,
@@ -231,7 +250,7 @@ class DeliveryDetailsSheet extends HookConsumerWidget {
                 child: TextField(
                   controller: buildingCtrl,
                   decoration: const InputDecoration(
-                    labelText: 'رقم أو اسم العمارة *',
+                    labelText: 'رقم أو اسم العمارة (إجباري) *',
                     hintText: 'مثال: عمارة 14',
                     isDense: true,
                   ),
@@ -242,7 +261,7 @@ class DeliveryDetailsSheet extends HookConsumerWidget {
                 child: TextField(
                   controller: aptCtrl,
                   decoration: const InputDecoration(
-                    labelText: 'رقم الشقة والدور *',
+                    labelText: 'رقم الشقة والدور (إجباري) *',
                     hintText: 'مثال: شقة 3، الدور 2',
                     isDense: true,
                   ),
@@ -256,7 +275,7 @@ class DeliveryDetailsSheet extends HookConsumerWidget {
             controller: landmarkCtrl,
             decoration: const InputDecoration(
               labelText: 'علامة مميزة (اختياري)',
-              hintText: 'مثال: أمام مسجد السلام أو بجوار السوبرماركت',
+              hintText: 'مثال: بجوار صيدلية أو أمام مسجد السلام',
               prefixIcon: Icon(Icons.pin_drop_outlined, size: 20),
               isDense: true,
             ),
@@ -267,23 +286,39 @@ class DeliveryDetailsSheet extends HookConsumerWidget {
             controller: phoneCtrl,
             keyboardType: TextInputType.phone,
             decoration: const InputDecoration(
-              labelText: 'رقم الموبايل للتواصل *',
-              hintText: '010XXXXXXXX',
+              labelText: 'رقم الموبايل للتواصل والتأكيد (إجباري) *',
+              hintText: '010XXXXXXXX (11 رقم)',
               prefixIcon: Icon(Icons.phone_android_rounded, size: 20),
               isDense: true,
             ),
           ),
           const SizedBox(height: 18),
 
-          // ── Payment Method Selector ──
-          const Text(
-            'طريقة الدفع',
-            style: TextStyle(
-              fontFamily: 'Cairo',
-              fontWeight: FontWeight.w800,
-              fontSize: 14,
-              color: NawaqsColors.ink,
-            ),
+          // ── Payment Method Selector (Paymob & Cash) ──
+          Row(
+            children: [
+              const Text(
+                'طريقة الدفع الرسمية',
+                style: TextStyle(
+                  fontFamily: 'Cairo',
+                  fontWeight: FontWeight.w800,
+                  fontSize: 14,
+                  color: NawaqsColors.ink,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFF6FF),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Text(
+                  'مدعوم عبر Paymob 🇪🇬',
+                  style: TextStyle(fontFamily: 'Cairo', fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF1D4ED8)),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 8),
 
@@ -297,17 +332,17 @@ class DeliveryDetailsSheet extends HookConsumerWidget {
                 onTap: () => selectedPayment.value = PaymentType.cash,
               ),
               _buildPaymentChip(
-                label: 'إنستاباي (InstaPay) ⚡',
-                selected: selectedPayment.value == PaymentType.instapay,
-                onTap: () => selectedPayment.value = PaymentType.instapay,
-              ),
-              _buildPaymentChip(
-                label: 'فودافون كاش 📱',
+                label: 'فودافون كاش ومحافظ المحمول (Paymob) 📱',
                 selected: selectedPayment.value == PaymentType.vodafoneCash,
                 onTap: () => selectedPayment.value = PaymentType.vodafoneCash,
               ),
               _buildPaymentChip(
-                label: 'فيزا / بطاقة بنكية 💳',
+                label: 'إنستاباي (InstaPay IPN) ⚡',
+                selected: selectedPayment.value == PaymentType.instapay,
+                onTap: () => selectedPayment.value = PaymentType.instapay,
+              ),
+              _buildPaymentChip(
+                label: 'فيزا / بطاقة بنكية (Paymob) 💳',
                 selected: selectedPayment.value == PaymentType.card,
                 onTap: () => selectedPayment.value = PaymentType.card,
               ),
@@ -383,7 +418,17 @@ class DeliveryDetailsSheet extends HookConsumerWidget {
                         phoneCtrl.text.trim().isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                          content: Text('برجاء كتابة تفاصيل الشارع والعمارة والشقة والموبايل'),
+                          content: Text('برجاء كتابة تفاصيل العنوان بالكامل: الشارع، العمارة، رقم الشقة والدور، والموبايل'),
+                          backgroundColor: AppColors.danger,
+                        ),
+                      );
+                      return;
+                    }
+
+                    if (!EgyptianWalletValidator.isValidMobileNumber(phoneCtrl.text.trim())) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('رقم الموبايل غير صالح. يرجى إدخال 11 رقماً تبدأ بـ 010 أو 011 أو 012 أو 015'),
                           backgroundColor: AppColors.danger,
                         ),
                       );
@@ -395,22 +440,37 @@ class DeliveryDetailsSheet extends HookConsumerWidget {
                       final fullAddress =
                           '${streetCtrl.text.trim()}، عمارة ${buildingCtrl.text.trim()}، شقة ${aptCtrl.text.trim()}${landmarkCtrl.text.trim().isNotEmpty ? " (علامة: ${landmarkCtrl.text.trim()})" : ""}';
 
-                      final paymentName = switch (selectedPayment.value) {
-                        PaymentType.cash => 'كاش عند الاستلام',
-                        PaymentType.instapay => 'إنستاباي IPN',
-                        PaymentType.vodafoneCash => 'فودافون كاش ومحافظ المحمول',
-                        PaymentType.card => 'بطاقة بنكية فيزا',
-                      };
+                      String paymentName = 'كاش عند الاستلام';
+                      String gatewayRef = '';
+
+                      // Process through Paymob if E-Wallet is selected
+                      if (selectedPayment.value == PaymentType.vodafoneCash) {
+                        final paymobResult = await ref.read(paymobPaymentServiceProvider).payWithMobileWallet(
+                          walletNumber: phoneCtrl.text.trim(),
+                          amountEgp: grandTotal,
+                          patientName: 'عميل نواقص',
+                        );
+                        gatewayRef = ' · مرجع Paymob: ${paymobResult.referenceNumber} (${paymobResult.ussdCode})';
+                        paymentName = 'محفظة إلكترونية عبر Paymob$gatewayRef';
+                      } else if (selectedPayment.value == PaymentType.card) {
+                        paymentName = 'بطاقة بنكية عبر Paymob Gateway';
+                      } else if (selectedPayment.value == PaymentType.instapay) {
+                        paymentName = 'إنستاباي (InstaPay IPN)';
+                      }
+
+                      final effectiveLat = latitude ?? 30.0444;
+                      final effectiveLng = longitude ?? 31.2357;
+                      final riderMapsUrl = 'https://maps.google.com/?q=$effectiveLat,$effectiveLng';
 
                       final notes =
-                          'طريقة الدفع: $paymentName · إجمالي: ${grandTotal.toStringAsFixed(1)} ج.م شامل التوصيل (${deliveryFee.toStringAsFixed(1)} ج.م)';
+                          'طريقة الدفع: $paymentName · إجمالي: ${grandTotal.toStringAsFixed(1)} ج.م شامل التوصيل (${deliveryFee.toStringAsFixed(1)} ج.م) · لوكيشن المريض: $riderMapsUrl';
 
                       final req = CreateReservationRequest(
                         inventoryItemId: inventoryItemId,
                         fulfillmentType: 'Delivery',
                         deliveryAddress: fullAddress,
-                        deliveryLatitude: latitude,
-                        deliveryLongitude: longitude,
+                        deliveryLatitude: effectiveLat,
+                        deliveryLongitude: effectiveLng,
                         deliveryContactPhone: phoneCtrl.text.trim(),
                         deliveryNotes: notes,
                       );

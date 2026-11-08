@@ -47,6 +47,7 @@ public sealed class AddInventoryItemCommandHandler(
 
         if (existingItem != null)
         {
+            existingItem.IsDeleted = false;
             // Fast in-place merge: add quantity to existing inventory item
             existingItem.Quantity = Math.Clamp(existingItem.Quantity + qty, 0, 100_000);
             if (existingItem.Quantity > 0 && existingItem.Status == InventoryStatus.OutOfStock)

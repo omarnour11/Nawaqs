@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -625,37 +625,9 @@ class _OrderCard extends HookWidget {
                     Expanded(
                       flex: 2,
                       child: FilledButton.icon(
-                        onPressed: isCompleting.value
-                            ? null
-                            : () async {
-                                isCompleting.value = true;
-                                try {
-                                  await ref
-                                      .read(pharmacyReservationsControllerProvider.notifier)
-                                      .completeReservation(reservation.id);
-                                  if (context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('الاستلام اتم بنجاح.')),
-                                    );
-                                  }
-                                } catch (e) {
-                                  if (context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(content: Text(describeApiError(e))),
-                                    );
-                                  }
-                                } finally {
-                                  isCompleting.value = false;
-                                }
-                              },
-                        icon: isCompleting.value
-                            ? const SizedBox(
-                                width: 14,
-                                height: 14,
-                                child: CircularProgressIndicator(
-                                    strokeWidth: 2, color: Colors.white))
-                            : const Icon(Icons.check_rounded, size: 16),
-                        label: Text(isCompleting.value ? 'جارٍ…' : 'تم الاستلام'),
+                        onPressed: () => _showHandoverVerificationDialog(context, ref, reservation),
+                        icon: const Icon(Icons.qr_code_scanner_rounded, size: 16),
+                        label: const Text('تم الاستلام'),
                         style: FilledButton.styleFrom(
                           minimumSize: const Size(0, 40),
                           textStyle: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
@@ -1186,10 +1158,10 @@ void _showClinicalReviewSheet(BuildContext context, WidgetRef ref, dynamic reser
                       try {
                         await ref
                             .read(pharmacyReservationsControllerProvider.notifier)
-                            .completeReservation(reservation.id);
+                            .markReady(reservation.id);
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('تم تأكيد الاستلام بنجاح.')),
+                            const SnackBar(content: Text('تم اعتماد الأمان السريري للدواء بنجاح.')),
                           );
                         }
                       } catch (e) {
@@ -1200,8 +1172,8 @@ void _showClinicalReviewSheet(BuildContext context, WidgetRef ref, dynamic reser
                         }
                       }
                     },
-                    icon: const Icon(Icons.check_circle_outline_rounded, size: 18),
-                    label: const Text('آمن سريرياً · تأكيد واستلام الدواء'),
+                    icon: const Icon(Icons.verified_user_outlined, size: 18),
+                    label: const Text('آمن سريرياً · اعتماد الفحص الطبي'),
                     style: FilledButton.styleFrom(
                       backgroundColor: AppColors.success,
                       padding: const EdgeInsets.symmetric(vertical: 12),
@@ -1340,4 +1312,221 @@ void _showClinicalRejectDialog(BuildContext context, WidgetRef ref, dynamic rese
       ],
     ),
   );
+}
+
+
+/// Dialog enforcing strict QR or OTP proof before an order can be marked delivered
+void _showHandoverVerificationDialog(BuildContext context, WidgetRef ref, dynamic reservation) {
+  final codeCtrl = TextEditingController();
+  final isDelivery = reservation.fulfillmentType == 'Delivery';
+  final expectedFullCode = (reservation.reservationCode as String).replaceAll('-', '').toUpperCase();
+  final expectedOtp = expectedFullCode.length >= 4 ? expectedFullCode.substring(expectedFullCode.length - 4) : expectedFullCode;
+  String? errorText;
+
+  showDialog(
+    context: context,
+    builder: (dCtx) => StatefulBuilder(
+      builder: (context, setState) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(isDelivery ? Icons.two_wheeler_rounded : Icons.verified_rounded,
+                color: NawaqsColors.tealDark, size: 24),
+            const SizedBox(width: 8),
+            Text(
+              isDelivery ? 'إثبات تسليم مندوب التوصيل' : 'إثبات استلام العميل بالصيدلية',
+              style: const TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800, fontSize: 15.5),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              isDelivery
+                  ? 'لحماية حقوق المريض والطيار، يجب إدخال كود التحقق السري (OTP) المسلم من المريض لمندوب التوصيل عند باب المنزل.'
+                  : 'لحماية حقوق الصيدلية والعميل، يجب فحص QR كود المريض أو إدخال كود الحجز/OTP الموضح على هاتف العميل.',
+              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.3),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: codeCtrl,
+              autofocus: true,
+              textCapitalization: TextCapitalization.characters,
+              decoration: InputDecoration(
+                labelText: isDelivery ? 'كود التحقق السري (OTP أو كود الحجز) *' : 'كود الحجز / الـ QR من شاشة العميل *',
+                hintText: isDelivery ? 'مثال: $expectedOtp' : 'مثال: ${reservation.reservationCode}',
+                prefixIcon: const Icon(Icons.qr_code_scanner_rounded, size: 20),
+                errorText: errorText,
+                isDense: true,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dCtx),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton.icon(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.success),
+            onPressed: () async {
+              final entered = codeCtrl.text.trim().replaceAll('-', '').toUpperCase();
+              if (entered.isEmpty) {
+                setState(() {
+                  errorText = 'يرجى إدخال كود التحقق لإثبات التسليم';
+                });
+                return;
+              }
+
+              final matchesFull = entered == expectedFullCode;
+              final matchesOtp = entered == expectedOtp;
+
+              if (!matchesFull && !matchesOtp) {
+                setState(() {
+                  errorText = 'كود التحقق غير صحيح! لا يمكن إغلاق الطلب دون إثبات التسليم من العميل.';
+                });
+                return;
+              }
+
+              Navigator.pop(dCtx);
+              try {
+                await ref
+                    .read(pharmacyReservationsControllerProvider.notifier)
+                    .completeReservation(reservation.id);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('تم التحقق بنجاح وتأكيد تسليم الطلب للمريض.'),
+                      backgroundColor: AppColors.success,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(describeApiError(e))),
+                  );
+                }
+              }
+            },
+            icon: const Icon(Icons.check_circle_rounded, size: 18),
+            label: const Text('تحقق وتسليم الطلب'),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+/// Card representing a Cancelled or Expired Reservation with Patient Follow-up Action
+class _FailedOrderCard extends StatelessWidget {
+  final dynamic reservation;
+  final WidgetRef ref;
+
+  const _FailedOrderCard({required this.reservation, required this.ref});
+
+  @override
+  Widget build(BuildContext context) {
+    final phone = (reservation.deliveryContactPhone as String?)?.isNotEmpty == true
+        ? reservation.deliveryContactPhone as String
+        : '01000000000';
+    final reason = (reservation.clinicalContraindicationReason as String?)?.isNotEmpty == true
+        ? reservation.clinicalContraindicationReason as String
+        : reservation.status == 'Expired'
+            ? 'انتهت صلاحية الحجز ولم يتم الحضور للاستلام'
+            : 'تم الإلغاء من قبل المريض';
+
+    final isClinical = (reservation.clinicalContraindicationReason as String?)?.isNotEmpty == true;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.hairline),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: isClinical ? const Color(0xFFFEF2F2) : Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: isClinical ? const Color(0xFFFCA5A5) : Colors.grey.shade300),
+                ),
+                child: Text(
+                  isClinical
+                      ? 'تعارض طبي سريري'
+                      : reservation.status == 'Expired'
+                          ? 'منتهي الصلاحية'
+                          : 'طلب ملغي',
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w800,
+                    color: isClinical ? const Color(0xFFDC2626) : AppColors.textSecondary,
+                  ),
+                ),
+              ),
+              Text(
+                reservation.reservationCode ?? '',
+                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: AppColors.textSecondary),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            reservation.medicationName ?? 'دواء',
+            style: const TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800, fontSize: 15, color: NawaqsColors.ink),
+          ),
+          const SizedBox(height: 6),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFFBEB),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFFFDE68A)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.info_outline_rounded, size: 16, color: Color(0xFFD97706)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'سبب التعثر: $reason',
+                    style: const TextStyle(fontFamily: 'Cairo', fontSize: 12, color: Color(0xFF92400E), fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    final uri = Uri.parse('tel:$phone');
+                    if (await canLaunchUrl(uri)) await launchUrl(uri);
+                  },
+                  icon: const Icon(Icons.phone_in_talk_rounded, size: 16, color: NawaqsColors.tealDark),
+                  label: Text('اتصال بالعميل للمتابعة ($phone)', style: const TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700, fontSize: 12.5)),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: NawaqsColors.tealDark),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }

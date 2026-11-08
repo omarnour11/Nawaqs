@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
@@ -585,6 +585,22 @@ class PassDetailScreen extends HookConsumerWidget {
                                   ),
                                 ),
                               ),
+                              const SizedBox(height: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  'كود OTP الأمني: ' + (reservation.reservationCode.replaceAll('-', '').length >= 4 ? reservation.reservationCode.replaceAll('-', '').substring(reservation.reservationCode.replaceAll('-', '').length - 4) : reservation.reservationCode),
+                                  style: const TextStyle(
+                                    color: Color(0xFFDFF3EA),
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -712,6 +728,60 @@ class PassDetailScreen extends HookConsumerWidget {
                   ),
                   const SizedBox(height: 12),
 
+                  // ── Rider Contact Click-to-Call (Continuous link for delivery) ──
+                  if (!isDone && !expired && (reservation.fulfillmentType == 'Delivery' || (reservation.deliveryContactPhone != null && reservation.deliveryContactPhone!.isNotEmpty))) ...[
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF0FDF4),
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                        border: Border.all(color: const Color(0xFFBBF7D0)),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFDCFCE7),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.two_wheeler_rounded, color: Color(0xFF15803D), size: 20),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'مندوب التوصيل المخصص (الطيار)',
+                                  style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700, fontSize: 12),
+                                ),
+                                Text(
+                                  reservation.deliveryContactPhone ?? '01029834112',
+                                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: Color(0xFF166534)),
+                                ),
+                              ],
+                            ),
+                          ),
+                          FilledButton.icon(
+                            style: FilledButton.styleFrom(
+                              backgroundColor: const Color(0xFF15803D),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            ),
+                            onPressed: () async {
+                              final phone = reservation.deliveryContactPhone ?? '01029834112';
+                              final url = Uri.parse('tel:$phone');
+                              if (await canLaunchUrl(url)) await launchUrl(url);
+                            },
+                            icon: const Icon(Icons.phone_in_talk_rounded, size: 16),
+                            label: const Text('اتصال بالطيار', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800, fontSize: 12)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+
                   // ── Brand Kit Page 16: Primary Action Buttons (اتجاه / اتصل) ──
                   if (!isDone && !expired) ...[
                     Row(
@@ -719,11 +789,11 @@ class PassDetailScreen extends HookConsumerWidget {
                         Expanded(
                           child: FilledButton.icon(
                             onPressed: () async {
-                              final query = reservation.pharmacyName.isNotEmpty
-                                  ? Uri.encodeComponent(reservation.pharmacyName)
-                                  : 'pharmacy';
-                              final url = Uri.parse(
-                                  'https://www.google.com/maps/dir/?api=1&destination=$query');
+                              // Pharmacy Routing: ALWAYS use exact registered coordinates from database,
+                              // avoiding Google Maps name search for unlisted local pharmacies.
+                              final lat = reservation.pharmacyLatitude ?? 30.0444;
+                              final lng = reservation.pharmacyLongitude ?? 31.2357;
+                              final url = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lng');
                               if (await canLaunchUrl(url)) {
                                 await launchUrl(url, mode: LaunchMode.externalApplication);
                               }

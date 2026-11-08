@@ -24,7 +24,9 @@ public sealed record ReservationDto(
     string? DeliveryContactPhone = null,
     string? DeliveryNotes = null,
     string? DeliveryStatus = null,
-    IReadOnlyList<SafetyAlertDto>? SafetyAlerts = null
+    IReadOnlyList<SafetyAlertDto>? SafetyAlerts = null,
+    double? PharmacyLatitude = null,
+    double? PharmacyLongitude = null
 );
 
 

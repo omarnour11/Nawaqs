@@ -15,7 +15,6 @@ import 'package:nawakes_mobile/features/reservations/presentation/passes_screen.
 import 'package:nawakes_mobile/features/alerts/presentation/alerts_screen.dart';
 import 'package:nawakes_mobile/features/support/presentation/support_screen.dart';
 import 'package:nawakes_mobile/features/profile/presentation/profile_screen.dart';
-import 'package:nawakes_mobile/features/profile/presentation/payment_methods_screen.dart';
 import 'package:nawakes_mobile/features/family_cabinet/presentation/family_cabinet_screen.dart';
 import 'package:nawakes_mobile/features/notifications/presentation/notifications_screen.dart';
 import 'package:nawakes_mobile/features/pharmacy/presentation/pharmacy_dashboard_screen.dart';
@@ -75,7 +74,6 @@ GoRouter appRouter(Ref ref) {
           loc == '/alerts' ||
           loc == '/family-cabinet' ||
           loc == '/profile' ||
-          loc == '/payment-methods' ||
           loc.startsWith('/search') ||
           loc.startsWith('/support') ||
           loc.startsWith('/pass-detail') ||
@@ -126,9 +124,6 @@ GoRouter appRouter(Ref ref) {
           GoRoute(
               path: '/passes', builder: (context, state) => const PassesScreen()),
           GoRoute(path: '/profile', builder: (context, state) => const ProfileScreen()),
-          GoRoute(
-              path: '/payment-methods',
-              builder: (context, state) => const PaymentMethodsScreen()),
           GoRoute(path: '/support', builder: (context, state) => const SupportScreen()),
           GoRoute(path: '/alerts', builder: (context, state) => const AlertsScreen()),
           GoRoute(

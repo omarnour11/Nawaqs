@@ -60,6 +60,8 @@ ReservationResponse _$ReservationResponseFromJson(Map<String, dynamic> json) =>
       deliveryContactPhone: json['deliveryContactPhone'] as String?,
       deliveryNotes: json['deliveryNotes'] as String?,
       deliveryStatus: json['deliveryStatus'] as String?,
+      pharmacyLatitude: (json['pharmacyLatitude'] as num?)?.toDouble(),
+      pharmacyLongitude: (json['pharmacyLongitude'] as num?)?.toDouble(),
     );
 
 Map<String, dynamic> _$ReservationResponseToJson(
@@ -86,4 +88,6 @@ Map<String, dynamic> _$ReservationResponseToJson(
   'deliveryContactPhone': instance.deliveryContactPhone,
   'deliveryNotes': instance.deliveryNotes,
   'deliveryStatus': instance.deliveryStatus,
+  'pharmacyLatitude': instance.pharmacyLatitude,
+  'pharmacyLongitude': instance.pharmacyLongitude,
 };
