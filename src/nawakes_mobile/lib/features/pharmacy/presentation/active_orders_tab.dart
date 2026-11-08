@@ -1414,9 +1414,11 @@ void _showHandoverVerificationDialog(BuildContext context, WidgetRef ref, dynami
             Icon(isDelivery ? Icons.two_wheeler_rounded : Icons.verified_rounded,
                 color: NawaqsColors.tealDark, size: 24),
             const SizedBox(width: 8),
-            Text(
-              isDelivery ? 'إثبات تسليم مندوب التوصيل' : 'إثبات استلام العميل بالصيدلية',
-              style: const TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800, fontSize: 15.5),
+            Expanded(
+              child: Text(
+                isDelivery ? 'إثبات تسليم مندوب التوصيل' : 'إثبات استلام العميل بالصيدلية',
+                style: const TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800, fontSize: 15.5),
+              ),
             ),
           ],
         ),

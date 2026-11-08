@@ -736,9 +736,15 @@ void main() {
       expect(fakeApi.lastReadyReservationId, 'res_101');
       expect(find.text('جاهز للاستلام'), findsWidgets);
 
-      // Tap 'تم الاستلام'
+      // Tap 'تم الاستلام' and verify handover proof via patient code
       await tester.tap(find.widgetWithText(FilledButton, 'تم الاستلام'));
       await tester.pumpAndSettle();
+
+      if (find.byType(TextField).evaluate().isNotEmpty) {
+        await tester.enterText(find.byType(TextField), 'NWQ-7788');
+        await tester.tap(find.widgetWithText(FilledButton, 'تحقق وتسليم الطلب'));
+        await tester.pumpAndSettle();
+      }
 
       expect(fakeApi.lastCompletedReservationId, 'res_101');
     });
