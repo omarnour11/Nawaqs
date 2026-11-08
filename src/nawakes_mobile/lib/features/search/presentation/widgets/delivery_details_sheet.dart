@@ -443,31 +443,13 @@ class DeliveryDetailsSheet extends HookConsumerWidget {
 
                       String paymentName = 'كاش عند الاستلام';
 
-                      // Launch interactive Egyptian payment gateway (Paymob / InstaPay)
-                      if (selectedPayment.value != PaymentType.cash) {
-                        final gatewayResult = await showPaymobGatewaySheet(
-                          context: context,
-                          paymentType: selectedPayment.value,
-                          amountEgp: grandTotal,
-                          medicationName: medicationName,
-                          pharmacyName: pharmacyName,
-                          initialPhone: phoneCtrl.text.trim(),
-                        );
-
-                        if (gatewayResult == null || !gatewayResult.success) {
-                          // User dismissed or cancelled payment gateway
-                          return;
-                        }
-
-                        paymentName = gatewayResult.notes;
-                      }
-
                       final effectiveLat = latitude ?? 30.0444;
                       final effectiveLng = longitude ?? 31.2357;
                       final riderMapsUrl = 'https://maps.google.com/?q=$effectiveLat,$effectiveLng';
 
+                      // ── Step 1: Create reservation first ───────────────
                       final notes =
-                          'طريقة الدفع: $paymentName · إجمالي: ${grandTotal.toStringAsFixed(1)} ج.م شامل التوصيل (${deliveryFee.toStringAsFixed(1)} ج.م) · لوكيشن المريض: $riderMapsUrl';
+                          'طريقة الدفع: ${selectedPayment.value == PaymentType.cash ? "كاش عند الاستلام" : "دفع إلكتروني"} · إجمالي: ${grandTotal.toStringAsFixed(1)} ج.م شامل التوصيل (${deliveryFee.toStringAsFixed(1)} ج.م) · لوكيشن المريض: $riderMapsUrl';
 
                       final req = CreateReservationRequest(
                         inventoryItemId: inventoryItemId,
@@ -480,6 +462,41 @@ class DeliveryDetailsSheet extends HookConsumerWidget {
                       );
 
                       final resp = await ref.read(apiClientProvider).createReservation(req);
+                      final createdReservationId = resp.id.toString();
+
+                      // ── Step 2: Open Paymob gateway for non-cash payments ──
+                      if (selectedPayment.value != PaymentType.cash) {
+                        final gatewayResult = await showPaymobGatewaySheet(
+                          context: context,
+                          paymentType: selectedPayment.value,
+                          amountEgp: grandTotal,
+                          medicationName: medicationName,
+                          pharmacyName: pharmacyName,
+                          initialPhone: phoneCtrl.text.trim(),
+                          reservationId: createdReservationId,
+                        );
+
+                        if (gatewayResult == null || !gatewayResult.success) {
+                          // Payment cancelled — reservation stays pending, user can pay later
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'تم إنشاء الحجز، لكن الدفع لم يكتمل. يمكنك الدفع لاحقاً من حجوزاتي.',
+                                  textDirection: TextDirection.rtl,
+                                ),
+                                backgroundColor: Colors.orange,
+                                duration: Duration(seconds: 5),
+                              ),
+                            );
+                            Navigator.of(context).pop(resp);
+                          }
+                          return;
+                        }
+
+                        paymentName = gatewayResult.notes;
+                      }
+
                       if (context.mounted) {
                         Navigator.of(context).pop(resp);
                       }

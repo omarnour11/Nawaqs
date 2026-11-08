@@ -42,6 +42,22 @@ public sealed class Reservation : BaseEntity
     /// <summary>Raw bytes of sanitized prescription image crop if stored directly.</summary>
     public byte[]? PrescriptionCropBytes { get; set; }
 
+    // ── Payment ──────────────────────────────────────────────────────────
+    /// <summary>Unpaid | Paid | Failed | Refunded</summary>
+    public string PaymentStatus { get; set; } = "Unpaid";
+
+    /// <summary>Paymob transaction ID returned in the webhook.</summary>
+    public string? PaymentReference { get; set; }
+
+    /// <summary>Amount paid in EGP (from Paymob amount_cents / 100).</summary>
+    public decimal? PaymentAmountEgp { get; set; }
+
+    /// <summary>Paymob | InstaPay | Cash</summary>
+    public string? PaymentProvider { get; set; }
+
+    /// <summary>Paymob merchant order ID used to correlate webhook with reservation.</summary>
+    public string? PaymobMerchantOrderId { get; set; }
+
     // Navigation
     public InventoryItem InventoryItem { get; set; } = null!;
     public Pharmacy Pharmacy { get; set; } = null!;

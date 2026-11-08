@@ -127,6 +127,15 @@ public sealed class ReservationConfiguration : IEntityTypeConfiguration<Reservat
         builder.Property(r => r.DeliveryContactPhone).HasMaxLength(20);
         builder.Property(r => r.DeliveryNotes).HasMaxLength(1000);
 
+        // Payment fields
+        builder.Property(r => r.PaymentStatus).HasMaxLength(20).HasDefaultValue("Unpaid");
+        builder.Property(r => r.PaymentReference).HasMaxLength(100);
+        builder.Property(r => r.PaymentAmountEgp).HasColumnType("decimal(18,2)");
+        builder.Property(r => r.PaymentProvider).HasMaxLength(50);
+        builder.Property(r => r.PaymobMerchantOrderId).HasMaxLength(100);
+        builder.HasIndex(r => r.PaymobMerchantOrderId)
+            .HasFilter("[PaymobMerchantOrderId] IS NOT NULL");
+
         // FK to ApplicationUser (patient) — no navigation on Domain entity
         builder.HasOne<ApplicationUser>()
             .WithMany()

@@ -14,6 +14,7 @@ using Nawakes.Infrastructure.Persistence;
 using Nawakes.Infrastructure.Persistence.Interceptors;
 using Nawakes.Infrastructure.Persistence.Repositories;
 using Nawakes.Infrastructure.Persistence.Seed;
+using Nawakes.Infrastructure.Payments;
 using Nawakes.Infrastructure.Security;
 
 namespace Nawakes.Infrastructure;
@@ -98,6 +99,10 @@ public static class DependencyInjection
 
         // ── Security ────────────────────────────────────────────────────
         services.AddSingleton<IEncryptionService, AesEncryptionService>();
+
+        // ── Paymob Payment Gateway ───────────────────────────────────────
+        services.AddHttpClient("Paymob");
+        services.AddScoped<PaymobGatewayService>();
 
         // ── NLP / Clinical Prescription Matching ──────────────────────────────
         // ClinicalMatchingOptions: Singleton — weights don't change at runtime.
