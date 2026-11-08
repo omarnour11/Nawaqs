@@ -5,6 +5,7 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:nawakes_mobile/core/network/api_response_models.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
+import 'package:nawakes_mobile/core/ui/nawaqss_brand_widgets.dart';
 import 'package:nawakes_mobile/features/search/presentation/batch_search_results_screen.dart';
 
 class PrescriptionBasketItem {
@@ -203,14 +204,7 @@ class PrescriptionBasketScreen extends HookConsumerWidget {
               ),
               child: Row(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 22),
-                  ),
+                  const NuqousMascot.celebrating(height: 52),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -759,29 +753,12 @@ class PrescriptionBasketScreen extends HookConsumerWidget {
       height: 36,
       width: double.infinity,
       margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF0FDF4),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFF86EFAC)),
-      ),
-      child: const Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Expanded(
-            child: Text(
-              '🔒 الاسم والرقم اتحجبوا · خصوصية مشفرة بقانون 151',
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF14532D),
-              ),
-            ),
-          ),
-        ],
+      child: const Center(
+        child: NawaqssPrivacySticker(
+          label: '🔒 الاسم والرقم اتحجبوا · خصوصية مشفرة بقانون 151',
+          fontSize: 12,
+          enableTilt: false,
+        ),
       ),
     );
   }

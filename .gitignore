@@ -56,3 +56,6 @@ src/Nawakes.API/wwwroot/uploads/*
 
 # Teamwork subagent scratch
 .agents/teamwork/
+ 
+.zcode/
+run/

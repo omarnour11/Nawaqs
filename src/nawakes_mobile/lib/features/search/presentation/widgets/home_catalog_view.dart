@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:nawakes_mobile/core/network/api_response_models.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
 import 'package:nawakes_mobile/core/ui/medication_image_view.dart';
+import 'package:nawakes_mobile/core/ui/nawaqss_brand_widgets.dart';
 import 'package:nawakes_mobile/core/location/location_service.dart';
 import 'package:nawakes_mobile/features/search/presentation/nearby_products_provider.dart';
 import 'package:nawakes_mobile/features/search/presentation/widgets/nearby_pharmacy_options_sheet.dart';
@@ -170,12 +171,14 @@ class _HomeCatalogViewState extends ConsumerState<HomeCatalogView> {
                 subtitle: 'خصومات حصرية على مستلزمات الأم والطفل',
                 gradientColors: [const Color(0xFF0D7A5F), const Color(0xFF059669)],
                 icon: Icons.child_care_rounded,
+                mascot: const NuqousMascot.welcome(height: 68),
               ),
               _buildBannerCard(
                 title: 'اطلب بالروشتة الذكية بالذكاء الاصطناعي',
                 subtitle: 'فك خط يد الطبيب وحجز الأدوية فوراً',
                 gradientColors: [const Color(0xFF1E293B), const Color(0xFF334155)],
                 icon: Icons.document_scanner_rounded,
+                mascot: const NuqousMascot.searching(height: 68),
                 onTap: widget.onOpenScanner,
               ),
               _buildBannerCard(
@@ -183,6 +186,7 @@ class _HomeCatalogViewState extends ConsumerState<HomeCatalogView> {
                 subtitle: 'فحص فوري للبدائل الحيوية بنفس المادة الفعالة',
                 gradientColors: [const Color(0xFF0F766E), const Color(0xFF14B8A6)],
                 icon: Icons.health_and_safety_rounded,
+                mascot: const NuqousMascot.celebrating(height: 68),
               ),
             ],
           ),
@@ -493,6 +497,7 @@ class _HomeCatalogViewState extends ConsumerState<HomeCatalogView> {
     required String subtitle,
     required List<Color> gradientColors,
     required IconData icon,
+    Widget? mascot,
     VoidCallback? onTap,
   }) {
     return GestureDetector(
@@ -544,15 +549,16 @@ class _HomeCatalogViewState extends ConsumerState<HomeCatalogView> {
               ),
             ),
             const SizedBox(width: 10),
-            Container(
-              width: 50,
-              height: 50,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.18),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: Colors.white, size: 28),
-            ),
+            mascot ??
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.18),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, color: Colors.white, size: 28),
+                ),
           ],
         ),
       ),
@@ -646,62 +652,28 @@ class _HomeCatalogViewState extends ConsumerState<HomeCatalogView> {
                   ),
                 ),
                 Positioned(
-                  top: 12,
-                  right: 12,
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE8F5E9),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: const Color(0xFFA5D6A7)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.check_circle_rounded,
-                            size: 10, color: Color(0xFF2E7D32)),
-                        const SizedBox(width: 3),
-                        Text(
-                          'متوفر (${p.availablePharmaciesCount})',
-                          style: const TextStyle(
-                            fontSize: 9,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF2E7D32),
-                          ),
+                  top: 8,
+                  right: 8,
+                  child: p.availablePharmaciesCount > 0
+                      ? NawaqssFoundSticker(
+                          label: 'متوفر (${p.availablePharmaciesCount})',
+                          fontSize: 9.5,
+                          enableTilt: true,
+                        )
+                      : const NawaqssShortageSticker(
+                          label: 'ناقص!',
+                          fontSize: 9.5,
+                          enableTilt: true,
                         ),
-                      ],
-                    ),
-                  ),
                 ),
                 if (p.minDistanceKm > 15.0)
                   Positioned(
-                    top: 12,
-                    left: 12,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFF3E0),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: const Color(0xFFFFCC80)),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.share_location_rounded,
-                              size: 10, color: Color(0xFFE65100)),
-                          const SizedBox(width: 3),
-                          Text(
-                            'المحافظة (${p.minDistanceKm.toStringAsFixed(0)} كم)',
-                            style: const TextStyle(
-                              fontSize: 9,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFFE65100),
-                            ),
-                          ),
-                        ],
-                      ),
+                    top: 8,
+                    left: 8,
+                    child: NawaqssSingleMedSticker(
+                      label: 'المحافظة (${p.minDistanceKm.toStringAsFixed(0)} كم)',
+                      fontSize: 9.0,
+                      enableTilt: true,
                     ),
                   ),
               ],

@@ -4,10 +4,12 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:nawakes_mobile/core/network/api_client.dart' show apiClientProvider;
 import 'package:nawakes_mobile/features/auth/presentation/auth_controller.dart' show describeApiError;
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
+import 'package:nawakes_mobile/core/ui/nawaqss_brand_widgets.dart';
 import 'package:nawakes_mobile/features/family_cabinet/data/family_cabinet_models.dart';
 
 import 'medication_depletion_card.dart';
 import 'add_family_member_sheet.dart';
+import 'add_family_medication_sheet.dart';
 
 class FamilyCabinetScreen extends HookConsumerWidget {
   const FamilyCabinetScreen({super.key});
@@ -49,7 +51,21 @@ class FamilyCabinetScreen extends HookConsumerWidget {
 
     Future<void> addMemberWithPreset(String presetName) async {
       final created = await showAddFamilyMemberSheet(context, initialNickname: presetName);
-      if (created == true) load();
+      if (created == true) {
+        await load();
+        if (context.mounted && cabinet.value?.profiles.isNotEmpty == true) {
+          final p = cabinet.value!.profiles.firstWhere(
+            (e) => e.nickname == presetName,
+            orElse: () => cabinet.value!.profiles.last,
+          );
+          final added = await showAddFamilyMedicationSheet(
+            context,
+            profileId: p.id,
+            profileNickname: p.nickname,
+          );
+          if (added == true) load();
+        }
+      }
     }
 
     useEffect(() {
@@ -60,27 +76,44 @@ class FamilyCabinetScreen extends HookConsumerWidget {
     final profiles = cabinet.value?.profiles ?? [];
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: NawaqsColors.cream,
       appBar: AppBar(
         title: const Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('صيدلية البيت الذكية', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-            Text('متابعة أدوية العائلة ومواعيد نفاذها', style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary)),
+            Text(
+              'صيدلية البيت الذكية',
+              style: TextStyle(
+                fontFamily: 'Cairo',
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: NawaqsColors.tealDark,
+              ),
+            ),
+            Text(
+              'متابعة أدوية العائلة ومواعيد نفاذها',
+              style: TextStyle(
+                fontFamily: 'Cairo',
+                fontSize: 11.5,
+                color: AppColors.textSecondary,
+              ),
+            ),
           ],
         ),
-        backgroundColor: AppColors.background,
-        foregroundColor: AppColors.textPrimary,
+        backgroundColor: NawaqsColors.cream,
+        foregroundColor: NawaqsColors.tealDark,
         elevation: 0,
       ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
           final created = await showAddFamilyMemberSheet(context);
           if (created == true) load();
         },
-        backgroundColor: AppColors.brand900,
+        backgroundColor: NawaqsColors.tealDark,
         foregroundColor: Colors.white,
-        label: const Text('إضافة شخص للعائلة', style: TextStyle(fontWeight: FontWeight.w700)),
+        elevation: 3,
+        label: const Text('إضافة شخص للعائلة', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
         icon: const Icon(Icons.person_add_alt_1),
       ),
       body: RefreshIndicator(
@@ -106,34 +139,40 @@ class FamilyCabinetScreen extends HookConsumerWidget {
                         padding: const EdgeInsets.all(14),
                         margin: const EdgeInsets.only(bottom: 16),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFEFF6FF),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: const Color(0xFFBFDBFE)),
+                          color: NawaqsColors.mint,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: NawaqsColors.mintDeep),
                         ),
-                        child: Column(
+                        child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(6),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF1D4ED8),
-                                    borderRadius: BorderRadius.circular(8),
+                            const NuqousMascot.searching(height: 58),
+                            const SizedBox(width: 12),
+                            const Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'إزاي صيدلية البيت بتفيدك؟',
+                                    style: TextStyle(
+                                      fontFamily: 'Cairo',
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 14,
+                                      color: NawaqsColors.tealDark,
+                                    ),
                                   ),
-                                  child: const Icon(Icons.family_restroom_rounded, color: Colors.white, size: 20),
-                                ),
-                                const SizedBox(width: 10),
-                                const Text(
-                                  'إزاي صيدلية البيت بتفيدك؟',
-                                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5, color: Color(0xFF1E40AF)),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            const Text(
-                              'أضف أدوية والدك أو والدتك أو أطفالك اليومية، والنظام هيحسبلك تلقائياً فاضل كام يوم والدوا يخلص، وهينبهك قبل النفاذ بـ 5 أيام عشان تلحق تحجزه بضغطة واحدة من أقرب صيدلية بدون ما ينقطع العلاج.',
-                              style: TextStyle(fontSize: 12, color: Color(0xFF1E3A8A), height: 1.45),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    'أضف أدوية والدك أو والدتك أو أطفالك اليومية، والنظام هيحسبلك تلقائياً فاضل كام يوم والدوا يخلص، وهينبهك قبل النفاذ بـ 5 أيام عشان تلحق تحجزه بضغطة واحدة من أقرب صيدلية بدون ما ينقطع العلاج.',
+                                    style: TextStyle(
+                                      fontFamily: 'Cairo',
+                                      fontSize: 12,
+                                      color: NawaqsColors.tealDark,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         ),
@@ -145,7 +184,12 @@ class FamilyCabinetScreen extends HookConsumerWidget {
                         children: [
                           const Text(
                             'إضافة سريعة لشخص في العائلة:',
-                            style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: AppColors.textSecondary),
+                            style: TextStyle(
+                              fontFamily: 'Cairo',
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                              color: NawaqsColors.tealDark,
+                            ),
                           ),
                           const SizedBox(height: 8),
                           Row(
@@ -211,29 +255,37 @@ class FamilyCabinetScreen extends HookConsumerWidget {
                       // ── Profiles & Medicines ──────────────────────────────────
                       if (profiles.isEmpty)
                         Container(
-                          padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
+                          padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 20),
                           alignment: Alignment.center,
                           child: Column(
                             children: [
-                              Container(
-                                width: 64,
-                                height: 64,
-                                decoration: BoxDecoration(
-                                  color: AppColors.hairline.withValues(alpha: 0.5),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(Icons.medication_outlined, size: 32, color: AppColors.textSecondary),
+                              const NuqousMascot.welcome(height: 104),
+                              const SizedBox(height: 12),
+                              const NawaqssSingleMedSticker(
+                                label: 'دوا واحد بس لكل العائلة 🏠',
+                                fontSize: 12,
+                                enableTilt: true,
                               ),
                               const SizedBox(height: 14),
                               const Text(
                                 'صيدلية بيتك فارغة حالياً',
-                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                                style: TextStyle(
+                                  fontFamily: 'Cairo',
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w800,
+                                  color: NawaqsColors.tealDark,
+                                ),
                               ),
                               const SizedBox(height: 6),
                               const Text(
                                 'اضغط على أحد الأزرار السريعة بالأعلى (والدي، والدتي، طفلي، نفسي) لبدء تتبع الأدوية وحمايتهم من انقطاع الجرعات.',
                                 textAlign: TextAlign.center,
-                                style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary, height: 1.4),
+                                style: TextStyle(
+                                  fontFamily: 'Cairo',
+                                  fontSize: 12.5,
+                                  color: AppColors.textSecondary,
+                                  height: 1.45,
+                                ),
                               ),
                             ],
                           ),
@@ -242,39 +294,97 @@ class FamilyCabinetScreen extends HookConsumerWidget {
                         ...profiles.expand(
                           (profile) => [
                             Padding(
-                              padding: const EdgeInsets.only(top: 14, bottom: 8),
+                              padding: const EdgeInsets.only(top: 16, bottom: 8),
                               child: Row(
                                 children: [
-                                  const Icon(Icons.person_rounded, size: 20, color: AppColors.brand900),
+                                  const Icon(Icons.person_rounded, size: 20, color: NawaqsColors.tealDark),
                                   const SizedBox(width: 6),
                                   Text(
                                     profile.nickname,
-                                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                                    style: const TextStyle(
+                                      fontFamily: 'Cairo',
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w800,
+                                      color: NawaqsColors.tealDark,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    '(${profile.medications.length} أدوية)',
+                                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
                                   ),
                                   const Spacer(),
-                                  Text(
-                                    '${profile.medications.length} أدوية',
-                                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+                                  TextButton.icon(
+                                    onPressed: () async {
+                                      final added = await showAddFamilyMedicationSheet(
+                                        context,
+                                        profileId: profile.id,
+                                        profileNickname: profile.nickname,
+                                      );
+                                      if (added == true) load();
+                                    },
+                                    icon: const Icon(Icons.add_circle_outline_rounded, size: 16),
+                                    label: const Text(
+                                      'إضافة دواء',
+                                      style: TextStyle(
+                                        fontFamily: 'Cairo',
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: NawaqsColors.tealDark,
+                                      backgroundColor: NawaqsColors.mint,
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                    ),
                                   ),
                                 ],
                               ),
                             ),
                             if (profile.medications.isEmpty)
-                              Container(
-                                padding: const EdgeInsets.all(12),
-                                margin: const EdgeInsets.only(bottom: 8),
-                                decoration: BoxDecoration(
-                                  color: AppColors.card,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: AppColors.hairline),
-                                ),
-                                child: const Row(
-                                  children: [
-                                    Icon(Icons.info_outline, size: 16, color: AppColors.textSecondary),
-                                    SizedBox(width: 8),
-                                    Text('مفيش أدوية متتبعة لسه لهذا الشخص',
-                                        style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary)),
-                                  ],
+                              InkWell(
+                                onTap: () async {
+                                  final added = await showAddFamilyMedicationSheet(
+                                    context,
+                                    profileId: profile.id,
+                                    profileNickname: profile.nickname,
+                                  );
+                                  if (added == true) load();
+                                },
+                                borderRadius: BorderRadius.circular(14),
+                                child: Container(
+                                  padding: const EdgeInsets.all(14),
+                                  margin: const EdgeInsets.only(bottom: 12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(color: NawaqsColors.mintDeep),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.03),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.add_circle_rounded, size: 22, color: NawaqsColors.teal),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(
+                                          'مفيش أدوية متتبعة لسه لهذا الشخص · اضغط هنا لإضافة أول دواء 💊',
+                                          style: const TextStyle(
+                                            fontFamily: 'Cairo',
+                                            fontSize: 12.5,
+                                            fontWeight: FontWeight.w700,
+                                            color: NawaqsColors.tealDark,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               )
                             else
@@ -304,18 +414,30 @@ class _PresetButton extends StatelessWidget {
     return Expanded(
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8),
+          padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            color: AppColors.card,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppColors.hairline),
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: NawaqsColors.mintDeep),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.03),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
           alignment: Alignment.center,
           child: Text(
             label,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+            style: const TextStyle(
+              fontFamily: 'Cairo',
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              color: NawaqsColors.tealDark,
+            ),
           ),
         ),
       ),
