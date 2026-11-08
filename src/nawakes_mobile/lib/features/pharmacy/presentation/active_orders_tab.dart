@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -59,7 +59,7 @@ class ActiveOrdersTab extends HookConsumerWidget {
                       onSelected: (val) {
                         if (val) selectedTab.value = 0;
                       },
-                      selectedColor: NawaqsColors.tealMedium.withValues(alpha: 0.25),
+                      selectedColor: NawaqsColors.mint,
                     ),
                   ),
                   const SizedBox(width: 8),
