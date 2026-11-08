@@ -28,6 +28,7 @@ PharmacySearchResultDto _$PharmacySearchResultDtoFromJson(
   priceVariancePercent: (json['priceVariancePercent'] as num?)?.toDouble(),
   isEdaPriceVerified: json['isEdaPriceVerified'] as bool? ?? true,
   edaPriceBadgeText: json['edaPriceBadgeText'] as String?,
+  supportsDelivery: json['supportsDelivery'] as bool? ?? true,
 );
 
 Map<String, dynamic> _$PharmacySearchResultDtoToJson(
@@ -52,6 +53,7 @@ Map<String, dynamic> _$PharmacySearchResultDtoToJson(
   'priceVariancePercent': instance.priceVariancePercent,
   'isEdaPriceVerified': instance.isEdaPriceVerified,
   'edaPriceBadgeText': instance.edaPriceBadgeText,
+  'supportsDelivery': instance.supportsDelivery,
 };
 
 SearchMedicationResponse _$SearchMedicationResponseFromJson(

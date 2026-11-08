@@ -552,6 +552,12 @@ class _ProfileBody extends HookConsumerWidget {
 
               // ── Quick links ─────────────────────────────────────────────
               _LinkCard(
+                icon: Icons.account_balance_wallet_outlined,
+                label: 'طرق الدفع ومحفظة الحساب (إنستاباي، فودافون كاش، الفيزا)',
+                onTap: () => context.push('/payment-methods'),
+              ),
+              const SizedBox(height: 8),
+              _LinkCard(
                 icon: Icons.favorite_border_rounded,
                 label: 'الصيدليات المفضلة',
                 onTap: () => _showFavorites(context, ref),

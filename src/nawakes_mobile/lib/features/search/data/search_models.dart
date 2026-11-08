@@ -24,6 +24,8 @@ class PharmacySearchResultDto {
   @JsonKey(defaultValue: true)
   final bool isEdaPriceVerified;
   final String? edaPriceBadgeText;
+  @JsonKey(defaultValue: true)
+  final bool supportsDelivery;
 
   PharmacySearchResultDto({
     required this.pharmacyId,
@@ -45,6 +47,7 @@ class PharmacySearchResultDto {
     this.priceVariancePercent,
     this.isEdaPriceVerified = true,
     this.edaPriceBadgeText,
+    this.supportsDelivery = true,
   });
 
   factory PharmacySearchResultDto.fromJson(Map<String, dynamic> json) => _$PharmacySearchResultDtoFromJson(json);

@@ -10,6 +10,7 @@ import 'package:nawakes_mobile/features/search/data/search_models.dart';
 import 'package:nawakes_mobile/features/reservations/presentation/reservation_controller.dart';
 import 'package:nawakes_mobile/features/search/presentation/widgets/eda_price_badge.dart';
 import 'package:nawakes_mobile/features/search/presentation/widgets/safety_shield_dialog.dart';
+import 'package:nawakes_mobile/features/search/presentation/widgets/delivery_details_sheet.dart';
 import 'package:nawakes_mobile/features/reservations/presentation/passes_screen.dart' show passesControllerProvider;
 import 'package:nawakes_mobile/features/reports/presentation/report_controller.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -243,6 +244,49 @@ class PharmacyDetailsScreen extends HookConsumerWidget {
                   // ── Actions ───────────────────────────────────────────────
                   Row(
                     children: [
+                      if (inStock && item.supportsDelivery) ...[
+                        OutlinedButton.icon(
+                          onPressed: () async {
+                            final allowed = await guardReservationWithSafetyCheck(
+                              context,
+                              ref,
+                              inventoryItemId: item.inventoryItemId,
+                              medicationName: item.medicationName,
+                            );
+                            if (!allowed || !context.mounted) return;
+
+                            final deliveryResp = await DeliveryDetailsSheet.show(
+                              context,
+                              inventoryItemId: item.inventoryItemId,
+                              pharmacyName: item.pharmacyName,
+                              medicationName: item.medicationName,
+                              medicationPrice: item.price > 0 ? item.price : 45.0,
+                              distanceKm: item.distanceKm,
+                            );
+                            if (deliveryResp != null && context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  backgroundColor: AppColors.primary,
+                                  content: Text('تم تأكيد طلب التوصيل بنجاح! كود الطلب: ${deliveryResp.reservationCode}'),
+                                  action: SnackBarAction(
+                                    label: 'عرض الطلب',
+                                    textColor: Colors.white,
+                                    onPressed: () => context.push('/passes'),
+                                  ),
+                                ),
+                              );
+                            }
+                          },
+                          icon: const Icon(Icons.delivery_dining_rounded, size: 18),
+                          label: const Text('توصيل 🛵'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFF0284C7),
+                            side: const BorderSide(color: Color(0xFF0284C7)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
                       Expanded(
                         child: FilledButton.icon(
                           onPressed: inStock && !reservationState.isLoading

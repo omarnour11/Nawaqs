@@ -29,6 +29,7 @@ import 'package:nawakes_mobile/features/search/presentation/widgets/home_catalog
 import 'package:nawakes_mobile/core/ui/nawaqss_brand_widgets.dart';
 import 'package:nawakes_mobile/features/onboarding/presentation/patient_onboarding_sheet.dart';
 import 'package:nawakes_mobile/features/search/presentation/widgets/mandatory_location_prompt_dialog.dart';
+import 'package:nawakes_mobile/core/services/search_history_service.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 
@@ -62,6 +63,8 @@ class SearchScreen extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final searchCtrl = useTextEditingController(text: initialQuery ?? '');
     final focusNode = useFocusNode();
+    final searchHistory = ref.watch(searchHistoryProvider);
+    final isFocused = useState(false);
     final searchState = ref.watch(sc.searchControllerProvider);
     final hasSearched = useState(initialQuery != null && initialQuery!.trim().length >= 2);
     final radius = useState<double>(10.0);
@@ -97,9 +100,18 @@ class SearchScreen extends HookConsumerWidget {
       return () => debounce?.cancel();
     }, const []);
 
+    useEffect(() {
+      void onFocusChange() {
+        isFocused.value = focusNode.hasFocus;
+      }
+      focusNode.addListener(onFocusChange);
+      return () => focusNode.removeListener(onFocusChange);
+    }, [focusNode]);
+
     Future<void> doSearch(String query) async {
       if (query.trim().length < 2) return;
       focusNode.unfocus();
+      ref.read(searchHistoryProvider.notifier).addQuery(query);
 
       // Enforce GPS location via Mandatory Location Prompt ("سماح")
       final hasLocationPermission = await ensureLocationPermission(context, ref);
@@ -528,6 +540,112 @@ class SearchScreen extends HookConsumerWidget {
                   ),
                   const SizedBox(height: 12),
 
+                  // ── Google-Style Suggestions / Search History Dropdown ──
+                  if (suggestions.value.isNotEmpty || (isFocused.value && searchHistory.isNotEmpty)) ...[
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: AppColors.hairline),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.06),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (suggestions.value.isNotEmpty) ...[
+                            const Padding(
+                              padding: EdgeInsets.fromLTRB(14, 10, 14, 4),
+                              child: Text(
+                                'اقتراحات الأدوية',
+                                style: TextStyle(
+                                  fontFamily: 'Cairo',
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ),
+                            ...suggestions.value.map((s) => ListTile(
+                                  dense: true,
+                                  leading: const Icon(Icons.search_rounded,
+                                      size: 18, color: AppColors.primary),
+                                  title: Text(s,
+                                      style: const TextStyle(
+                                          fontFamily: 'Cairo',
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w700)),
+                                  trailing: const Icon(
+                                      Icons.north_west_rounded,
+                                      size: 14,
+                                      color: AppColors.textHint),
+                                  onTap: () {
+                                    searchCtrl.text = s;
+                                    doSearch(s);
+                                  },
+                                )),
+                          ] else if (isFocused.value && searchHistory.isNotEmpty) ...[
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(14, 8, 14, 2),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const Text(
+                                    'عمليات البحث السابقة',
+                                    style: TextStyle(
+                                      fontFamily: 'Cairo',
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                  TextButton(
+                                    onPressed: () => ref
+                                        .read(searchHistoryProvider.notifier)
+                                        .clearAll(),
+                                    child: const Text('مسح السجل',
+                                        style: TextStyle(
+                                            fontFamily: 'Cairo',
+                                            fontSize: 11,
+                                            color: AppColors.danger)),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            ...searchHistory.take(5).map((q) => ListTile(
+                                  dense: true,
+                                  leading: const Icon(Icons.history_rounded,
+                                      size: 18, color: AppColors.textSecondary),
+                                  title: Text(q,
+                                      style: const TextStyle(
+                                          fontFamily: 'Cairo',
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600)),
+                                  trailing: IconButton(
+                                    icon: const Icon(Icons.close_rounded,
+                                        size: 16, color: AppColors.textHint),
+                                    onPressed: () => ref
+                                        .read(searchHistoryProvider.notifier)
+                                        .removeQuery(q),
+                                  ),
+                                  onTap: () {
+                                    searchCtrl.text = q;
+                                    doSearch(q);
+                                  },
+                                )),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+
                   if (hasSearched.value) ...[
                     // ── Map container (Appears only on Search) ───────────────────
                     Container(
@@ -590,7 +708,27 @@ class SearchScreen extends HookConsumerWidget {
                                 fontSize: 16, fontWeight: FontWeight.w800),
                           ),
                           const SizedBox(height: 10),
-                          if (searchState.isLoading)
+                          if (searchState.isLoading) ...[
+                            const SizedBox(height: 12),
+                            const Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  NuqousMascot.searching(height: 85),
+                                  SizedBox(height: 8),
+                                  Text(
+                                    'نقوص بيلف على الصيدليات القريبة يدورلك عليه...',
+                                    style: TextStyle(
+                                      fontFamily: 'Cairo',
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: NawaqsColors.tealDark,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 14),
                             ...List.generate(
                                 2,
                                 (_) => const Padding(
@@ -598,15 +736,34 @@ class SearchScreen extends HookConsumerWidget {
                                       child: SizedBox(
                                           height: 58, child: _SkeletonRow()),
                                     ))
-                          else if (results == null || results.isEmpty) ...[
-                            const Text(
-                              'جرب اسم دواء تاني أو وسّع نطاق البحث.',
-                              style: TextStyle(
-                                  fontSize: 12.5,
-                                  color: AppColors.textSecondary,
-                                  height: 1.5),
-                            ),
+                          ] else if (results == null || results.isEmpty) ...[
                             const SizedBox(height: 10),
+                            Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const NuqousMascot.worried(height: 85),
+                                  const SizedBox(height: 8),
+                                  const NawaqssShortageSticker(
+                                    label: 'ناقص وغير متوفر حالياً!',
+                                    fontSize: 12.5,
+                                    enableTilt: true,
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Text(
+                                    'الدواء ناقص في الصيدليات المحيطة بنطاق ${radius.value.round()} كم.',
+                                    style: const TextStyle(
+                                      fontFamily: 'Cairo',
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 12),
                             ShortageSosCard(medicationName: searchCtrl.text.trim()),
                             const SizedBox(height: 10),
                             _EquivalentsLoader(medicationName: searchCtrl.text.trim()),
@@ -732,61 +889,99 @@ class SearchScreen extends HookConsumerWidget {
                     ),
 
                     // ── Brand Kit Page 15: Recent Searches (آخر بحث) ──
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            'آخر بحث',
-                            style: TextStyle(
-                              fontFamily: 'Cairo',
-                              fontSize: 15,
-                              fontWeight: FontWeight.w800,
-                              color: NawaqsColors.ink,
+                    if (searchHistory.isNotEmpty) ...[
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'آخر بحث',
+                              style: TextStyle(
+                                fontFamily: 'Cairo',
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                                color: NawaqsColors.ink,
+                              ),
                             ),
-                          ),
-                          const NawaqssStatusPill(status: 'متاح'),
-                        ],
+                            TextButton(
+                              onPressed: () => ref.read(searchHistoryProvider.notifier).clearAll(),
+                              child: const Text(
+                                'مسح السجل',
+                                style: TextStyle(fontFamily: 'Cairo', fontSize: 11.5, color: AppColors.danger),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          _buildRecentSearchChip(
-                            medName: 'أوجمنتين 1 جم',
-                            timeAgo: 'إمبارح',
-                            pharmacyCount: 3,
-                            onTap: () {
-                              searchCtrl.text = 'أوجمنتين 1 جم';
-                              doSearch('أوجمنتين 1 جم');
-                            },
-                          ),
-                          const SizedBox(width: 8),
-                          _buildRecentSearchChip(
-                            medName: 'كونكور 5 مجم',
-                            timeAgo: 'اليوم',
-                            pharmacyCount: 5,
-                            onTap: () {
-                              searchCtrl.text = 'كونكور 5 مجم';
-                              doSearch('كونكور 5 مجم');
-                            },
-                          ),
-                          const SizedBox(width: 8),
-                          _buildRecentSearchChip(
-                            medName: 'بانادول إكسترا',
-                            timeAgo: 'منذ يومين',
-                            pharmacyCount: 7,
-                            onTap: () {
-                              searchCtrl.text = 'بانادول إكسترا';
-                              doSearch('بانادول إكسترا');
-                            },
-                          ),
-                        ],
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: searchHistory.map((item) => Padding(
+                            padding: const EdgeInsetsDirectional.only(end: 8),
+                            child: _buildRecentSearchChip(
+                              medName: item,
+                              onTap: () {
+                                searchCtrl.text = item;
+                                doSearch(item);
+                              },
+                              onDelete: () => ref.read(searchHistoryProvider.notifier).removeQuery(item),
+                            ),
+                          )).toList(),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 14),
+                      const SizedBox(height: 14),
+                    ] else ...[
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: const [
+                            Text(
+                              'أدوية شائعة البحث',
+                              style: TextStyle(
+                                fontFamily: 'Cairo',
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                                color: NawaqsColors.ink,
+                              ),
+                            ),
+                            NawaqssStatusPill(status: 'متاح'),
+                          ],
+                        ),
+                      ),
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            _buildRecentSearchChip(
+                              medName: 'أوجمنتين 1 جم',
+                              onTap: () {
+                                searchCtrl.text = 'أوجمنتين 1 جم';
+                                doSearch('أوجمنتين 1 جم');
+                              },
+                            ),
+                            const SizedBox(width: 8),
+                            _buildRecentSearchChip(
+                              medName: 'كونكور 5 مجم',
+                              onTap: () {
+                                searchCtrl.text = 'كونكور 5 مجم';
+                                doSearch('كونكور 5 مجم');
+                              },
+                            ),
+                            const SizedBox(width: 8),
+                            _buildRecentSearchChip(
+                              medName: 'بانادول إكسترا',
+                              onTap: () {
+                                searchCtrl.text = 'بانادول إكسترا';
+                                doSearch('بانادول إكسترا');
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                    ],
 
                     // ── Home Catalog View (El-Ezaby style with Nawakes Identity) ──
                     HomeCatalogView(
@@ -962,13 +1157,24 @@ class _PharmacyRow extends StatelessWidget {
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Container(width: 6, height: 6, decoration: BoxDecoration(color: fg, shape: BoxShape.circle)),
-                        const SizedBox(width: 5),
-                        Text(label,
-                            style: TextStyle(
-                                fontSize: 11.5,
-                                fontWeight: FontWeight.w700,
-                                color: fg)),
+                        if (item.status == 'InStock')
+                          const NawaqssFoundSticker(
+                            label: 'لقيناه!',
+                            fontSize: 10.5,
+                            enableTilt: true,
+                          )
+                        else if (item.status == 'Limited')
+                          const NawaqssSingleMedSticker(
+                            label: 'كمية محدودة',
+                            fontSize: 10,
+                            enableTilt: true,
+                          )
+                        else
+                          const NawaqssShortageSticker(
+                            label: 'ناقص وغير متاح',
+                            fontSize: 10,
+                            enableTilt: true,
+                          ),
                       ],
                     ),
                     const SizedBox(height: 5),
@@ -1034,9 +1240,10 @@ class _EquivalentsLoader extends HookConsumerWidget {
 
 Widget _buildRecentSearchChip({
   required String medName,
-  required String timeAgo,
-  required int pharmacyCount,
+  String? timeAgo,
+  int? pharmacyCount,
   required VoidCallback onTap,
+  VoidCallback? onDelete,
 }) {
   return InkWell(
     onTap: onTap,
@@ -1074,7 +1281,9 @@ Widget _buildRecentSearchChip({
                 ),
               ),
               Text(
-                '$timeAgo · $pharmacyCount صيدليات',
+                timeAgo != null
+                    ? (pharmacyCount != null ? '$timeAgo · $pharmacyCount صيدليات' : '$timeAgo · بحث سابق')
+                    : (pharmacyCount != null ? '$pharmacyCount صيدليات متاحة' : 'بحث سابق'),
                 style: const TextStyle(
                   fontFamily: 'Cairo',
                   fontSize: 10.5,
@@ -1083,6 +1292,16 @@ Widget _buildRecentSearchChip({
               ),
             ],
           ),
+          if (onDelete != null) ...[
+            const SizedBox(width: 6),
+            GestureDetector(
+              onTap: onDelete,
+              child: const Padding(
+                padding: EdgeInsets.all(2),
+                child: Icon(Icons.close_rounded, size: 14, color: AppColors.textHint),
+              ),
+            ),
+          ],
         ],
       ),
     ),

@@ -51,7 +51,11 @@ class ActiveOrdersTab extends HookConsumerWidget {
             itemCount: activeReservations.length,
             itemBuilder: (context, i) => Padding(
               padding: const EdgeInsets.only(bottom: 12),
-              child: _OrderCard(reservation: activeReservations[i], ref: ref),
+              child: _OrderCard(
+                reservation: activeReservations[i],
+                ref: ref,
+                initiallyExpanded: activeReservations.length == 1,
+              ),
             ),
           ),
         );
@@ -63,7 +67,12 @@ class ActiveOrdersTab extends HookConsumerWidget {
 class _OrderCard extends HookWidget {
   final dynamic reservation;
   final WidgetRef ref;
-  const _OrderCard({required this.reservation, required this.ref});
+  final bool initiallyExpanded;
+  const _OrderCard({
+    required this.reservation,
+    required this.ref,
+    this.initiallyExpanded = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -136,6 +145,150 @@ class _OrderCard extends HookWidget {
         (reservation.chronicConditions != null && reservation.chronicConditions!.isNotEmpty) ||
         reservation.allowPharmacistViewActiveMedications;
 
+    final isExpanded = useState(initiallyExpanded);
+    final isDelivery = reservation.fulfillmentType == 'Delivery';
+
+    // ── Compact Ribbon View (شريط منظم لكل أوردر يمنع ملء الشاشة) ──
+    if (!isExpanded.value) {
+      return Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isDelivery
+                ? const Color(0xFF3B82F6).withValues(alpha: 0.35)
+                : AppColors.hairline,
+            width: isDelivery ? 1.3 : 1.0,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: () => isExpanded.value = true,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: isDelivery
+                        ? const Color(0xFFEFF6FF)
+                        : AppColors.primarySurface,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    isDelivery
+                        ? Icons.delivery_dining_rounded
+                        : Icons.storefront_rounded,
+                    color: isDelivery
+                        ? const Color(0xFF1D4ED8)
+                        : AppColors.primary,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              reservation.medicationName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontFamily: 'Cairo',
+                                fontWeight: FontWeight.w800,
+                                fontSize: 14,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                          ),
+                          if (isDelivery)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFDBEAFE),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text(
+                                'توصيل 🛵',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFF1E40AF),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              reservation.patientDisplayName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '· ${countdown()}',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: statusColor(),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: statusColor().withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    statusArabic(reservation.status),
+                    style: TextStyle(
+                      color: statusColor(),
+                      fontWeight: FontWeight.w800,
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                const Icon(Icons.keyboard_arrow_down_rounded,
+                    size: 20, color: AppColors.textSecondary),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return Card(
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
@@ -145,7 +298,26 @@ class _OrderCard extends HookWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── Dedicated Prominent Requested Medication Banner ───────
+              // Collapse header
+            InkWell(
+              onTap: () => isExpanded.value = false,
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Row(
+                  children: [
+                    const Icon(Icons.keyboard_arrow_up_rounded, size: 20, color: AppColors.accentBlue),
+                    const SizedBox(width: 4),
+                    const Text('طي تفاصيل الطلب',
+                        style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppColors.accentBlue)),
+                    const Spacer(),
+                    Text('رمز الطلب: #${reservation.reservationCode}',
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+                  ],
+                ),
+              ),
+            ),
+            // ── Dedicated Prominent Requested Medication Banner ───────
               Container(
                 margin: const EdgeInsets.only(bottom: 12),
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),

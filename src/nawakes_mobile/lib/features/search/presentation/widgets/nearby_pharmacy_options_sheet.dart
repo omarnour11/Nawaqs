@@ -12,6 +12,7 @@ import 'package:nawakes_mobile/features/reservations/data/reservation_models.dar
 import 'package:nawakes_mobile/features/search/presentation/nearby_products_provider.dart'
     show deliveryLocationProvider;
 import 'package:nawakes_mobile/features/search/presentation/widgets/safety_shield_dialog.dart';
+import 'package:nawakes_mobile/features/search/presentation/widgets/delivery_details_sheet.dart';
 
 /// Modal sheet that displays all nearby pharmacies (within 15km) stocking
 /// a specific product, allowing one-tap direct reservation.
@@ -109,6 +110,42 @@ class _NearbyPharmacyOptionsSheetState
       );
     } finally {
       if (mounted) setState(() => _isSubscribing = false);
+    }
+  }
+
+  Future<void> _handleDeliveryOrder(NearbyPharmacyOption opt) async {
+    final targetItemId =
+        opt.inventoryItemId.isNotEmpty ? opt.inventoryItemId : widget.product.id;
+
+    final allowed = await guardReservationWithSafetyCheck(
+      context,
+      ref,
+      inventoryItemId: targetItemId,
+      medicationName: widget.product.commercialNameAr ?? widget.product.tradeName,
+    );
+    if (!allowed || !mounted) return;
+
+    final deliveryResp = await DeliveryDetailsSheet.show(
+      context,
+      inventoryItemId: targetItemId,
+      pharmacyName: opt.pharmacyName,
+      medicationName: widget.product.commercialNameAr ?? widget.product.tradeName,
+      medicationPrice: widget.product.price,
+      distanceKm: opt.distanceKm,
+    );
+    if (deliveryResp != null && mounted) {
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.primary,
+          content: Text('تم تأكيد طلب التوصيل بنجاح! كود الطلب: ${deliveryResp.reservationCode}'),
+          action: SnackBarAction(
+            label: 'عرض الطلب',
+            textColor: Colors.white,
+            onPressed: () => context.push('/passes'),
+          ),
+        ),
+      );
     }
   }
 
@@ -607,8 +644,30 @@ class _NearbyPharmacyOptionsSheetState
                         ),
                       ),
 
-                      // Action Button
+                      // Action Buttons
                       const SizedBox(width: 8),
+                      if (opt.supportsDelivery) ...[
+                        OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFF0284C7),
+                            side: const BorderSide(color: Color(0xFF0284C7)),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 8),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          onPressed: () => _handleDeliveryOrder(opt),
+                          child: const Text(
+                            'دليفري 🛵',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                      ],
                       FilledButton(
                         style: FilledButton.styleFrom(
                           backgroundColor: AppColors.primary,
