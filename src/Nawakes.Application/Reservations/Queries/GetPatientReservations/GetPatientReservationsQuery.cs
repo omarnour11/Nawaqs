@@ -55,8 +55,8 @@ public sealed class GetPatientReservationsQueryHandler(
                 r.DeliveryNotes,
                 r.DeliveryStatus?.ToString(),
                 null,
-                r.InventoryItem.Pharmacy.Latitude,
-                r.InventoryItem.Pharmacy.Longitude
+                r.InventoryItem.Pharmacy.GeoPoint != null ? r.InventoryItem.Pharmacy.GeoPoint.Y : null,
+                r.InventoryItem.Pharmacy.GeoPoint != null ? r.InventoryItem.Pharmacy.GeoPoint.X : null
             );
         }).ToList();
     }
