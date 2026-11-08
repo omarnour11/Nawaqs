@@ -19,6 +19,7 @@ namespace Nawakes.API.Controllers;
 public sealed class PaymentsController(
     PaymobGatewayService paymob,
     IApplicationDbContext db,
+    ICurrentUserService currentUser,
     IConfiguration configuration,
     ILogger<PaymentsController> logger) : ControllerBase
 {
@@ -28,7 +29,7 @@ public sealed class PaymentsController(
     /// Returns the Paymob iFrame URL to open in WebView.
     /// </summary>
     [HttpPost("paymob/create-intent")]
-    [Authorize(Roles = "Patient")]
+    [Authorize]
     [ProducesResponseType(typeof(CreateIntentResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -36,7 +37,14 @@ public sealed class PaymentsController(
         [FromBody] CreateIntentRequest req,
         CancellationToken ct)
     {
-        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var userId = currentUser.UserId != Guid.Empty
+            ? currentUser.UserId
+            : (Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub"), out var parsedId)
+                ? parsedId
+                : Guid.Empty);
+
+        if (userId == Guid.Empty)
+            return Unauthorized(new { error = "يجب تسجيل الدخول أولاً" });
 
         Reservation? reservation = null;
         string merchantOrderId;
@@ -244,18 +252,22 @@ public sealed class PaymentsController(
     /// Flutter polls this after the WebView closes to confirm payment status.
     /// </summary>
     [HttpGet("paymob/status/{reservationId:guid}")]
-    [Authorize(Roles = "Patient")]
+    [Authorize]
     [ProducesResponseType(typeof(PaymentStatusResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<PaymentStatusResponse>> GetStatus(
         Guid reservationId,
         CancellationToken ct)
     {
-        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var userId = currentUser.UserId != Guid.Empty
+            ? currentUser.UserId
+            : (Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub"), out var parsedId)
+                ? parsedId
+                : Guid.Empty);
 
         var reservation = await db.Reservations
             .AsNoTracking()
-            .FirstOrDefaultAsync(r => r.Id == reservationId && r.UserId == userId, ct);
+            .FirstOrDefaultAsync(r => r.Id == reservationId && (userId == Guid.Empty || r.UserId == userId), ct);
 
         if (reservation is null)
             return NotFound(new { error = "الحجز غير موجود" });

@@ -3,7 +3,6 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:nawakes_mobile/core/network/api_client.dart';
 import 'package:nawakes_mobile/core/services/payment_methods_service.dart';
-import 'package:nawakes_mobile/core/services/paymob_payment_service.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
 import 'package:nawakes_mobile/core/ui/paymob_gateway_dialog.dart';
 import 'package:nawakes_mobile/features/reservations/data/reservation_models.dart';
@@ -441,8 +440,6 @@ class DeliveryDetailsSheet extends HookConsumerWidget {
                       final fullAddress =
                           '${streetCtrl.text.trim()}، عمارة ${buildingCtrl.text.trim()}، شقة ${aptCtrl.text.trim()}${landmarkCtrl.text.trim().isNotEmpty ? " (علامة: ${landmarkCtrl.text.trim()})" : ""}';
 
-                      String paymentName = 'كاش عند الاستلام';
-
                       final effectiveLat = latitude ?? 30.0444;
                       final effectiveLng = longitude ?? 31.2357;
                       final riderMapsUrl = 'https://maps.google.com/?q=$effectiveLat,$effectiveLng';
@@ -474,27 +471,29 @@ class DeliveryDetailsSheet extends HookConsumerWidget {
                           pharmacyName: pharmacyName,
                           initialPhone: phoneCtrl.text.trim(),
                           reservationId: createdReservationId,
+                          ref: ref,
                         );
 
                         if (gatewayResult == null || !gatewayResult.success) {
-                          // Payment cancelled — reservation stays pending, user can pay later
+                          // Payment cancelled — release reservation so the item is freed back for retry
+                          try {
+                            await ref.read(apiClientProvider).cancelReservation(createdReservationId);
+                          } catch (_) {}
+
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text(
-                                  'تم إنشاء الحجز، لكن الدفع لم يكتمل. يمكنك الدفع لاحقاً من حجوزاتي.',
+                                  'تم إلغاء الدفع. يمكنك إعادة المحاولة في أي وقت.',
                                   textDirection: TextDirection.rtl,
                                 ),
                                 backgroundColor: Colors.orange,
-                                duration: Duration(seconds: 5),
+                                duration: Duration(seconds: 4),
                               ),
                             );
-                            Navigator.of(context).pop(resp);
                           }
                           return;
                         }
-
-                        paymentName = gatewayResult.notes;
                       }
 
                       if (context.mounted) {

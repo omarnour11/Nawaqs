@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:nawakes_mobile/core/config.dart';
+import 'package:nawakes_mobile/core/network/api_client.dart';
 import 'package:nawakes_mobile/core/services/payment_methods_service.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
 import 'package:nawakes_mobile/core/ui/paymob_webview_screen.dart';
@@ -36,6 +38,7 @@ Future<GatewayPaymentResult?> showPaymobGatewaySheet({
   required String pharmacyName,
   required String initialPhone,
   String? reservationId, // Set AFTER creating the reservation
+  WidgetRef? ref,
 }) async {
   // Cash payments don't go through Paymob gateway
   if (paymentType == PaymentType.cash) {
@@ -56,17 +59,20 @@ Future<GatewayPaymentResult?> showPaymobGatewaySheet({
   final loadingDialog = _showLoadingDialog(context, 'جارٍ فتح بوابة الدفع...');
 
   try {
-    final dio = Dio(BaseOptions(
-      baseUrl: AppConfig.apiBaseUrl,
-      connectTimeout: const Duration(seconds: 15),
-      receiveTimeout: const Duration(seconds: 15),
-    ));
-
-    // Attach JWT from secure storage
-    const storage = FlutterSecureStorage();
-    final token = await storage.read(key: 'access_token');
-    if (token != null) {
-      dio.options.headers['Authorization'] = 'Bearer $token';
+    Dio dio;
+    if (ref != null) {
+      dio = ref.read(dioProvider);
+    } else {
+      dio = Dio(BaseOptions(
+        baseUrl: AppConfig.apiBaseUrl,
+        connectTimeout: const Duration(seconds: 15),
+        receiveTimeout: const Duration(seconds: 15),
+      ));
+      const storage = FlutterSecureStorage();
+      final token = await storage.read(key: 'jwt_token') ?? await storage.read(key: 'access_token');
+      if (token != null && token.isNotEmpty) {
+        dio.options.headers['Authorization'] = 'Bearer $token';
+      }
     }
 
     final paymobType = _toPaymobType(paymentType);
@@ -125,8 +131,14 @@ Future<GatewayPaymentResult?> showPaymobGatewaySheet({
     );
   } on DioException catch (e) {
     loadingDialog.close();
-    final msg = e.response?.data?['error'] ?? 'تعذر الاتصال ببوابة الدفع';
-    if (context.mounted) _showError(context, msg.toString());
+    String msg = 'تعذر الاتصال ببوابة الدفع';
+    final data = e.response?.data;
+    if (data is Map) {
+      msg = data['error']?.toString() ?? data['detail']?.toString() ?? data['title']?.toString() ?? msg;
+    } else if (data is String && data.isNotEmpty) {
+      msg = data;
+    }
+    if (context.mounted) _showError(context, msg);
     return null;
   } catch (e) {
     loadingDialog.close();

@@ -144,19 +144,21 @@ class PaymentMethodsScreen extends ConsumerWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'البطاقات البنكية المعتمدة',
-                style: TextStyle(
-                  fontFamily: 'Cairo',
-                  fontWeight: FontWeight.w800,
-                  fontSize: 15,
-                  color: NawaqsColors.ink,
+              const Expanded(
+                child: Text(
+                  'البطاقات البنكية المعتمدة',
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                    color: NawaqsColors.ink,
+                  ),
                 ),
               ),
               TextButton.icon(
                 onPressed: () => _showAddCardDialog(context, notifier),
                 icon: const Icon(Icons.add_circle_outline, size: 18),
-                label: const Text('إضافة بطاقة حقيقية', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
+                label: const Text('إضافة بطاقة', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
               ),
             ],
           ),
@@ -369,6 +371,7 @@ class PaymentMethodsScreen extends ConsumerWidget {
                 initialPhone: paymentState.vodafoneCashNumber.isNotEmpty
                     ? paymentState.vodafoneCashNumber
                     : '01029834112',
+                ref: ref,
               );
             },
             icon: const Icon(Icons.payment_rounded, color: Colors.white),
