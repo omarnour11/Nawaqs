@@ -124,12 +124,11 @@ public sealed class PaymobGatewayService(
 
     // ─── Webhook HMAC Verification ─────────────────────────────────────────
     /// <summary>
-    /// Verifies the Paymob HMAC-SHA512 signature sent in the webhook query string.
+    /// Computes the Paymob HMAC-SHA512 signature for a payload using the merchant HMAC secret.
     /// The 20 fields must be concatenated in the exact order Paymob specifies.
     /// </summary>
-    public bool VerifyHmacSignature(PaymobWebhookPayload payload, string receivedHmac)
+    public string ComputeHmacSignature(PaymobWebhookPayload payload)
     {
-        // Fields in the exact order required by Paymob:
         var fields = new[]
         {
             payload.AmountCents,
@@ -157,8 +156,15 @@ public sealed class PaymobGatewayService(
         var concatenated = string.Concat(fields);
         using var hmac = new HMACSHA512(Encoding.UTF8.GetBytes(_hmacSecret));
         var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(concatenated));
-        var computed = Convert.ToHexString(hash).ToLowerInvariant();
+        return Convert.ToHexString(hash).ToLowerInvariant();
+    }
 
+    /// <summary>
+    /// Verifies the Paymob HMAC-SHA512 signature sent in the webhook query string.
+    /// </summary>
+    public bool VerifyHmacSignature(PaymobWebhookPayload payload, string receivedHmac)
+    {
+        var computed = ComputeHmacSignature(payload);
         var match = string.Equals(computed, receivedHmac.ToLowerInvariant(), StringComparison.Ordinal);
         if (!match)
             logger.LogWarning("Paymob HMAC mismatch. Computed={Computed} Received={Received}", computed, receivedHmac);

@@ -359,8 +359,8 @@ class PaymentMethodsScreen extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             ),
-            onPressed: () {
-              showPaymobGatewaySheet(
+            onPressed: () async {
+              final res = await showPaymobGatewaySheet(
                 context: context,
                 paymentType: paymentState.defaultType == PaymentType.cash
                     ? PaymentType.vodafoneCash
@@ -373,6 +373,17 @@ class PaymentMethodsScreen extends ConsumerWidget {
                     : '01029834112',
                 ref: ref,
               );
+              if (res != null && res.success && context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'تم تأكيد الدفع الإلكتروني بنجاح عبر Paymob! رقم المعاملة: ${res.referenceNumber}',
+                      textDirection: TextDirection.rtl,
+                    ),
+                    backgroundColor: Colors.green.shade700,
+                  ),
+                );
+              }
             },
             icon: const Icon(Icons.payment_rounded, color: Colors.white),
             label: const Text(

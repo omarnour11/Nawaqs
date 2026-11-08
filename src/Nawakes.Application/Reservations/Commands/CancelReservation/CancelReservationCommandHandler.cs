@@ -42,9 +42,9 @@ public sealed class CancelReservationCommandHandler(
             throw new ConflictException(
                 $"Reservation is already {reservation.Status} and cannot be cancelled.");
 
-        // Lock-in window: cannot cancel within first 15 minutes
+        // Lock-in window: cannot cancel within first 15 minutes unless it was an unpaid checkout attempt
         var lockInExpiry = reservation.CreatedAt.Add(LockInWindow);
-        if (DateTime.UtcNow < lockInExpiry)
+        if (DateTime.UtcNow < lockInExpiry && reservation.PaymentStatus != "Unpaid")
         {
             var remainingSeconds = (int)(lockInExpiry - DateTime.UtcNow).TotalSeconds;
             throw new InvalidOperationException(
