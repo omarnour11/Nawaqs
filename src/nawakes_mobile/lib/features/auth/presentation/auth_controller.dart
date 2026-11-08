@@ -21,12 +21,11 @@ class AuthController extends _$AuthController {
     final storage = ref.read(secureStorageProvider);
     final token = await storage.read(key: _tokenKey);
     final role = await storage.read(key: _roleKey);
-    final userId = await storage.read(key: _userIdKey);
 
     if (token == null || token.isEmpty) {
       return const AuthState(status: AuthStatus.unauthenticated);
     }
-    return AuthState(status: _statusFromRole(role), userId: userId);
+    return AuthState(status: _statusFromRole(role));
   }
 
   static AuthStatus _statusFromRole(String? role) {
@@ -48,7 +47,7 @@ class AuthController extends _$AuthController {
       final client = ref.read(apiClientProvider);
       final response = await client.login(LoginRequest(email: email, password: password));
       await _persist(response);
-      return AuthState(status: _statusFromRole(response.role), userId: response.userId);
+      return AuthState(status: _statusFromRole(response.role));
     });
   }
 
@@ -74,7 +73,7 @@ class AuthController extends _$AuthController {
         pharmacy: pharmacy,
       ));
       await _persist(response);
-      return AuthState(status: _statusFromRole(response.role), userId: response.userId);
+      return AuthState(status: _statusFromRole(response.role));
     });
   }
 
@@ -124,10 +123,9 @@ class AuthController extends _$AuthController {
 
 class AuthState {
   final AuthStatus status;
-  final String? userId;
   final String? errorMessage;
 
-  const AuthState({required this.status, this.userId, this.errorMessage});
+  const AuthState({required this.status, this.errorMessage});
 
   bool get isAuthenticated => status != AuthStatus.unauthenticated && status != AuthStatus.unknown;
 }

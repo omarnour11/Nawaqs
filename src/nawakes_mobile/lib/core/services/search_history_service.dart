@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:nawakes_mobile/core/network/secure_storage_provider.dart';
 import 'package:nawakes_mobile/features/auth/presentation/auth_controller.dart';
 
 const int _kMaxHistoryItems = 15;
@@ -11,15 +12,28 @@ class SearchHistoryNotifier extends Notifier<List<String>> {
 
   @override
   List<String> build() {
-    // Isolate search history per authenticated user account
-    final authVal = ref.watch(authControllerProvider).value;
-    final userId = authVal?.userId;
-    _currentStorageKey = (userId != null && userId.isNotEmpty)
-        ? 'nawaqs_recent_search_history_user_$userId'
-        : 'nawaqs_recent_search_history_guest';
-
-    _loadFromDisk();
+    // Reactively watch auth status changes (e.g. login/logout)
+    final authState = ref.watch(authControllerProvider).valueOrNull;
+    if (authState == null || !authState.isAuthenticated) {
+      _currentStorageKey = 'nawaqs_recent_search_history_guest';
+      _loadFromDisk();
+    } else {
+      _loadUserStorage();
+    }
     return const [];
+  }
+
+  Future<void> _loadUserStorage() async {
+    try {
+      final storage = ref.read(secureStorageProvider);
+      final userId = await storage.read(key: 'user_id');
+      _currentStorageKey = (userId != null && userId.isNotEmpty)
+          ? 'nawaqs_recent_search_history_user_$userId'
+          : 'nawaqs_recent_search_history_guest';
+    } catch (_) {
+      _currentStorageKey = 'nawaqs_recent_search_history_guest';
+    }
+    await _loadFromDisk();
   }
 
   /// Explicitly scope search history to a user ID (for isolated account testing & switching)
@@ -73,7 +87,7 @@ class SearchHistoryNotifier extends Notifier<List<String>> {
     } catch (_) {}
   }
 
-  Future<void> clearAll() async {
+  Future<void> clearHistory() async {
     state = const [];
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -83,4 +97,6 @@ class SearchHistoryNotifier extends Notifier<List<String>> {
 }
 
 final searchHistoryProvider =
-    NotifierProvider<SearchHistoryNotifier, List<String>>(SearchHistoryNotifier.new);
+    NotifierProvider<SearchHistoryNotifier, List<String>>(
+  SearchHistoryNotifier.new,
+);
