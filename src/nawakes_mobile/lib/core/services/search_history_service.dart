@@ -1,43 +1,46 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:nawakes_mobile/core/network/secure_storage_provider.dart';
-import 'package:nawakes_mobile/features/auth/presentation/auth_controller.dart';
 
 const int _kMaxHistoryItems = 15;
 
 /// Isolated Recent Search History Service:
 /// Strictly isolates search logs per authenticated user account, preventing cross-account leaks.
 class SearchHistoryNotifier extends Notifier<List<String>> {
+  String? _scopedUserId;
   String _currentStorageKey = 'nawaqs_recent_search_history_guest';
 
   @override
   List<String> build() {
-    // Reactively watch auth status changes (e.g. login/logout)
-    final authState = ref.watch(authControllerProvider).asData?.value;
-    if (authState == null || !authState.isAuthenticated) {
+    if (_scopedUserId == null) {
       _currentStorageKey = 'nawaqs_recent_search_history_guest';
-      _loadFromDisk();
+      _initAutoUserScope();
     } else {
-      _loadUserStorage();
+      _loadFromDisk();
     }
     return const [];
   }
 
-  Future<void> _loadUserStorage() async {
+  Future<void> _initAutoUserScope() async {
     try {
       final storage = ref.read(secureStorageProvider);
       final userId = await storage.read(key: 'user_id');
-      _currentStorageKey = (userId != null && userId.isNotEmpty)
-          ? 'nawaqs_recent_search_history_user_$userId'
-          : 'nawaqs_recent_search_history_guest';
+      if (_scopedUserId == null) {
+        _currentStorageKey = (userId != null && userId.isNotEmpty)
+            ? 'nawaqs_recent_search_history_user_$userId'
+            : 'nawaqs_recent_search_history_guest';
+        await _loadFromDisk();
+      }
     } catch (_) {
-      _currentStorageKey = 'nawaqs_recent_search_history_guest';
+      if (_scopedUserId == null) {
+        await _loadFromDisk();
+      }
     }
-    await _loadFromDisk();
   }
 
   /// Explicitly scope search history to a user ID (for isolated account testing & switching)
   Future<void> scopeToUser(String? userId) async {
+    _scopedUserId = userId;
     _currentStorageKey = (userId != null && userId.isNotEmpty)
         ? 'nawaqs_recent_search_history_user_$userId'
         : 'nawaqs_recent_search_history_guest';
