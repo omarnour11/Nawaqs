@@ -19,16 +19,18 @@ class SplashScreen extends HookConsumerWidget {
         if (context.mounted) {
           final status =
               ref.read(authControllerProvider).value?.status ?? AuthStatus.unknown;
-          switch (status) {
-            case AuthStatus.pharmacyOwner:
-              context.go('/pharmacy');
-            case AuthStatus.admin:
-              context.go('/admin');
-            case AuthStatus.patient:
-              context.go('/home');
-            default:
-              context.go('/login');
-          }
+          try {
+            switch (status) {
+              case AuthStatus.pharmacyOwner:
+                context.go('/pharmacy');
+              case AuthStatus.admin:
+                context.go('/admin');
+              case AuthStatus.patient:
+                context.go('/home');
+              default:
+                context.go('/login');
+            }
+          } catch (_) {}
         }
       });
       return null;

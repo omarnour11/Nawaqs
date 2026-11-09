@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
 import 'package:nawakes_mobile/core/theme/theme_mode_provider.dart';
 import 'package:nawakes_mobile/core/utils/arabic_digits.dart';
@@ -87,10 +88,21 @@ void main() {
 
   group('Splash Screen UI (Brand Kit Page 14)', () {
     testWidgets('Renders Nawaqss Brand Logo and Lalezar Arabic titles', (tester) async {
+      final router = GoRouter(
+        initialLocation: '/',
+        routes: [
+          GoRoute(path: '/', builder: (_, __) => const SplashScreen()),
+          GoRoute(path: '/login', builder: (_, __) => const Scaffold(body: Text('Login'))),
+          GoRoute(path: '/home', builder: (_, __) => const Scaffold(body: Text('Home'))),
+          GoRoute(path: '/pharmacy', builder: (_, __) => const Scaffold(body: Text('Pharmacy'))),
+          GoRoute(path: '/admin', builder: (_, __) => const Scaffold(body: Text('Admin'))),
+        ],
+      );
+
       await tester.pumpWidget(
-        const ProviderScope(
-          child: MaterialApp(
-            home: SplashScreen(),
+        ProviderScope(
+          child: MaterialApp.router(
+            routerConfig: router,
           ),
         ),
       );
@@ -101,6 +113,7 @@ void main() {
 
       // Settle the navigation timer so no timers are pending on dispose
       await tester.pump(const Duration(milliseconds: 1500));
+      await tester.pumpAndSettle();
     });
   });
 }
