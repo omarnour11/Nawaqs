@@ -170,8 +170,47 @@ public sealed class SigDecoderService : ISigDecoderService
             var units = egyptianMultMatch.Groups[1].Value;
             var isPlural = int.TryParse(units, out var u) && u > 1;
             doseQuantity = isPlural ? u : (int.TryParse(units, out var singleU) ? singleU : 1);
-            doseAmount = $"{units} {(isPlural ? "tablets" : "tablet")}";
-            arabicDose = units == "1" ? "قرص واحد" : units == "2" ? "قرصين" : $"{units} أقراص";
+            var fLower = form.ToLowerInvariant();
+            if (fLower.Contains("drop") || fLower.Contains("قطر") || fLower.Contains("نقط") || normalized.Contains("نقط") || normalized.Contains("قطرة"))
+            {
+                doseAmount = $"{units} {(isPlural ? "drops" : "drop")}";
+                arabicDose = units == "1" ? "نقطة واحدة" : units == "2" ? "نقطتان" : $"{units} نقط";
+            }
+            else if (fLower.Contains("syrup") || fLower.Contains("susp") || fLower.Contains("شراب") || fLower.Contains("معلق") || normalized.Contains("شراب"))
+            {
+                doseAmount = units == "1" ? "5 mL (1 spoon)" : $"{units} spoons";
+                arabicDose = units == "1" ? "ملعقة (5 سم)" : $"{units} ملاعق (أو سم)";
+            }
+            else if (fLower.Contains("spray") || fLower.Contains("بخاخ") || normalized.Contains("بخاخ") || normalized.Contains("بخة"))
+            {
+                doseAmount = $"{units} {(isPlural ? "puffs" : "puff")}";
+                arabicDose = units == "1" ? "بخة واحدة" : units == "2" ? "بختان" : $"{units} بخات";
+            }
+            else if (fLower.Contains("amp") || fLower.Contains("inj") || fLower.Contains("حقن") || fLower.Contains("أمبول") || fLower.Contains("امبول"))
+            {
+                doseAmount = $"{units} {(isPlural ? "ampoules" : "ampoule")}";
+                arabicDose = units == "1" ? "أمبول واحد" : units == "2" ? "أمبولان" : $"{units} أمبولات";
+            }
+            else if (fLower.Contains("sachet") || fLower.Contains("كيس") || fLower.Contains("فوار") || normalized.Contains("فوار"))
+            {
+                doseAmount = $"{units} {(isPlural ? "sachets" : "sachet")}";
+                arabicDose = units == "1" ? "كيس فوار" : $"{units} أكياس فوار";
+            }
+            else if (fLower.Contains("supp") || fLower.Contains("لبوس") || normalized.Contains("لبوس"))
+            {
+                doseAmount = $"{units} {(isPlural ? "suppositories" : "suppository")}";
+                arabicDose = units == "1" ? "لبوسة واحدة" : units == "2" ? "لبوستان" : $"{units} لبوسات";
+            }
+            else if (fLower.Contains("cap") || fLower.Contains("كبسول") || normalized.Contains("كبسول"))
+            {
+                doseAmount = $"{units} {(isPlural ? "capsules" : "capsule")}";
+                arabicDose = units == "1" ? "كبسولة واحدة" : units == "2" ? "كبسولتان" : $"{units} كبسولات";
+            }
+            else
+            {
+                doseAmount = $"{units} {(isPlural ? "tablets" : "tablet")}";
+                arabicDose = units == "1" ? "قرص واحد" : units == "2" ? "قرصين" : $"{units} أقراص";
+            }
         }
         else if (normalized.Contains("كبسولة"))
         {
@@ -203,13 +242,25 @@ public sealed class SigDecoderService : ISigDecoderService
         var routeExpanded = "by mouth";
         var arabicRoute = "عن طريق الفم";
 
-        if (upperTokens.Contains("SL") || normalized.Contains("تحت اللسان"))
+        var fRoute = form.ToLowerInvariant();
+        var nRoute = normalized.ToLowerInvariant();
+
+        if (nRoute.Contains("أنف") || nRoute.Contains("انف") || nRoute.Contains("nasal") || nRoute.Contains("nostril") ||
+            fRoute.Contains("أنف") || fRoute.Contains("انف") || fRoute.Contains("nasal") ||
+            nRoute.Contains("otrivin") || nRoute.Contains("afrin") || nRoute.Contains("nasivin") || nRoute.Contains("rhinocort") ||
+            nRoute.Contains("اوترفين") || nRoute.Contains("افرين"))
+        {
+            routeCode = "NASAL";
+            routeExpanded = "intranasally";
+            arabicRoute = "في الأنف (نقط بالأنف)";
+        }
+        else if (upperTokens.Contains("SL") || normalized.Contains("تحت اللسان"))
         {
             routeCode = "SL";
             routeExpanded = "under the tongue";
             arabicRoute = "تحت اللسان";
         }
-        else if (upperTokens.Contains("INH") || normalized.Contains("بخاخ") || normalized.Contains("استنشاق"))
+        else if (upperTokens.Contains("INH") || normalized.Contains("بخاخ") || normalized.Contains("استنشاق") || fRoute.Contains("inhal") || fRoute.Contains("spray"))
         {
             routeCode = "INH";
             routeExpanded = "by inhalation";
@@ -227,17 +278,23 @@ public sealed class SigDecoderService : ISigDecoderService
             routeExpanded = "intravenously";
             arabicRoute = "حقن وريدي";
         }
-        else if (upperTokens.Contains("TOP") || normalized.Contains("دهان") || normalized.Contains("موضعي"))
+        else if (upperTokens.Contains("PR") || normalized.Contains("شرجي") || fRoute.Contains("supp") || fRoute.Contains("لبوس"))
+        {
+            routeCode = "PR";
+            routeExpanded = "rectally";
+            arabicRoute = "لبوس شرجي";
+        }
+        else if (upperTokens.Contains("TOP") || normalized.Contains("دهان") || normalized.Contains("موضعي") || fRoute.Contains("cream") || fRoute.Contains("ointment") || fRoute.Contains("gel") || fRoute.Contains("مرهم") || fRoute.Contains("كريم") || fRoute.Contains("جل"))
         {
             routeCode = "TOP";
             routeExpanded = "topically to affected area";
             arabicRoute = "استخدام موضعي";
         }
-        else if (upperTokens.Contains("OU") || Regex.IsMatch(normalized, @"عيون|عين\s*يس|عين\s*يم|gutt.*eye|ear\s*drops?|قطرة\s*عين|قطرة\s*أذن|قطرة\s*اذن"))
+        else if (upperTokens.Contains("OU") || fRoute.Contains("eye") || fRoute.Contains("ophthal") || fRoute.Contains("عين") || Regex.IsMatch(normalized, @"عيون|عين\s*يس|عين\s*يم|gutt.*eye|قطرة\s*عين"))
         {
             routeCode = "OU";
-            routeExpanded = "as eye/ear drops";
-            arabicRoute = "نقاط في العين/الأذن";
+            routeExpanded = "as eye drops";
+            arabicRoute = "نقاط في العين";
         }
         else if (upperTokens.Contains("OD") && normalized.Contains("eye", StringComparison.OrdinalIgnoreCase))
         {
@@ -250,6 +307,12 @@ public sealed class SigDecoderService : ISigDecoderService
             routeCode = "OS";
             routeExpanded = "in the left eye";
             arabicRoute = "في العين اليسرى";
+        }
+        else if (fRoute.Contains("ear") || fRoute.Contains("otic") || fRoute.Contains("أذن") || fRoute.Contains("اذن") || Regex.IsMatch(normalized, @"ear\s*drops?|قطرة\s*أذن|قطرة\s*اذن"))
+        {
+            routeCode = "EAR";
+            routeExpanded = "as ear drops";
+            arabicRoute = "نقاط في الأذن";
         }
 
         // 4. Frequency detection (including Egyptian notations 1x1, 1x2, 1x3, 1x4 and Arabic timings)

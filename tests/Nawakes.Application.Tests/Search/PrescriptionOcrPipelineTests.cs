@@ -480,4 +480,58 @@ public sealed class PrescriptionOcrPipelineTests
         var okResult = actionResult.Result.Should().BeOfType<OkObjectResult>().Subject;
         okResult.Value.Should().BeEquivalentTo(expectedDto);
     }
+
+    [Fact]
+    public void SigDecoderService_NasalDrops_DecodesToNasalRoute_NeverOralOrTablet()
+    {
+        var decoder = new SigDecoderService();
+
+        // Doctor wrote 2x3 for Otrivin drops
+        var decoded = decoder.DecodeMedicalSig("2x3", "نقط للأنف");
+
+        decoded.RouteCode.Should().Be("NASAL");
+        decoded.RouteArabic.Should().Contain("الأنف");
+        decoded.ArabicInstruction.Should().NotContain("عن طريق الفم");
+        decoded.ArabicInstruction.Should().NotContain("قرص");
+        decoded.ArabicInstruction.Should().Contain("نقط");
+    }
+
+    [Fact]
+    public void SigDecoderService_EyeDrops_DecodesToOphthalmicRoute()
+    {
+        var decoder = new SigDecoderService();
+
+        var decoded = decoder.DecodeMedicalSig("1 drop TID", "قطرة للعين");
+
+        decoded.RouteCode.Should().Be("OU");
+        decoded.RouteArabic.Should().Contain("العين");
+        decoded.ArabicInstruction.Should().NotContain("عن طريق الفم");
+        decoded.ArabicInstruction.Should().NotContain("قرص");
+    }
+
+    [Fact]
+    public void SigDecoderService_Syrup_DecodesToSpoonfulDose_NeverTablet()
+    {
+        var decoder = new SigDecoderService();
+
+        var decoded = decoder.DecodeMedicalSig("1x3", "شراب");
+
+        decoded.ArabicInstruction.Should().NotContain("قرص");
+        decoded.ArabicInstruction.Should().Contain("ملعقة");
+    }
+
+    [Fact]
+    public void GeminiPrescriptionService_SanitizesClinicalNasalDrops_AndRemovesOralTabletMismatches()
+    {
+        // When OCR or model incorrectly tags Otrivin as tablet or oral
+        var (form, sig) = GeminiPrescriptionService.SanitizeClinicalFormAndRoute(
+            "Otrivin Adult 0.1%",
+            "Tablet",
+            "قرص عن طريق الفم كل 12 ساعة");
+
+        form.Should().Be("نقط للأنف");
+        sig.Should().NotContain("فم");
+        sig.Should().NotContain("قرص");
+        sig.Should().Contain("أنف");
+    }
 }

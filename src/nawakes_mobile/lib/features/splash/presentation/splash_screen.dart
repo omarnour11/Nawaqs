@@ -3,8 +3,11 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
+import 'package:nawakes_mobile/core/ui/nawaqss_brand_widgets.dart';
 import 'package:nawakes_mobile/features/auth/presentation/auth_controller.dart';
 
+/// Official Nawaqss Splash Screen (Brand Kit Pages 4, 6 & 14)
+/// Displays brand teal background, vector capsule logo, and Lalezar typography.
 class SplashScreen extends HookConsumerWidget {
   const SplashScreen({super.key});
 
@@ -12,7 +15,7 @@ class SplashScreen extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     useEffect(() {
       Future(() async {
-        await Future.delayed(const Duration(milliseconds: 900));
+        await Future.delayed(const Duration(milliseconds: 1200));
         if (context.mounted) {
           final status =
               ref.read(authControllerProvider).value?.status ?? AuthStatus.unknown;
@@ -32,34 +35,76 @@ class SplashScreen extends HookConsumerWidget {
     }, const []);
 
     return Scaffold(
-      backgroundColor: AppColors.page,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                color: AppColors.brand900,
-                borderRadius: BorderRadius.circular(18),
+      backgroundColor: NawaqsColors.teal,
+      body: SafeArea(
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // ── Brand Vector Mark ──
+              Container(
+                width: 96,
+                height: 96,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(26),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.15),
+                      blurRadius: 18,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                padding: const EdgeInsets.all(12),
+                child: const Center(
+                  child: NawaqssLogo(size: 64, showText: false),
+                ),
               ),
-              child: const Icon(Icons.monitor_heart_outlined,
-                  color: Colors.white, size: 34),
-            ),
-            const SizedBox(height: 18),
-            const Text('نواقص',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
-            const SizedBox(height: 6),
-            const Text('توفر الأدوية في صيدليات مصر',
-                style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-            const SizedBox(height: 36),
-            const SizedBox(
-              width: 24,
-              height: 24,
-              child: CircularProgressIndicator(strokeWidth: 2.4),
-            ),
-          ],
+              const SizedBox(height: 24),
+
+              // ── Main Header in Lalezar ──
+              Text(
+                'نواقص',
+                style: AppTypography.mainHeader(
+                  fontSize: 52,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 4),
+
+              // ── Subtitle in Lalezar ──
+              Text(
+                'صوّر الروشتة وخلاص',
+                style: AppTypography.subHeader(
+                  fontSize: 22,
+                  color: NawaqsColors.mint,
+                ),
+              ),
+              const SizedBox(height: 10),
+
+              // ── Tagline in Cairo ──
+              Text(
+                'أيدوا ناقص؟ هتلاقيه في أقرب صيدلية عنده',
+                textAlign: TextAlign.center,
+                style: AppTypography.body(
+                  fontSize: 14,
+                  color: Colors.white.withValues(alpha: 0.9),
+                ),
+              ),
+              const SizedBox(height: 42),
+
+              // ── Loading indicator in Mint ──
+              const SizedBox(
+                width: 26,
+                height: 26,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.8,
+                  valueColor: AlwaysStoppedAnimation<Color>(NawaqsColors.mint),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

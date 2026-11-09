@@ -404,4 +404,348 @@ class AppTheme {
       ),
     );
   }
+
+  /// Official Nawaqss Brand Kit Dark Theme:
+  /// Designed around Deep Midnight Teal (#0A1A17) scaffold, High-contrast Deep Ink (#12222B)
+  /// card surfaces, Mint Deep (#A9DECB) accents and Warm Cream (#FBF7F0) high-contrast text.
+  static ThemeData get darkTheme {
+    const family = 'Cairo';
+    const darkScaffold = Color(0xFF0A1A17); // Deep Midnight Teal
+    const darkSurface = Color(0xFF12222B);  // High contrast Deep Ink
+    const darkCard = Color(0xFF142730);     // Elevated card surface
+    const darkBorder = Color(0xFF1E3A33);   // Subtle teal outline
+    const darkTextPrimary = Color(0xFFFBF7F0); // Warm Mint Cream
+    const darkTextSecondary = Color(0xFFA9DECB); // Mint Deep
+    const darkTextMuted = Color(0xFF75918A);
+
+    final scheme = ColorScheme(
+      brightness: Brightness.dark,
+      primary: NawaqsColors.teal,
+      onPrimary: Colors.white,
+      primaryContainer: const Color(0xFF133830),
+      onPrimaryContainer: const Color(0xFFD8F3EA),
+      secondary: NawaqsColors.coral,
+      onSecondary: Colors.white,
+      secondaryContainer: const Color(0xFF3E1E1B),
+      onSecondaryContainer: NawaqsColors.coralSoft,
+      error: NawaqsColors.coral,
+      onError: Colors.white,
+      errorContainer: const Color(0xFF3E1E1B),
+      onErrorContainer: NawaqsColors.coral,
+      surface: darkSurface,
+      onSurface: darkTextPrimary,
+      surfaceContainerHighest: const Color(0xFF162C27),
+      onSurfaceVariant: darkTextSecondary,
+      outline: darkBorder,
+      outlineVariant: const Color(0xFF18302A),
+    );
+
+    ThemeData base = ThemeData(
+      useMaterial3: true,
+      colorScheme: scheme,
+      scaffoldBackgroundColor: darkScaffold,
+      fontFamily: family,
+      splashFactory: InkSparkle.splashFactory,
+    );
+
+    return base.copyWith(
+      appBarTheme: const AppBarTheme(
+        backgroundColor: darkScaffold,
+        foregroundColor: darkTextPrimary,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        centerTitle: false,
+        titleSpacing: 0,
+        systemOverlayStyle: SystemUiOverlayStyle.light,
+        iconTheme: IconThemeData(color: darkTextPrimary),
+      ),
+      cardTheme: CardThemeData(
+        color: darkCard,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(AppRadius.lg)),
+          side: const BorderSide(color: darkBorder, width: 1),
+        ),
+        margin: EdgeInsets.zero,
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: const Color(0xFF0F1E25),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: darkBorder),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: darkBorder),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: NawaqsColors.mintDeep, width: 1.6),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: NawaqsColors.coral),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: NawaqsColors.coral, width: 1.6),
+        ),
+        hintStyle: const TextStyle(color: darkTextMuted, fontSize: 13.5),
+        labelStyle: const TextStyle(color: darkTextSecondary, fontSize: 13),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: NawaqsColors.teal,
+          foregroundColor: Colors.white,
+          disabledBackgroundColor: const Color(0xFF1F2D33),
+          disabledForegroundColor: darkTextMuted,
+          minimumSize: const Size(64, 48),
+          elevation: 0,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+          textStyle: const TextStyle(
+              fontFamily: family, fontSize: 14, fontWeight: FontWeight.w700),
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: NawaqsColors.teal,
+          foregroundColor: Colors.white,
+          disabledBackgroundColor: const Color(0xFF1F2D33),
+          disabledForegroundColor: darkTextMuted,
+          minimumSize: const Size(64, 48),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+          textStyle: const TextStyle(
+              fontFamily: family, fontSize: 14, fontWeight: FontWeight.w700),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: darkTextPrimary,
+          minimumSize: const Size(64, 46),
+          side: const BorderSide(color: darkBorder, width: 1),
+          backgroundColor: darkCard,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+          textStyle: const TextStyle(
+              fontFamily: family, fontSize: 13, fontWeight: FontWeight.w700),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: NawaqsColors.mintDeep,
+          textStyle: const TextStyle(
+              fontFamily: family, fontSize: 13, fontWeight: FontWeight.w700),
+        ),
+      ),
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: darkSurface,
+        surfaceTintColor: Colors.transparent,
+        indicatorColor: const Color(0xFF16382F),
+        height: 64,
+        elevation: 0,
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return const TextStyle(
+              fontFamily: family,
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              color: NawaqsColors.mintDeep,
+            );
+          }
+          return const TextStyle(
+            fontFamily: family,
+            fontSize: 10.5,
+            fontWeight: FontWeight.w600,
+            color: darkTextMuted,
+          );
+        }),
+        iconTheme: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return const IconThemeData(size: 22, color: NawaqsColors.mintDeep);
+          }
+          return const IconThemeData(size: 22, color: darkTextMuted);
+        }),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: darkCard,
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.lg)),
+        titleTextStyle: const TextStyle(
+            fontFamily: family,
+            color: darkTextPrimary,
+            fontSize: 16.5,
+            fontWeight: FontWeight.w800),
+        contentTextStyle: const TextStyle(
+            fontFamily: family,
+            color: darkTextSecondary,
+            fontSize: 13.5,
+            height: 1.55),
+      ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: darkSurface,
+        surfaceTintColor: Colors.transparent,
+        modalBackgroundColor: darkSurface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+        ),
+        showDragHandle: true,
+      ),
+      progressIndicatorTheme:
+          const ProgressIndicatorThemeData(color: NawaqsColors.mintDeep),
+      textTheme: const TextTheme(
+        displayLarge: TextStyle(
+            fontFamily: family,
+            fontSize: 28,
+            fontWeight: FontWeight.w800,
+            color: darkTextPrimary,
+            height: 1.25),
+        headlineMedium: TextStyle(
+            fontFamily: family,
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
+            color: darkTextPrimary,
+            height: 1.3),
+        headlineSmall: TextStyle(
+            fontFamily: family,
+            fontSize: 18.5,
+            fontWeight: FontWeight.w800,
+            color: darkTextPrimary,
+            height: 1.3),
+        titleLarge: TextStyle(
+            fontFamily: family,
+            fontSize: 16.5,
+            fontWeight: FontWeight.w800,
+            color: darkTextPrimary,
+            height: 1.35),
+        titleMedium: TextStyle(
+            fontFamily: family,
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+            color: darkTextPrimary,
+            height: 1.35),
+        titleSmall: TextStyle(
+            fontFamily: family,
+            fontSize: 13.5,
+            fontWeight: FontWeight.w700,
+            color: darkTextPrimary,
+            height: 1.35),
+        bodyLarge: TextStyle(
+            fontFamily: family,
+            fontSize: 14.5,
+            fontWeight: FontWeight.w500,
+            color: darkTextPrimary,
+            height: 1.55),
+        bodyMedium: TextStyle(
+            fontFamily: family,
+            fontSize: 13,
+            fontWeight: FontWeight.w400,
+            color: darkTextPrimary,
+            height: 1.55),
+        bodySmall: TextStyle(
+            fontFamily: family,
+            fontSize: 12.5,
+            fontWeight: FontWeight.w400,
+            color: darkTextSecondary,
+            height: 1.5),
+        labelLarge: TextStyle(
+            fontFamily: family,
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: darkTextPrimary),
+        labelMedium: TextStyle(
+            fontFamily: family,
+            fontSize: 11.5,
+            fontWeight: FontWeight.w700,
+            color: darkTextSecondary),
+        labelSmall: TextStyle(
+            fontFamily: family,
+            fontSize: 10.5,
+            fontWeight: FontWeight.w700,
+            color: darkTextMuted,
+            letterSpacing: 0.0,
+            height: 1.3),
+      ),
+    );
+  }
+}
+
+/// Brand Kit Page 6: Typography Hierarchy
+/// العناوين والستيكرز: Lalezar 400
+/// النصوص والتطبيق: Cairo 400 · 700 · 900
+class AppTypography {
+  AppTypography._();
+
+  static const String titleFont = 'Lalezar';
+  static const String bodyFont = 'Cairo';
+
+  /// عنوان رئيسي: Lalezar 400 (48–80)
+  static TextStyle mainHeader({
+    double fontSize = 48,
+    Color? color,
+    double height = 1.15,
+  }) =>
+      TextStyle(
+        fontFamily: titleFont,
+        fontWeight: FontWeight.w400,
+        fontSize: fontSize,
+        color: color ?? NawaqsColors.ink,
+        height: height,
+      );
+
+  /// عنوان فرعي / يعرف: Lalezar 400 (28–36)
+  static TextStyle subHeader({
+    double fontSize = 28,
+    Color? color,
+    double height = 1.25,
+  }) =>
+      TextStyle(
+        fontFamily: titleFont,
+        fontWeight: FontWeight.w400,
+        fontSize: fontSize,
+        color: color ?? NawaqsColors.ink,
+        height: height,
+      );
+
+  /// نص أساسي: Cairo 400 (14–18)
+  static TextStyle body({
+    double fontSize = 15,
+    Color? color,
+    double height = 1.55,
+  }) =>
+      TextStyle(
+        fontFamily: bodyFont,
+        fontWeight: FontWeight.w400,
+        fontSize: fontSize,
+        color: color ?? NawaqsColors.ink,
+        height: height,
+      );
+
+  /// نص مهم / أزرار: Cairo 700 (14–18)
+  static TextStyle important({
+    double fontSize = 15,
+    Color? color,
+    double height = 1.4,
+  }) =>
+      TextStyle(
+        fontFamily: bodyFont,
+        fontWeight: FontWeight.w700,
+        fontSize: fontSize,
+        color: color ?? NawaqsColors.ink,
+        height: height,
+      );
+
+  /// أرقام وأسعار: Cairo 900 (20–32)
+  static TextStyle price({
+    double fontSize = 22,
+    Color? color,
+    double height = 1.2,
+  }) =>
+      TextStyle(
+        fontFamily: bodyFont,
+        fontWeight: FontWeight.w900,
+        fontSize: fontSize,
+        color: color ?? NawaqsColors.teal,
+        height: height,
+      );
 }

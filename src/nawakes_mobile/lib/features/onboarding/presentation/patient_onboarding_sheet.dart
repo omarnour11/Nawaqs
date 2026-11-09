@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:nawakes_mobile/core/location/location_service.dart';
 import 'package:nawakes_mobile/core/network/secure_storage_provider.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
 import 'package:nawakes_mobile/core/ui/nawaqss_brand_widgets.dart';
+import 'package:nawakes_mobile/features/search/presentation/nearby_products_provider.dart';
 
 /// First-time onboarding & permission bottom sheet (Brand Kit Page 14)
 class PatientOnboardingSheet extends ConsumerStatefulWidget {
@@ -178,9 +181,30 @@ class _PatientOnboardingSheetState extends ConsumerState<PatientOnboardingSheet>
           height: 48,
           child: FilledButton(
             onPressed: () async {
+              if (_cameraGranted) {
+                try {
+                  await Permission.camera.request();
+                } catch (_) {}
+              }
               if (_locationGranted) {
                 try {
-                  await Geolocator.requestPermission();
+                  final perm = await Geolocator.requestPermission();
+                  if (perm == LocationPermission.whileInUse || perm == LocationPermission.always) {
+                    final locService = ref.read(locationServiceProvider);
+                    final pos = await locService.getCurrentPosition();
+                    if (pos != null) {
+                      final addr = await locService.getDetailedEgyptianAddress(pos.latitude, pos.longitude);
+                      final gov = LocationService.detectGovernorate(pos.latitude, pos.longitude);
+                      ref.read(deliveryLocationProvider.notifier).setLocation(
+                        DeliveryLocation(
+                          label: addr ?? 'موقعي الحالي',
+                          latitude: pos.latitude,
+                          longitude: pos.longitude,
+                          governorate: gov,
+                        ),
+                      );
+                    }
+                  }
                 } catch (_) {}
               }
               if (mounted) Navigator.of(context).pop();

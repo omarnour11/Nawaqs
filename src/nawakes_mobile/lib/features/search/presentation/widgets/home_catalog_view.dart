@@ -11,6 +11,7 @@ import 'package:nawakes_mobile/core/location/location_service.dart';
 import 'package:nawakes_mobile/features/search/presentation/nearby_products_provider.dart';
 import 'package:nawakes_mobile/features/search/presentation/widgets/nearby_pharmacy_options_sheet.dart';
 import 'package:nawakes_mobile/features/search/presentation/widgets/mandatory_location_prompt_dialog.dart';
+import 'package:nawakes_mobile/core/utils/arabic_digits.dart';
 
 /// The El-Ezaby-styled Home Catalog View for Nawakes.
 /// Displays delivery mode toggle, address bar, promotional banners, quick services,
@@ -59,6 +60,31 @@ class _HomeCatalogViewState extends ConsumerState<HomeCatalogView> {
           curve: Curves.easeInOut,
         );
       }
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      try {
+        final permission = await Geolocator.checkPermission();
+        if (permission == LocationPermission.whileInUse || permission == LocationPermission.always) {
+          final currentLoc = ref.read(deliveryLocationProvider);
+          if (currentLoc.label == 'الحي المتميز، 6 أكتوبر') {
+            final locService = ref.read(locationServiceProvider);
+            final pos = await locService.getCurrentPosition();
+            if (pos != null && mounted) {
+              final addr = await locService.getDetailedEgyptianAddress(pos.latitude, pos.longitude);
+              final gov = LocationService.detectGovernorate(pos.latitude, pos.longitude);
+              ref.read(deliveryLocationProvider.notifier).setLocation(
+                DeliveryLocation(
+                  label: addr ?? 'موقعي الحالي',
+                  latitude: pos.latitude,
+                  longitude: pos.longitude,
+                  governorate: gov,
+                ),
+              );
+            }
+          }
+        }
+      } catch (_) {}
     });
   }
 
@@ -723,8 +749,9 @@ class _HomeCatalogViewState extends ConsumerState<HomeCatalogView> {
                       ),
                       const Spacer(),
                       Text(
-                        '${p.price.toStringAsFixed(0)} ج.م',
+                        p.price.toArabicPrice(),
                         style: const TextStyle(
+                          fontFamily: 'Cairo',
                           fontSize: 14,
                           fontWeight: FontWeight.w900,
                           color: AppColors.textDark,

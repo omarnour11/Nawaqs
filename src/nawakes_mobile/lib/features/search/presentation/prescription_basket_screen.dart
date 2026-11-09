@@ -7,6 +7,7 @@ import 'package:nawakes_mobile/core/network/api_response_models.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
 import 'package:nawakes_mobile/core/ui/nawaqss_brand_widgets.dart';
 import 'package:nawakes_mobile/features/search/presentation/batch_search_results_screen.dart';
+import 'package:nawakes_mobile/core/utils/arabic_digits.dart';
 
 class PrescriptionBasketItem {
   String tradeName;
@@ -415,7 +416,7 @@ class PrescriptionBasketScreen extends HookConsumerWidget {
                                                       const Icon(Icons.sell_outlined, size: 12, color: Color(0xFF2E7D32)),
                                                       const SizedBox(width: 4),
                                                       Flexible(child: Text(
-                                                        'السعر: ${item.priceEgp!.toStringAsFixed(item.priceEgp! % 1 == 0 ? 0 : 2)} ج.م',
+                                                        'السعر: ${item.priceEgp!.toArabicPrice()}',
                                                         style: const TextStyle(
                                                           fontSize: 11,
                                                           fontWeight: FontWeight.w700,
@@ -594,7 +595,7 @@ class PrescriptionBasketScreen extends HookConsumerWidget {
                   const SizedBox(width: 8),
                   Flexible(
                     child: Text(
-                      'بحث جماعي (${items.value.length} أدوية)',
+                      'بحث جماعي (${items.value.length.toArabicDigits()} أدوية)',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       textAlign: TextAlign.center,

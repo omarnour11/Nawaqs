@@ -146,7 +146,7 @@ public static partial class DrugNameNormalizer
         if (norm.Contains("حقن") || norm.Contains("امبول") || norm.Contains("vial") || norm.Contains("inj"))
             return "حقن / أمبولات";
 
-        if (norm.Contains("قطره") || norm.Contains("drops"))
+        if (norm.Contains("قطره") || norm.Contains("drops") || norm.Contains("نقط") || norm.Contains("قطر"))
             return "قطرة";
 
         if (norm.Contains("بخاخ") || norm.Contains("spray"))

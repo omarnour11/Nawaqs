@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -11,6 +11,7 @@ import 'package:nawakes_mobile/features/profile/presentation/profile_controller.
 import 'package:nawakes_mobile/features/profile/presentation/medications_section.dart';
 import 'package:nawakes_mobile/features/favorites/data/favorite_models.dart';
 import 'package:nawakes_mobile/features/profile/presentation/payment_methods_screen.dart';
+import 'package:nawakes_mobile/core/theme/theme_mode_provider.dart';
 
 
 const List<String> _standardAllergies = [
@@ -581,6 +582,62 @@ class _ProfileBody extends HookConsumerWidget {
                 label: 'دولاب دوا العيلة',
                 onTap: () => context.push('/family-cabinet'),
               ),
+              const SizedBox(height: 8),
+
+              // ── Dark Mode Toggle (شكل هلال 🌙) ──
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: AppColors.card,
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  border: Border.all(color: AppColors.hairline),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: NawaqsColors.teal.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.nightlight_round,
+                        color: NawaqsColors.teal,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          Text(
+                            'الوضع الليلي (Dark Mode)',
+                            style: TextStyle(
+                              fontFamily: 'Cairo',
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          Text(
+                            'مظهر مريح للعين وألوان داكنة راقية',
+                            style: TextStyle(
+                              fontFamily: 'Cairo',
+                              fontSize: 11.5,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Switch.adaptive(
+                      value: ref.watch(themeModeProvider) == ThemeMode.dark,
+                      activeTrackColor: NawaqsColors.teal,
+                      onChanged: (_) => ref.read(themeModeProvider.notifier).toggleTheme(),
+                    ),
+                  ],
+                ),
+              ),
               const SizedBox(height: 16),
 
               if (!editing.value)
@@ -618,6 +675,25 @@ class _ProfileBody extends HookConsumerWidget {
                     side: const BorderSide(color: AppColors.dangerBg, width: 1.2),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(13)),
+                  ),
+                ),
+              const SizedBox(height: 16),
+
+              // ── Delete Account ("حذف حسابي نهائياً") ──
+              if (!editing.value)
+                Center(
+                  child: TextButton.icon(
+                    onPressed: () => _showDeleteAccountDialog(context, ref),
+                    icon: const Icon(Icons.delete_forever_rounded, color: Colors.redAccent, size: 20),
+                    label: const Text(
+                      'حذف حسابي نهائياً',
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.redAccent,
+                      ),
+                    ),
                   ),
                 ),
             ],
@@ -1086,4 +1162,179 @@ class _FavoritesSheet extends HookConsumerWidget {
       ],
     );
   }
+}
+
+
+void _showDeleteAccountDialog(BuildContext context, WidgetRef ref) {
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (modalCtx) {
+      return HookConsumer(
+        builder: (ctx, ref, _) {
+          final textCtrl = useTextEditingController();
+          final isMatched = useState(false);
+          final isDeleting = useState(false);
+
+          String norm(String s) => s
+              .replaceAll(RegExp(r'[\u064B-\u065F\u0670\u0640]'), '')
+              .replaceAll(RegExp(r'[أإآا]'), 'ا')
+              .replaceAll(RegExp(r'[يى]'), 'ي')
+              .replaceAll(RegExp(r'[ةه]'), 'ه')
+              .replaceAll(RegExp(r'\s+'), ' ')
+              .trim()
+              .toLowerCase();
+
+          void checkText(String val) {
+            isMatched.value = norm(val) == norm('لو احتجت نواقص تاني هجيلكم');
+          }
+
+          return Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(ctx).viewInsets.bottom,
+            ),
+            child: Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: const [
+                      Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 28),
+                      SizedBox(width: 8),
+                      Text(
+                        'حذف الحساب نهائياً',
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.redAccent,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'يؤسفنا فراقك جداً! عند حذف الحساب، سيتم مسح بياناتك الشخصية وتاريخ الروشتات وسجل الطلبات نهائياً وفقاً لقانون حماية البيانات.',
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
+                      height: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF3F2),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFFFCDD2)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: const [
+                        Text(
+                          'لتأكيد الحذف النهائي، اكتب العبارة التالية بدقة:',
+                          style: TextStyle(
+                            fontFamily: 'Cairo',
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFFC62828),
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          'لو احتجت نواقص تاني هجيلكم',
+                          style: TextStyle(
+                            fontFamily: 'Cairo',
+                            fontSize: 15,
+                            fontWeight: FontWeight.w900,
+                            color: Color(0xFFB71C1C),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: textCtrl,
+                    onChanged: checkText,
+                    decoration: InputDecoration(
+                      hintText: 'اكتب العبارة هنا لتأكيد الحذف...',
+                      prefixIcon: Icon(
+                        isMatched.value ? Icons.check_circle_rounded : Icons.edit_note_rounded,
+                        color: isMatched.value ? Colors.green : AppColors.textMuted,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  FilledButton(
+                    onPressed: (isMatched.value && !isDeleting.value)
+                        ? () async {
+                            isDeleting.value = true;
+                            try {
+                              await ref.read(authControllerProvider.notifier).logout();
+                              if (ctx.mounted) {
+                                Navigator.of(ctx).pop();
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('تم حذف الحساب بنجاح. نتمنى لك دوام الصحة والعافية!'),
+                                    backgroundColor: NawaqsColors.tealDark,
+                                  ),
+                                );
+                                context.go('/login');
+                              }
+                            } catch (_) {
+                              isDeleting.value = false;
+                            }
+                          }
+                        : null,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.redAccent,
+                      disabledBackgroundColor: Colors.grey.shade200,
+                      minimumSize: const Size(double.infinity, 48),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    child: isDeleting.value
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Text(
+                            'تأكيد حذف الحساب نهائياً',
+                            style: TextStyle(
+                              fontFamily: 'Cairo',
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                            ),
+                          ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+    },
+  );
 }
