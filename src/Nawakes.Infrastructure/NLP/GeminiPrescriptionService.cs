@@ -162,13 +162,19 @@ public sealed class GeminiPrescriptionService : IGeminiPrescriptionService
             You are an Egyptian clinical pharmacist expert in deciphering messy doctor handwriting and prescription text.
             CRITICAL INSTRUCTIONS:
             - Strictly ignore doctor names (e.g. Dr., د., دكتور), clinic/hospital headers, patient names, dates, phone numbers, and addresses.
-            - Extract ONLY the prescribed medications (e.g. Concor, Augmentin, Lipitor, Glucophage, Cataflam, Controloc, Panadol).
+            - Extract ONLY the prescribed medications (e.g. Concor, Augmentin, Lipitor, Glucophage, Cataflam, Controloc, Panadol, Otrivin).
             - For each medication identify:
               1. tradeName: Official Egyptian brand/trade name (NEVER put a doctor or clinic name here!).
-              2. strength: Dosage strength if present (e.g. 5mg, 10mg, 1000mg, 1g, 50mg).
-              3. dosageForm: Dosage form if present (e.g. Tablet, Capsule, Syrup, Injection).
-              4. quantity: Number of packs or count if indicated (e.g. 1, 2, 3), default to 1.
-              5. confidence: Confidence score between 0.0 and 1.0.
+              2. strength: Dosage strength if present (e.g. 5mg, 10mg, 1000mg, 1g, 50mg, 0.1%, 0.05%).
+              3. dosageForm: EXACT clinical dosage form. NEVER label drops, liquids, sprays, or topicals as 'Tablet' or 'قرص'!
+                 Allowed forms: 'نقط للأنف' (Nasal Drops), 'قطرة للعين' (Eye Drops), 'قطرة للأذن' (Ear Drops), 'نقط بالفم' (Oral Drops), 'شراب' (Syrup), 'معلق' (Suspension), 'بخاخ' (Spray/Inhaler), 'مرهم' (Ointment), 'كريم' (Cream), 'جل' (Gel), 'حقن / أمبول' (Injection/Ampoule), 'لبوس' (Suppository), 'فوار' (Effervescent), 'أقراص' (Tablets), 'كبسولات' (Capsules).
+              4. rawSig: Full dosage directions with the correct clinical route:
+                 * Nasal drops/sprays (e.g. Otrivin, Afrin, Nasivin) MUST specify 'في الأنف' / 'نقط بالأنف' (NEVER 'في الفم'!).
+                 * Eye drops/ointments (e.g. Tobradex, Tobrex, Systane) MUST specify 'في العين'.
+                 * Ear drops (e.g. Otal, Viotic) MUST specify 'في الأذن'.
+                 * Syrups/suspensions MUST specify spoonful/mL ('ملعقة' or 'سم'), NEVER 'قرص'.
+              5. quantity: Number of packs or count if indicated (e.g. 1, 2, 3), default to 1.
+              6. confidence: Confidence score between 0.0 and 1.0.
 
             PRESCRIPTION TEXT TO DECIPHER:
             ---
@@ -178,7 +184,7 @@ public sealed class GeminiPrescriptionService : IGeminiPrescriptionService
             Output ONLY valid JSON matching this exact structure:
             {
               "medications": [
-                {"tradeName": "string", "strength": "string or null", "dosageForm": "string or null", "quantity": 1, "confidence": 0.95}
+                {"tradeName": "string", "strength": "string or null", "dosageForm": "string or null", "rawSig": "string or null", "quantity": 1, "confidence": 0.95}
               ]
             }
             Do not include markdown fences or any other text.
@@ -194,8 +200,22 @@ public sealed class GeminiPrescriptionService : IGeminiPrescriptionService
             CRITICAL PRIVACY & PII REDACTION RULES:
             - NEVER extract, transcribe, or output any patient name, doctor/prescriber name, clinic name, hospital name, syndicate number, national ID, age, phone number, address, or Egyptian city/governorate (e.g. Cairo, Alexandria, Giza, Mansoura, Tanta, Dokki, Mohandessin, Smouha, Maadi, etc.).
             - Strictly ignore, suppress, and redact all personal identifiable information (PII / PHI).
-            - Extract ONLY the prescribed medication lines (e.g. Concor, Augmentin, Panadol, Glucophage, Cataflam, Controloc, Brufen, Sirdalud, Plavix, etc.).
-            - Put dosage directions (e.g. 1x1, 1x2, 1x3, 1 tab PO QHS, قرص ليلا, قرص كل 12 ساعة بعد الأكل, قبل الأكل بساعة) in "rawSig".
+            - Extract ONLY the prescribed medication lines (e.g. Concor, Augmentin, Panadol, Glucophage, Cataflam, Controloc, Brufen, Sirdalud, Plavix, Otrivin, etc.).
+
+            CRITICAL CLINICAL PHARMACOLOGY & ROUTE INVARIANTS:
+            - Accurately determine the true dosageForm:
+              * Drops (نقط/قطرة):
+                - Nasal Drops (e.g. Otrivin, Afrin, Nasivin, Rhinocort, Xylometazoline, Physiomer, Sinomarin) -> dosageForm: 'نقط للأنف' or 'بخاخ أنفي'. Route in rawSig MUST be nasal ('في الأنف' / 'نقط بالأنف' / 'في كل فتحة أنف'), NEVER oral ('في الفم') and NEVER 'قرص'!
+                - Eye Drops (e.g. Tobradex, Tobrex, Vigamox, Systane, Tears Guard, Polyfresh, Fresh Tears, Ciprocin) -> dosageForm: 'قطرة للعين'. Route in rawSig: 'في العين'.
+                - Ear Drops (e.g. Otal, Viotic, Otocalm, Waxsol) -> dosageForm: 'قطرة للأذن'. Route in rawSig: 'في الأذن'.
+                - Oral Drops (e.g. Vi-Syneral, Cebion, Iron drops) -> dosageForm: 'نقط بالفم'.
+              * Syrups & Suspensions (e.g. Megamox susp, Catafly, Augmentin syrup, Brufen syrup) -> dosageForm: 'شراب' or 'معلق'. Units in rawSig: 'ملعقة' or 'سم' / 'مل' (NEVER 'قرص'!).
+              * Inhalers & Sprays (e.g. Ventolin, Symbicort, Seretide) -> dosageForm: 'بخاخ استنشاق'. Units in rawSig: 'بخة'.
+              * Topicals (e.g. Betnovate, Fucidin, Kenacomb, Mebo, Daktarin, Voltaren Emulgel) -> dosageForm: 'مرهم' / 'كريم' / 'جل'. Route: 'دهان موضعي'.
+              * Suppositories (e.g. Dolphin, Cetal supp) -> dosageForm: 'لبوس'.
+              * Injections (e.g. Cefotax, Ceftriaxone, Voltaren amp) -> dosageForm: 'حقن / أمبول'.
+              * Tablets/Capsules (e.g. Concor tab, Panadol tab, Augmentin 1g tab, Omeprazole cap) -> dosageForm: 'أقراص' or 'كبسولات'.
+            - Put complete dosage directions reflecting the true dosage form and anatomical route in 'rawSig'.
 
             On-device OCR hint (preliminary optical tokens — verify against image):
             ---
@@ -321,6 +341,12 @@ public sealed class GeminiPrescriptionService : IGeminiPrescriptionService
                             continue;
                         }
 
+                        if (m < modelsToTry.Count - 1)
+                        {
+                            _logger.LogWarning("Gemini model {Model} returned {StatusCode}. Trying next fallback model in cascade.", model, response.StatusCode);
+                            break;
+                        }
+
                         TripCircuitBreaker($"Received HTTP {response.StatusCode} from Google Gemini after {maxRetries} retries.");
                         return new GeminiPrescriptionResult(null, null, null, 0m, false, true);
                     }
@@ -334,32 +360,45 @@ public sealed class GeminiPrescriptionService : IGeminiPrescriptionService
                     var jsonDoc = await response.Content.ReadFromJsonAsync<JsonDocument>(cancellationToken: cancellationToken);
                     var root = jsonDoc?.RootElement;
 
-                    var candidates = root?.GetProperty("candidates");
-                    if (candidates == null || candidates.Value.GetArrayLength() == 0)
+                    if (root == null || !root.Value.TryGetProperty("candidates", out var candidates) || candidates.GetArrayLength() == 0)
                     {
+                        _logger.LogWarning("Gemini model {Model} returned response with no candidates.", model);
                         break;
                     }
 
-                    var textResponse = candidates.Value[0]
-                        .GetProperty("content")
-                        .GetProperty("parts")[0]
-                        .GetProperty("text")
-                        .GetString();
+                    string? textResponse = null;
+                    if (candidates[0].TryGetProperty("content", out var contentEl) &&
+                        contentEl.TryGetProperty("parts", out var partsEl) &&
+                        partsEl.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var part in partsEl.EnumerateArray())
+                        {
+                            if (part.TryGetProperty("text", out var textEl) && !string.IsNullOrWhiteSpace(textEl.GetString()))
+                            {
+                                textResponse = textEl.GetString();
+                                break;
+                            }
+                        }
+                    }
 
                     if (string.IsNullOrWhiteSpace(textResponse))
                     {
+                        _logger.LogWarning("Gemini model {Model} returned empty text in candidate content parts.", model);
                         break;
                     }
 
                     var items = ParseMedicationJson(textResponse);
                     if (items.Count == 0)
                     {
+                        _logger.LogWarning("Gemini model {Model} output could not be parsed into medications: {Text}", model, textResponse);
                         break;
                     }
 
                     IncrementDailyQuota();
 
                     var primary = items[0];
+                    _logger.LogInformation("Gemini model {Model} successfully extracted {Count} medications in Tier 1. Primary: {Primary}",
+                        model, items.Count, primary.TradeName);
                     return new GeminiPrescriptionResult(
                         primary.TradeName,
                         primary.Strength,
@@ -423,6 +462,59 @@ public sealed class GeminiPrescriptionService : IGeminiPrescriptionService
         "مدينة نصر", "مصر الجديدة", "الزمالك", "التجمع", "أكتوبر", "الشيخ زايد", "الرحاب", "مدينتي", "الشروق", "العبور", "حلوان"
     };
 
+    /// <summary>
+    /// Egyptian Law No. 151 of 2020 PII redaction: filters doctor, clinic, patient, syndicate,
+    /// and location lines from raw prescription OCR text, preserving only medication orders.
+    /// </summary>
+    public static string FilterPiiStopwords(string rawText)
+    {
+        if (string.IsNullOrWhiteSpace(rawText)) return string.Empty;
+
+        var lines = rawText.Split(["\r\n", "\r", "\n"], StringSplitOptions.None);
+        var filteredLines = new List<string>();
+
+        var piiLineIndicators = new[]
+        {
+            "عيادة", "مستشفى", "مركز", "clinic", "hospital", "center",
+            "دكتور", "د.", "د/ ", "أستاذ", "استشاري", "اخصائي", "طبيب", "الطبيب", "doctor", "dr.", "prof", "consultant", "specialist",
+            "نقابة", "نقابه", "رقم القيد", "syndicate", "dea", "npi",
+            "اسم المريض", "المريض", "الاسم:", "الاسم", "السن:", "السن", "العنوان:", "العنوان", "patient", "name:", "age:", "address:",
+            "تليفون", "هاتف", "موبايل", "ت:", "فكس", "phone", "tel", "mobile", "cell", "fax", "contact",
+            "توقيع", "signature", "sign:", "ختم", "stamp",
+            "الدقي", "المهندسين", "سموحة", "المعادي", "مدينة نصر", "مصر الجديدة", "الزمالك", "التجمع",
+            "أكتوبر", "الشيخ زايد", "الرحاب", "مدينتي", "الشروق", "العبور", "حلوان", "العجوزة",
+            "القاهرة", "الإسكندرية", "اسكندرية", "الجيزة", "المنصورة", "طنطا", "أسيوط", "اسيوط",
+            "cairo", "alexandria", "giza", "mansoura", "tanta", "dokki", "mohandessin", "smouha", "agouza",
+            "تاريخ:", "تاريخ :", "date:"
+        };
+
+        foreach (var line in lines)
+        {
+            var trimmed = line.Trim();
+            if (string.IsNullOrWhiteSpace(trimmed)) continue;
+
+            var lower = trimmed.ToLowerInvariant();
+            var isPii = piiLineIndicators.Any(pii => lower.Contains(pii));
+
+            // Law No. 151: Check for phone numbers (7+ digits including Arabic-Indic numerals)
+            if (!isPii)
+            {
+                var digits = System.Text.RegularExpressions.Regex.Replace(trimmed, @"[^\d\u0660-\u0669]", "");
+                if (digits.Length >= 7)
+                {
+                    isPii = true;
+                }
+            }
+
+            if (!isPii)
+            {
+                filteredLines.Add(trimmed);
+            }
+        }
+
+        return string.Join(Environment.NewLine, filteredLines);
+    }
+
     private static bool IsPii(string? name)
     {
         if (string.IsNullOrWhiteSpace(name)) return true;
@@ -449,13 +541,24 @@ public sealed class GeminiPrescriptionService : IGeminiPrescriptionService
         }
         cleanJson = cleanJson.Trim();
 
-        var items = new List<GeminiMedicationItem>();
-        using var doc = JsonDocument.Parse(cleanJson);
-        var rootEl = doc.RootElement;
-        if (rootEl.TryGetProperty("medications", out var medsProp) && medsProp.ValueKind == JsonValueKind.Array)
+        // Extract JSON structure if model output included surrounding prose
+        var firstBrace = cleanJson.IndexOfAny(['{', '[']);
+        var lastBrace = cleanJson.LastIndexOfAny(['}', ']']);
+        if (firstBrace >= 0 && lastBrace > firstBrace)
         {
-            foreach (var el in medsProp.EnumerateArray())
+            cleanJson = cleanJson.Substring(firstBrace, lastBrace - firstBrace + 1);
+        }
+
+        var items = new List<GeminiMedicationItem>();
+        try
+        {
+            using var doc = JsonDocument.Parse(cleanJson);
+            var rootEl = doc.RootElement;
+
+            void AddItemFromElement(JsonElement el)
             {
+                if (el.ValueKind != JsonValueKind.Object) return;
+
                 var name = el.TryGetProperty("tradeName", out var tn) ? tn.GetString()
                     : (el.TryGetProperty("name", out var n) ? n.GetString() : null);
 
@@ -468,22 +571,43 @@ public sealed class GeminiPrescriptionService : IGeminiPrescriptionService
                     var qty = el.TryGetProperty("quantity", out var q) && q.TryGetInt32(out var qv) && qv > 0 ? qv : 1;
                     var rawSig = el.TryGetProperty("rawSig", out var rs) ? rs.GetString() : null;
                     var generic = el.TryGetProperty("genericName", out var gn) ? gn.GetString() : null;
+                    (df, rawSig) = SanitizeClinicalFormAndRoute(name, df, rawSig);
                     items.Add(new GeminiMedicationItem(name.Trim(), str?.Trim(), df?.Trim(), conf, qty, rawSig?.Trim(), generic?.Trim()));
                 }
             }
+
+            if (rootEl.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var el in rootEl.EnumerateArray())
+                {
+                    AddItemFromElement(el);
+                }
+            }
+            else if (rootEl.ValueKind == JsonValueKind.Object)
+            {
+                if (rootEl.TryGetProperty("medications", out var medsProp) && medsProp.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var el in medsProp.EnumerateArray())
+                    {
+                        AddItemFromElement(el);
+                    }
+                }
+                else if (rootEl.TryGetProperty("items", out var itemsProp) && itemsProp.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var el in itemsProp.EnumerateArray())
+                    {
+                        AddItemFromElement(el);
+                    }
+                }
+                else
+                {
+                    AddItemFromElement(rootEl);
+                }
+            }
         }
-        else if ((rootEl.TryGetProperty("tradeName", out var singleTn) || rootEl.TryGetProperty("name", out singleTn))
-                 && !string.IsNullOrWhiteSpace(singleTn.GetString())
-                 && !IsPii(singleTn.GetString()))
+        catch (JsonException)
         {
-            var str = rootEl.TryGetProperty("strength", out var s) ? s.GetString() : null;
-            var df = rootEl.TryGetProperty("dosageForm", out var d) ? d.GetString()
-                : (rootEl.TryGetProperty("form", out var f) ? f.GetString() : null);
-            var conf = rootEl.TryGetProperty("confidence", out var c) && c.TryGetDecimal(out var cv) ? cv : 0.95m;
-            var qty = rootEl.TryGetProperty("quantity", out var q) && q.TryGetInt32(out var qv) && qv > 0 ? qv : 1;
-            var rawSig = rootEl.TryGetProperty("rawSig", out var rs) ? rs.GetString() : null;
-            var generic = rootEl.TryGetProperty("genericName", out var gn) ? gn.GetString() : null;
-            items.Add(new GeminiMedicationItem(singleTn.GetString()!.Trim(), str?.Trim(), df?.Trim(), conf, qty, rawSig?.Trim(), generic?.Trim()));
+            // Malformed JSON handled gracefully
         }
 
         return items;
@@ -557,5 +681,141 @@ public sealed class GeminiPrescriptionService : IGeminiPrescriptionService
         }
 
         _memoryCache.Set(CircuitBreakerKey, true, ttl);
+    }
+
+    /// <summary>
+    /// Clinical Pharmacology Sanitizer for Egyptian medications:
+    /// Enforces anatomical routes and correct dosage forms so that nasal drops (e.g. Otrivin)
+    /// never get routed to oral ingestion or labeled as tablets/قرص, and syrups are never 'tablets'.
+    /// </summary>
+    internal static (string? Form, string? Sig) SanitizeClinicalFormAndRoute(string name, string? form, string? sig)
+    {
+        var cleanName = name.Trim().ToLowerInvariant();
+        var cleanSig = sig?.Trim() ?? string.Empty;
+        var cleanForm = form?.Trim();
+
+        // 1. Nasal drops & sprays (Otrivin, Afrin, Nasivin, Rhinocort, Physiomer, Sinomarin, Xylometazoline, etc.)
+        if (cleanName.Contains("otrivin") || cleanName.Contains("afrin") || cleanName.Contains("nasivin") ||
+            cleanName.Contains("rhinocort") || cleanName.Contains("physiomer") || cleanName.Contains("sinomarin") ||
+            cleanName.Contains("xylometazoline") || cleanName.Contains("اوترفين") || cleanName.Contains("افرين") ||
+            cleanName.Contains("نازيفين") || cleanName.Contains("رينوكورت") || cleanName.Contains("فيزيومير") ||
+            cleanName.Contains("أنف") || cleanName.Contains("انف") || cleanName.Contains("nasal"))
+        {
+            cleanForm = cleanForm == null || cleanForm.Contains("قرص") || cleanForm.Contains("tab", StringComparison.OrdinalIgnoreCase)
+                ? "نقط للأنف"
+                : cleanForm;
+
+            if (string.IsNullOrWhiteSpace(cleanSig) || cleanSig.Contains("فم") || cleanSig.Contains("قرص") || cleanSig.Contains("po", StringComparison.OrdinalIgnoreCase))
+            {
+                cleanSig = "نقطتان في كل فتحة أنف عند اللزوم (أو كل 8 ساعات)";
+            }
+            else if (!cleanSig.Contains("أنف") && !cleanSig.Contains("انف"))
+            {
+                cleanSig = $"{cleanSig} (نقط بالأنف)";
+            }
+            return (cleanForm, cleanSig);
+        }
+
+        // 2. Ophthalmic / Eye Drops (Tobradex, Tobrex, Vigamox, Systane, Tears Guard, Polyfresh, Fresh Tears, Ciprocin, etc.)
+        if (cleanName.Contains("tobradex") || cleanName.Contains("tobrex") || cleanName.Contains("vigamox") ||
+            cleanName.Contains("systane") || cleanName.Contains("tears guard") || cleanName.Contains("polyfresh") ||
+            cleanName.Contains("fresh tears") || cleanName.Contains("ciprocin") || cleanName.Contains("توبارادكس") ||
+            cleanName.Contains("توبركس") || cleanName.Contains("فيجاموكس") || cleanName.Contains("سيستين") ||
+            cleanName.Contains("تيرز جارد") || cleanName.Contains("بولي فريش") || cleanName.Contains("عين") || cleanName.Contains("eye"))
+        {
+            cleanForm = cleanForm == null || cleanForm.Contains("قرص") || cleanForm.Contains("tab", StringComparison.OrdinalIgnoreCase)
+                ? "قطرة للعين"
+                : cleanForm;
+
+            if (string.IsNullOrWhiteSpace(cleanSig) || cleanSig.Contains("فم") || cleanSig.Contains("قرص") || cleanSig.Contains("po", StringComparison.OrdinalIgnoreCase))
+            {
+                cleanSig = "نقطة في كل عين 3 مرات يومياً";
+            }
+            else if (!cleanSig.Contains("عين"))
+            {
+                cleanSig = $"{cleanSig} (في العين)";
+            }
+            return (cleanForm, cleanSig);
+        }
+
+        // 3. Otic / Ear Drops (Otal, Viotic, Otocalm, Waxsol, etc.)
+        if (cleanName.Contains("otal") || cleanName.Contains("viotic") || cleanName.Contains("otocalm") ||
+            cleanName.Contains("waxsol") || cleanName.Contains("اوتال") || cleanName.Contains("فيوتيك") ||
+            cleanName.Contains("اوتوكالم") || cleanName.Contains("أذن") || cleanName.Contains("اذن") || cleanName.Contains("ear"))
+        {
+            cleanForm = cleanForm == null || cleanForm.Contains("قرص") || cleanForm.Contains("tab", StringComparison.OrdinalIgnoreCase)
+                ? "قطرة للأذن"
+                : cleanForm;
+
+            if (string.IsNullOrWhiteSpace(cleanSig) || cleanSig.Contains("فم") || cleanSig.Contains("قرص") || cleanSig.Contains("po", StringComparison.OrdinalIgnoreCase))
+            {
+                cleanSig = "نقطتان في الأذن المصابة 3 مرات يومياً";
+            }
+            else if (!cleanSig.Contains("أذن") && !cleanSig.Contains("اذن"))
+            {
+                cleanSig = $"{cleanSig} (في الأذن)";
+            }
+            return (cleanForm, cleanSig);
+        }
+
+        // 4. Oral Drops for infants (Vi-Syneral, Cebion, etc.)
+        if (cleanName.Contains("vi-syneral") || cleanName.Contains("cebion") || cleanName.Contains("في سينرال") || cleanName.Contains("سيبيون"))
+        {
+            cleanForm = "نقط بالفم";
+            if (string.IsNullOrWhiteSpace(cleanSig) || cleanSig.Contains("قرص"))
+            {
+                cleanSig = "نقط بالفم يومياً حسب الجرعة الموصوفة";
+            }
+            return (cleanForm, cleanSig);
+        }
+
+        // 5. Syrups & Suspensions (Megamox syrup, Catafly, Augmentin syrup, Brufen syrup, etc.)
+        if (cleanName.Contains("syrup") || cleanName.Contains("susp") || cleanName.Contains("شراب") || cleanName.Contains("معلق") ||
+            cleanName.Contains("catafly") || cleanName.Contains("كتافلاي"))
+        {
+            cleanForm = cleanForm == null || cleanForm.Contains("قرص") || cleanForm.Contains("tab", StringComparison.OrdinalIgnoreCase)
+                ? "شراب / معلق"
+                : cleanForm;
+
+            if (!string.IsNullOrWhiteSpace(cleanSig) && cleanSig.Contains("قرص"))
+            {
+                cleanSig = cleanSig.Replace("أقراص", "ملاعق").Replace("قرصين", "ملعقتين (10 سم)").Replace("قرص", "ملعقة (5 سم)");
+            }
+            return (cleanForm, cleanSig);
+        }
+
+        // 6. Topicals (Creams / Ointments / Gels)
+        if (cleanName.Contains("cream") || cleanName.Contains("ointment") || cleanName.Contains("gel") ||
+            cleanName.Contains("كريم") || cleanName.Contains("مرهم") || cleanName.Contains("جل") ||
+            cleanName.Contains("fucidin") || cleanName.Contains("kenacomb") || cleanName.Contains("mebo") ||
+            cleanName.Contains("betnovate") || cleanName.Contains("daktarin") || cleanName.Contains("فيوسيدين") ||
+            cleanName.Contains("كيناكومب") || cleanName.Contains("ميبو") || cleanName.Contains("بيتنوفيت") || cleanName.Contains("داكتارين"))
+        {
+            cleanForm = cleanForm == null || cleanForm.Contains("قرص") || cleanForm.Contains("tab", StringComparison.OrdinalIgnoreCase)
+                ? "مرهم / كريم"
+                : cleanForm;
+
+            if (string.IsNullOrWhiteSpace(cleanSig) || cleanSig.Contains("فم") || cleanSig.Contains("قرص") || cleanSig.Contains("po", StringComparison.OrdinalIgnoreCase))
+            {
+                cleanSig = "دهان موضعي على المنطقة المصابة مرتين إلى 3 مرات يومياً";
+            }
+            return (cleanForm, cleanSig);
+        }
+
+        // 7. Prevent incorrect "قرص" labeling if form is drops/syrup
+        if ((cleanForm != null && (cleanForm.Contains("نقط") || cleanForm.Contains("قطر") || cleanForm.Contains("drop") || cleanForm.Contains("syrup") || cleanForm.Contains("شراب"))) &&
+            !string.IsNullOrWhiteSpace(cleanSig) && cleanSig.Contains("قرص"))
+        {
+            if (cleanForm.Contains("نقط") || cleanForm.Contains("قطر") || cleanForm.Contains("drop"))
+            {
+                cleanSig = cleanSig.Replace("أقراص", "نقط").Replace("قرصين", "نقطتين").Replace("قرص", "نقطة واحدة");
+            }
+            else
+            {
+                cleanSig = cleanSig.Replace("أقراص", "ملاعق").Replace("قرصين", "ملعقتين (10 سم)").Replace("قرص", "ملعقة (5 سم)");
+            }
+        }
+
+        return (cleanForm, cleanSig);
     }
 }
