@@ -476,7 +476,7 @@ class AppTheme {
       scaffoldBackgroundColor: darkScaffold,
       cardColor: darkCard,
       canvasColor: darkScaffold,
-      dialogBackgroundColor: darkCard,
+
       fontFamily: family,
       splashFactory: InkSparkle.splashFactory,
     );

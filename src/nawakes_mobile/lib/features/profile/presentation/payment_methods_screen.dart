@@ -271,6 +271,7 @@ class PaymentMethodsScreen extends ConsumerWidget {
 
           // Upcoming Electronic Channels
           _buildUpcomingChannelTile(
+            context: context,
             title: 'إنستاباي (InstaPay IPN)',
             subtitle: 'التحويل اللحظي عبر الحسابات البنكية المصرية',
             icon: Icons.flash_on_rounded,
@@ -279,6 +280,7 @@ class PaymentMethodsScreen extends ConsumerWidget {
           const SizedBox(height: 10),
 
           _buildUpcomingChannelTile(
+            context: context,
             title: 'محافظ المحمول الذكية',
             subtitle: 'فودافون كاش، أورنج كاش، اتصالات كاش، وي باي',
             icon: Icons.phone_android_rounded,
@@ -287,6 +289,7 @@ class PaymentMethodsScreen extends ConsumerWidget {
           const SizedBox(height: 10),
 
           _buildUpcomingChannelTile(
+            context: context,
             title: 'البطاقات البنكية (فيزا / ماستركارد / ميزة)',
             subtitle: 'الدفع المباشر المشفر عبر البوابات المصرفية',
             icon: Icons.credit_card_rounded,
@@ -299,6 +302,7 @@ class PaymentMethodsScreen extends ConsumerWidget {
   }
 
   Widget _buildUpcomingChannelTile({
+    required BuildContext context,
     required String title,
     required String subtitle,
     required IconData icon,
