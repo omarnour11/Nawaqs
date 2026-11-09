@@ -832,7 +832,6 @@ class _HomeCatalogViewState extends ConsumerState<HomeCatalogView> {
       },
     );
   }
-}
 
   Widget _buildTopRatedPharmaciesSection(BuildContext context) {
     final topRatedAsync = ref.watch(topRatedPharmaciesProvider);
