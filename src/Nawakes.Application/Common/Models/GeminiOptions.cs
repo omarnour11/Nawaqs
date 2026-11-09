@@ -12,16 +12,16 @@ public sealed class GeminiOptions
     public string ApiKey { get; set; } = string.Empty;
 
     /// <summary>Gemini model for text-only requests.</summary>
-    public string Model { get; set; } = "gemini-3.8-flash";
+    public string Model { get; set; } = "gemini-3.5-flash";
 
-    /// <summary>Model for prescription photos (vision). Default: gemini-3-flash-preview.</summary>
-    public string VisionModel { get; set; } = "gemini-3-flash-preview";
+    /// <summary>Model for prescription photos (vision). Default: gemini-3.5-flash.</summary>
+    public string VisionModel { get; set; } = "gemini-3.5-flash";
 
-    /// <summary>Thinking level for Gemini 3 Preview (e.g. LOW).</summary>
-    public string ThinkingLevel { get; set; } = "LOW";
+    /// <summary>Thinking level for Gemini 3 Preview (empty by default for lowest latency and highest OCR throughput).</summary>
+    public string ThinkingLevel { get; set; } = string.Empty;
 
-    /// <summary>Automatic fallback cascade vision models if the preview endpoint fails.</summary>
-    public string[] FallbackVisionModels { get; set; } = ["gemini-3.8-flash"];
+    /// <summary>Automatic fallback cascade vision models if the primary endpoint fails.</summary>
+    public string[] FallbackVisionModels { get; set; } = ["gemini-3.1-flash-lite", "gemini-3-flash-preview"];
 
     /// <summary>Maximum daily requests before failing over to local matching engine.</summary>
     public int DailyQuotaLimit { get; set; } = 1400;

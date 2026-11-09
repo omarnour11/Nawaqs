@@ -257,12 +257,12 @@ public sealed class GeminiPrescriptionService : IGeminiPrescriptionService
         }
         else
         {
-            modelsToTry.Add(string.IsNullOrWhiteSpace(_options.Model) ? "gemini-3.8-flash" : _options.Model);
+            modelsToTry.Add(string.IsNullOrWhiteSpace(_options.Model) ? "gemini-3.5-flash" : _options.Model);
         }
 
         if (modelsToTry.Count == 0)
         {
-            modelsToTry.Add("gemini-3.8-flash");
+            modelsToTry.Add("gemini-3.5-flash");
         }
 
         for (int m = 0; m < modelsToTry.Count; m++)
@@ -340,14 +340,14 @@ public sealed class GeminiPrescriptionService : IGeminiPrescriptionService
                     var jsonDoc = await response.Content.ReadFromJsonAsync<JsonDocument>(cancellationToken: cancellationToken);
                     var root = jsonDoc?.RootElement;
 
-                    var candidates = root?.GetProperty("candidates");
-                    if (candidates == null || candidates.Value.GetArrayLength() == 0)
+                    if (root == null || !root.Value.TryGetProperty("candidates", out var candidates) || candidates.GetArrayLength() == 0)
                     {
+                        _logger.LogWarning("Gemini model {Model} returned response with no candidates.", model);
                         break;
                     }
 
                     string? textResponse = null;
-                    if (candidates.Value[0].TryGetProperty("content", out var contentEl) &&
+                    if (candidates[0].TryGetProperty("content", out var contentEl) &&
                         contentEl.TryGetProperty("parts", out var partsEl) &&
                         partsEl.ValueKind == JsonValueKind.Array)
                     {
@@ -363,18 +363,22 @@ public sealed class GeminiPrescriptionService : IGeminiPrescriptionService
 
                     if (string.IsNullOrWhiteSpace(textResponse))
                     {
+                        _logger.LogWarning("Gemini model {Model} returned empty text in candidate content parts.", model);
                         break;
                     }
 
                     var items = ParseMedicationJson(textResponse);
                     if (items.Count == 0)
                     {
+                        _logger.LogWarning("Gemini model {Model} output could not be parsed into medications: {Text}", model, textResponse);
                         break;
                     }
 
                     IncrementDailyQuota();
 
                     var primary = items[0];
+                    _logger.LogInformation("Gemini model {Model} successfully extracted {Count} medications in Tier 1. Primary: {Primary}",
+                        model, items.Count, primary.TradeName);
                     return new GeminiPrescriptionResult(
                         primary.TradeName,
                         primary.Strength,
@@ -517,57 +521,72 @@ public sealed class GeminiPrescriptionService : IGeminiPrescriptionService
         }
         cleanJson = cleanJson.Trim();
 
+        // Extract JSON structure if model output included surrounding prose
+        var firstBrace = cleanJson.IndexOfAny(['{', '[']);
+        var lastBrace = cleanJson.LastIndexOfAny(['}', ']']);
+        if (firstBrace >= 0 && lastBrace > firstBrace)
+        {
+            cleanJson = cleanJson.Substring(firstBrace, lastBrace - firstBrace + 1);
+        }
+
         var items = new List<GeminiMedicationItem>();
-        using var doc = JsonDocument.Parse(cleanJson);
-        var rootEl = doc.RootElement;
-
-        void AddItemFromElement(JsonElement el)
+        try
         {
-            if (el.ValueKind != JsonValueKind.Object) return;
+            using var doc = JsonDocument.Parse(cleanJson);
+            var rootEl = doc.RootElement;
 
-            var name = el.TryGetProperty("tradeName", out var tn) ? tn.GetString()
-                : (el.TryGetProperty("name", out var n) ? n.GetString() : null);
-
-            if (!string.IsNullOrWhiteSpace(name) && !IsPii(name))
+            void AddItemFromElement(JsonElement el)
             {
-                var str = el.TryGetProperty("strength", out var s) ? s.GetString() : null;
-                var df = el.TryGetProperty("dosageForm", out var d) ? d.GetString()
-                    : (el.TryGetProperty("form", out var f) ? f.GetString() : null);
-                var conf = el.TryGetProperty("confidence", out var c) && c.TryGetDecimal(out var cv) ? cv : 0.95m;
-                var qty = el.TryGetProperty("quantity", out var q) && q.TryGetInt32(out var qv) && qv > 0 ? qv : 1;
-                var rawSig = el.TryGetProperty("rawSig", out var rs) ? rs.GetString() : null;
-                var generic = el.TryGetProperty("genericName", out var gn) ? gn.GetString() : null;
-                items.Add(new GeminiMedicationItem(name.Trim(), str?.Trim(), df?.Trim(), conf, qty, rawSig?.Trim(), generic?.Trim()));
+                if (el.ValueKind != JsonValueKind.Object) return;
+
+                var name = el.TryGetProperty("tradeName", out var tn) ? tn.GetString()
+                    : (el.TryGetProperty("name", out var n) ? n.GetString() : null);
+
+                if (!string.IsNullOrWhiteSpace(name) && !IsPii(name))
+                {
+                    var str = el.TryGetProperty("strength", out var s) ? s.GetString() : null;
+                    var df = el.TryGetProperty("dosageForm", out var d) ? d.GetString()
+                        : (el.TryGetProperty("form", out var f) ? f.GetString() : null);
+                    var conf = el.TryGetProperty("confidence", out var c) && c.TryGetDecimal(out var cv) ? cv : 0.95m;
+                    var qty = el.TryGetProperty("quantity", out var q) && q.TryGetInt32(out var qv) && qv > 0 ? qv : 1;
+                    var rawSig = el.TryGetProperty("rawSig", out var rs) ? rs.GetString() : null;
+                    var generic = el.TryGetProperty("genericName", out var gn) ? gn.GetString() : null;
+                    items.Add(new GeminiMedicationItem(name.Trim(), str?.Trim(), df?.Trim(), conf, qty, rawSig?.Trim(), generic?.Trim()));
+                }
             }
-        }
 
-        if (rootEl.ValueKind == JsonValueKind.Array)
-        {
-            foreach (var el in rootEl.EnumerateArray())
+            if (rootEl.ValueKind == JsonValueKind.Array)
             {
-                AddItemFromElement(el);
-            }
-        }
-        else if (rootEl.ValueKind == JsonValueKind.Object)
-        {
-            if (rootEl.TryGetProperty("medications", out var medsProp) && medsProp.ValueKind == JsonValueKind.Array)
-            {
-                foreach (var el in medsProp.EnumerateArray())
+                foreach (var el in rootEl.EnumerateArray())
                 {
                     AddItemFromElement(el);
                 }
             }
-            else if (rootEl.TryGetProperty("items", out var itemsProp) && itemsProp.ValueKind == JsonValueKind.Array)
+            else if (rootEl.ValueKind == JsonValueKind.Object)
             {
-                foreach (var el in itemsProp.EnumerateArray())
+                if (rootEl.TryGetProperty("medications", out var medsProp) && medsProp.ValueKind == JsonValueKind.Array)
                 {
-                    AddItemFromElement(el);
+                    foreach (var el in medsProp.EnumerateArray())
+                    {
+                        AddItemFromElement(el);
+                    }
+                }
+                else if (rootEl.TryGetProperty("items", out var itemsProp) && itemsProp.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var el in itemsProp.EnumerateArray())
+                    {
+                        AddItemFromElement(el);
+                    }
+                }
+                else
+                {
+                    AddItemFromElement(rootEl);
                 }
             }
-            else
-            {
-                AddItemFromElement(rootEl);
-            }
+        }
+        catch (JsonException)
+        {
+            // Malformed JSON handled gracefully
         }
 
         return items;
