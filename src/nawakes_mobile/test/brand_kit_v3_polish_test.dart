@@ -98,6 +98,9 @@ void main() {
       expect(find.text('نواقص'), findsOneWidget);
       expect(find.text('صوّر الروشتة وخلاص'), findsOneWidget);
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+      // Settle the navigation timer so no timers are pending on dispose
+      await tester.pump(const Duration(milliseconds: 1500));
     });
   });
 }
