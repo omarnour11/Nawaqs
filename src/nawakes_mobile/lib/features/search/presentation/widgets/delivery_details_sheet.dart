@@ -5,6 +5,7 @@ import 'package:nawakes_mobile/core/location/location_service.dart';
 import 'package:nawakes_mobile/core/network/api_client.dart';
 import 'package:nawakes_mobile/core/services/payment_methods_service.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
+import 'package:nawakes_mobile/core/utils/arabic_digits.dart';
 import 'package:nawakes_mobile/features/reservations/data/reservation_models.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -120,9 +121,9 @@ class DeliveryDetailsSheet extends HookConsumerWidget {
         : '01029834112';
 
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       padding: EdgeInsets.only(
         bottom: MediaQuery.viewInsetsOf(context).bottom + 20,
@@ -142,7 +143,7 @@ class DeliveryDetailsSheet extends HookConsumerWidget {
               width: 44,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.grey.shade300,
+                color: AppColors.hairline,
                 borderRadius: BorderRadius.circular(4),
               ),
             ),
@@ -155,28 +156,28 @@ class DeliveryDetailsSheet extends HookConsumerWidget {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: NawaqsColors.mint,
+                  color: AppColors.isDarkMode ? const Color(0xFF133830) : NawaqsColors.mint,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.delivery_dining_rounded, color: NawaqsColors.tealDark, size: 26),
+                child: const Icon(Icons.delivery_dining_rounded, color: NawaqsColors.teal, size: 26),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'طلب توصيل منزلي فوري 🛵',
                       style: TextStyle(
                         fontFamily: 'Cairo',
                         fontWeight: FontWeight.w800,
                         fontSize: 17,
-                        color: NawaqsColors.ink,
+                        color: AppColors.textPrimary,
                       ),
                     ),
                     Text(
                       pharmacyName,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Cairo',
                         fontSize: 12.5,
                         color: AppColors.textSecondary,
@@ -194,24 +195,30 @@ class DeliveryDetailsSheet extends HookConsumerWidget {
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: const Color(0xFFF0FDF4),
+              color: AppColors.isDarkMode ? const Color(0xFF133830) : const Color(0xFFF0FDF4),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFFBBF7D0)),
+              border: Border.all(
+                color: AppColors.isDarkMode ? const Color(0xFF1E3A33) : const Color(0xFFBBF7D0),
+              ),
             ),
             child: Column(
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.two_wheeler_rounded, color: Color(0xFF15803D), size: 22),
+                    Icon(
+                      Icons.two_wheeler_rounded,
+                      color: AppColors.isDarkMode ? const Color(0xFF4ADE80) : const Color(0xFF15803D),
+                      size: 22,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'توصيل سريع بطيار موتوسيكل: $etaMin - $etaMax دقيقة',
-                        style: const TextStyle(
+                        'توصيل سريع بطيار موتوسيكل: ${ArabicDigits.convert(etaMin)} - ${ArabicDigits.convert(etaMax)} دقيقة',
+                        style: TextStyle(
                           fontFamily: 'Cairo',
                           fontWeight: FontWeight.w800,
                           fontSize: 13,
-                          color: Color(0xFF166534),
+                          color: AppColors.isDarkMode ? const Color(0xFF4ADE80) : const Color(0xFF166534),
                         ),
                       ),
                     ),
@@ -229,21 +236,25 @@ class DeliveryDetailsSheet extends HookConsumerWidget {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFDCFCE7),
+                      color: AppColors.isDarkMode ? const Color(0xFF1E3A33) : const Color(0xFFDCFCE7),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.phone_in_talk_rounded, color: Color(0xFF15803D), size: 16),
+                        Icon(
+                          Icons.phone_in_talk_rounded,
+                          color: AppColors.isDarkMode ? const Color(0xFF4ADE80) : const Color(0xFF15803D),
+                          size: 16,
+                        ),
                         const SizedBox(width: 6),
                         Text(
-                          'اتصال مباشر بالطيار: $courierPhone 📞',
-                          style: const TextStyle(
+                          'اتصال مباشر بالطيار: ${ArabicDigits.convert(courierPhone)} 📞',
+                          style: TextStyle(
                             fontFamily: 'Cairo',
                             fontWeight: FontWeight.w800,
                             fontSize: 12,
-                            color: Color(0xFF15803D),
+                            color: AppColors.isDarkMode ? const Color(0xFF4ADE80) : const Color(0xFF15803D),
                           ),
                         ),
                       ],
@@ -259,14 +270,14 @@ class DeliveryDetailsSheet extends HookConsumerWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Expanded(
+              Expanded(
                 child: Text(
                   'تفاصيل عنوان التوصيل الإلزامية',
                   style: TextStyle(
                     fontFamily: 'Cairo',
                     fontWeight: FontWeight.w800,
                     fontSize: 13.5,
-                    color: NawaqsColors.ink,
+                    color: AppColors.textPrimary,
                   ),
                 ),
               ),
@@ -298,22 +309,21 @@ class DeliveryDetailsSheet extends HookConsumerWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      if (isLocating.value)
-                        const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: NawaqsColors.tealDark),
-                        )
-                      else
-                        const Icon(Icons.my_location_rounded, size: 15, color: NawaqsColors.tealDark),
+                      isLocating.value
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(strokeWidth: 1.8),
+                            )
+                          : const Icon(Icons.my_location_rounded, size: 16, color: NawaqsColors.teal),
                       const SizedBox(width: 4),
-                      Text(
-                        isLocating.value ? 'جارٍ تحديد موقعك…' : 'تحديد موقعي الدقيق 📍',
-                        style: const TextStyle(
+                      const Text(
+                        'تحديث الموقع الحالي (GPS)',
+                        style: TextStyle(
                           fontFamily: 'Cairo',
                           fontSize: 11.5,
                           fontWeight: FontWeight.w700,
-                          color: NawaqsColors.tealDark,
+                          color: NawaqsColors.teal,
                         ),
                       ),
                     ],
@@ -388,29 +398,29 @@ class DeliveryDetailsSheet extends HookConsumerWidget {
           // ── Payment Method Section (Cash Only) ──
           Row(
             children: [
-              const Text(
+              Text(
                 'طريقة الدفع الرسمية',
                 style: TextStyle(
                   fontFamily: 'Cairo',
                   fontWeight: FontWeight.w800,
                   fontSize: 14,
-                  color: NawaqsColors.ink,
+                  color: AppColors.textPrimary,
                 ),
               ),
               const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFDCFCE7),
+                  color: AppColors.isDarkMode ? const Color(0xFF133830) : const Color(0xFFDCFCE7),
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: const Text(
+                child: Text(
                   'كاش عند الاستلام 💵',
                   style: TextStyle(
                     fontFamily: 'Cairo',
                     fontSize: 10.5,
                     fontWeight: FontWeight.w800,
-                    color: Color(0xFF15803D),
+                    color: AppColors.isDarkMode ? const Color(0xFF4ADE80) : const Color(0xFF15803D),
                   ),
                 ),
               ),
@@ -421,40 +431,51 @@ class DeliveryDetailsSheet extends HookConsumerWidget {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
+              color: AppColors.fieldBg,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFF86EFAC), width: 1.2),
+              border: Border.all(
+                color: AppColors.isDarkMode ? const Color(0xFF1E3A33) : const Color(0xFF86EFAC),
+                width: 1.2,
+              ),
             ),
             child: Row(
               children: [
-                const Icon(Icons.payments_rounded, color: Color(0xFF15803D), size: 24),
+                Icon(
+                  Icons.payments_rounded,
+                  color: AppColors.isDarkMode ? const Color(0xFF4ADE80) : const Color(0xFF15803D),
+                  size: 24,
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
+                    children: [
                       Text(
                         'الدفع نقدًا لمندوب التوصيل (الطيار)',
                         style: TextStyle(
                           fontFamily: 'Cairo',
                           fontWeight: FontWeight.w800,
                           fontSize: 13,
-                          color: Color(0xFF166534),
+                          color: AppColors.isDarkMode ? const Color(0xFF4ADE80) : const Color(0xFF166534),
                         ),
                       ),
-                      SizedBox(height: 2),
+                      const SizedBox(height: 2),
                       Text(
                         'تسليم قيمة الدواء ومصاريف التوصيل نقداً عند استلام الشحنة أمام باب المنزل.',
                         style: TextStyle(
                           fontFamily: 'Cairo',
                           fontSize: 11,
-                          color: Color(0xFF475569),
+                          color: AppColors.textSecondary,
                         ),
                       ),
                     ],
                   ),
                 ),
-                const Icon(Icons.check_circle_rounded, color: Color(0xFF15803D), size: 20),
+                Icon(
+                  Icons.check_circle_rounded,
+                  color: AppColors.isDarkMode ? const Color(0xFF4ADE80) : const Color(0xFF15803D),
+                  size: 20,
+                ),
               ],
             ),
           ),
@@ -463,13 +484,14 @@ class DeliveryDetailsSheet extends HookConsumerWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: const Color(0xFFF1F5F9),
+              color: AppColors.fieldBg,
               borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppColors.hairline),
             ),
             child: Row(
-              children: const [
+              children: [
                 Icon(Icons.info_outline_rounded, size: 14, color: AppColors.textSecondary),
-                SizedBox(width: 6),
+                const SizedBox(width: 6),
                 Expanded(
                   child: Text(
                     'خدمات الدفع الإلكتروني (فيزا، فودافون كاش، إنستاباي) قيد الصيانة والربط البنكي الرسمي.',
@@ -485,11 +507,11 @@ class DeliveryDetailsSheet extends HookConsumerWidget {
           ),
           const SizedBox(height: 16),
 
-          // ── Order Cost Breakdown ──
+          // ── Order Cost Breakdown (Eastern Arabic Numerals) ──
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
+              color: AppColors.fieldBg,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(color: AppColors.hairline),
             ),
@@ -498,36 +520,58 @@ class DeliveryDetailsSheet extends HookConsumerWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('سعر الدواء ($medicationName):', style: const TextStyle(fontSize: 12.5)),
-                    Text('${medicationPrice.toStringAsFixed(1)} ج.م',
-                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5)),
+                    Text('سعر الدواء ($medicationName):',
+                        style: TextStyle(fontSize: 12.5, color: AppColors.textPrimary)),
+                    Text(
+                      medicationPrice.toArabicPrice(),
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12.5,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 6),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('مصاريف التوصيل (${distanceKm.toStringAsFixed(1)} كم):',
-                        style: const TextStyle(fontSize: 12.5)),
-                    Text('${deliveryFee.toStringAsFixed(1)} ج.م',
-                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5)),
+                    Text(
+                      'مصاريف التوصيل (${distanceKm.toArabicDigits(formatDecimals: true)} كم):',
+                      style: TextStyle(fontSize: 12.5, color: AppColors.textPrimary),
+                    ),
+                    Text(
+                      deliveryFee.toArabicPrice(),
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12.5,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
                   ],
                 ),
-                const Divider(height: 16),
+                Divider(height: 16, color: AppColors.hairline),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
+                    Text(
                       'الإجمالي المطلوب نقدًا (كاش):',
-                      style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800, fontSize: 14),
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14,
+                        color: AppColors.textPrimary,
+                      ),
                     ),
                     Text(
-                      '${grandTotal.toStringAsFixed(1)} ج.م',
-                      style: const TextStyle(
+                      grandTotal.toArabicPrice(),
+                      style: TextStyle(
                         fontFamily: 'Cairo',
                         fontWeight: FontWeight.w900,
-                        fontSize: 16,
-                        color: NawaqsColors.tealDark,
+                        fontSize: 17,
+                        color: AppColors.isDarkMode ? NawaqsColors.mintDeep : NawaqsColors.tealDark,
                       ),
                     ),
                   ],
@@ -554,7 +598,7 @@ class DeliveryDetailsSheet extends HookConsumerWidget {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text('برجاء كتابة تفاصيل العنوان بالكامل: الشارع، العمارة، رقم الشقة والدور، والموبايل'),
-                          backgroundColor: AppColors.danger,
+                          backgroundColor: AppColors.dangerText,
                         ),
                       );
                       return;
@@ -564,7 +608,7 @@ class DeliveryDetailsSheet extends HookConsumerWidget {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text('رقم الموبايل غير صالح. يرجى إدخال 11 رقماً تبدأ بـ 010 أو 011 أو 012 أو 015'),
-                          backgroundColor: AppColors.danger,
+                          backgroundColor: AppColors.dangerText,
                         ),
                       );
                       return;
@@ -581,7 +625,7 @@ class DeliveryDetailsSheet extends HookConsumerWidget {
 
                       // ── Create reservation with Cash on Delivery ───────────────
                       final notes =
-                          'طريقة الدفع: كاش عند الاستلام · إجمالي: ${grandTotal.toStringAsFixed(1)} ج.م شامل التوصيل (${deliveryFee.toStringAsFixed(1)} ج.م) · لوكيشن المريض: $riderMapsUrl';
+                          'طريقة الدفع: كاش عند الاستلام · إجمالي: ${grandTotal.toArabicPrice()} شامل التوصيل (${deliveryFee.toArabicPrice()}) · لوكيشن المريض: $riderMapsUrl';
 
                       final req = CreateReservationRequest(
                         inventoryItemId: inventoryItemId,
@@ -616,7 +660,7 @@ class DeliveryDetailsSheet extends HookConsumerWidget {
                   )
                 : const Icon(Icons.check_circle_rounded, color: Colors.white),
             label: Text(
-              isSubmitting.value ? 'جارٍ إرسال الطلب…' : 'تأكيد طلب التوصيل كاش (${grandTotal.toStringAsFixed(1)} ج.م)',
+              isSubmitting.value ? 'جارٍ إرسال الطلب…' : 'تأكيد طلب التوصيل كاش (${grandTotal.toArabicPrice()})',
               style: const TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800, fontSize: 14.5),
             ),
           ),

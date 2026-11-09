@@ -7,6 +7,7 @@ import 'package:nawakes_mobile/core/config.dart';
 import 'package:nawakes_mobile/core/network/api_client.dart';
 import 'package:nawakes_mobile/core/services/payment_methods_service.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
+import 'package:nawakes_mobile/core/utils/arabic_digits.dart';
 import 'package:nawakes_mobile/core/ui/paymob_webview_screen.dart';
 
 /// Result returned from the real Paymob payment flow.
@@ -202,7 +203,7 @@ Future<GatewayPaymentResult?> _showInstaPayInstructions({
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          _infoRow('المبلغ', '${amountEgp.toStringAsFixed(2)} ج.م', bold: true),
+          _infoRow('المبلغ', amountEgp.toArabicPrice(), bold: true),
           const SizedBox(height: 8),
           _infoRow('عنوان IPA', ipaAddress),
           const SizedBox(height: 16),

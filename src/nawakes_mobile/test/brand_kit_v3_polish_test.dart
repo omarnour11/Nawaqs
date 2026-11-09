@@ -56,12 +56,20 @@ void main() {
       addTearDown(container.dispose);
 
       expect(container.read(themeModeProvider), equals(ThemeMode.light));
+      expect(AppColors.isDarkMode, isFalse);
+      expect(AppColors.page, equals(NawaqsColors.cream));
+      expect(AppColors.card, equals(Colors.white));
 
       container.read(themeModeProvider.notifier).toggleTheme();
       expect(container.read(themeModeProvider), equals(ThemeMode.dark));
+      expect(AppColors.isDarkMode, isTrue);
+      expect(AppColors.page, equals(const Color(0xFF0A1A17)));
 
       container.read(themeModeProvider.notifier).toggleTheme();
       expect(container.read(themeModeProvider), equals(ThemeMode.light));
+      expect(AppColors.isDarkMode, isFalse);
+      expect(AppColors.page, equals(NawaqsColors.cream));
+      expect(AppColors.card, equals(Colors.white));
     });
   });
 

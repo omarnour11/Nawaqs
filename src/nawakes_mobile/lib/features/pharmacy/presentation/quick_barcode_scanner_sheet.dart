@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:dio/dio.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
+import 'package:nawakes_mobile/core/utils/arabic_digits.dart';
 import 'package:nawakes_mobile/core/network/api_client.dart';
 import 'package:nawakes_mobile/core/network/api_response_models.dart';
 import 'package:nawakes_mobile/features/auth/presentation/auth_controller.dart';
@@ -338,12 +339,12 @@ class _ScanResultCard extends StatelessWidget {
             children: [
               _metaChip(
                 icon: Icons.payments_outlined,
-                label: '${item.price.toStringAsFixed(2)} ج.م',
+                label: item.price.toArabicPrice(),
               ),
               if (result.officialEdaPriceEgp != null)
                 _metaChip(
                   icon: Icons.verified_outlined,
-                  label: 'رسمي: ${result.officialEdaPriceEgp!.toStringAsFixed(2)} ج.م',
+                  label: 'رسمي: ${result.officialEdaPriceEgp!.toArabicPrice()}',
                 ),
               if (expiryText != null)
                 _metaChip(icon: Icons.event_available, label: 'الصلاحية: $expiryText'),

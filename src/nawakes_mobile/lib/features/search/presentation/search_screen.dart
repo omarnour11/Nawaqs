@@ -32,11 +32,12 @@ import 'package:nawakes_mobile/features/search/presentation/widgets/mandatory_lo
 import 'package:nawakes_mobile/core/services/search_history_service.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
+import 'package:nawakes_mobile/core/utils/arabic_digits.dart';
 
 String _formatDistance(double km) {
   if (km <= 0) return 'قريب جدًا';
-  if (km < 1) return '${(km * 1000).round()} متر';
-  return '${km.toStringAsFixed(1)} كم';
+  if (km < 1) return '${ArabicDigits.convert((km * 1000).round())} م';
+  return '${ArabicDigits.convert(km.toStringAsFixed(1), formatDecimals: true)} كم';
 }
 
 String _timeAgo(DateTime utc) {
@@ -1197,7 +1198,7 @@ class _PharmacyRow extends StatelessWidget {
                           fontWeight: FontWeight.w700,
                           color: AppColors.textPrimary)),
                   const SizedBox(height: 4),
-                  Text('${item.price.toStringAsFixed(0)} ج.م',
+                  Text(item.price.toArabicPrice(),
                       style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w800,

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
+import 'package:nawakes_mobile/core/utils/arabic_digits.dart';
 
 /// Full-screen WebView that opens the real Paymob Accept iFrame.
 /// Returns [true] on success, [false] on failure/cancellation.
@@ -135,7 +136,7 @@ class _PaymobWebViewScreenState extends State<PaymobWebViewScreen> {
                 ),
               ),
               Text(
-                '${widget.amountEgp.toStringAsFixed(2)} ج.م • ${widget.pharmacyName}',
+                '${widget.amountEgp.toArabicPrice()} • ${widget.pharmacyName}',
                 style: const TextStyle(
                   fontFamily: 'Cairo',
                   fontSize: 12,

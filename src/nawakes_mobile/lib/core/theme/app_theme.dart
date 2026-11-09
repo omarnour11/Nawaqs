@@ -27,6 +27,9 @@ class NawaqsColors {
 class AppColors {
   AppColors._();
 
+  /// Global mode flag synchronized with themeModeProvider
+  static bool isDarkMode = false;
+
   // Brand — deep teal (#0E7C6B, #0A5A4E)
   static const brand900 = NawaqsColors.tealDark; // #0A5A4E
   static const brand700 = NawaqsColors.teal;     // #0E7C6B
@@ -37,56 +40,73 @@ class AppColors {
   static const coralAccent = NawaqsColors.coral;
   static const coralAccentBg = NawaqsColors.coralSoft;
 
-  // Semantic triplets
-  static const successBg = NawaqsColors.mint;
-  static const successText = NawaqsColors.tealDark;
-  static const successIcon = NawaqsColors.teal;
+  // Dynamic Semantic Triplets (Authentic High-Contrast across Light & Dark)
+  static Color get successBg =>
+      isDarkMode ? const Color(0xFF133830) : NawaqsColors.mint;
+  static Color get successText =>
+      isDarkMode ? const Color(0xFF4ADE80) : NawaqsColors.tealDark;
+  static Color get successIcon =>
+      isDarkMode ? const Color(0xFF4ADE80) : NawaqsColors.teal;
 
-  static const warningBg = Color(0xFFFFF9E6);
-  static const warningText = Color(0xFF8C6500);
+  static Color get warningBg =>
+      isDarkMode ? const Color(0xFF332608) : const Color(0xFFFFF9E6);
+  static Color get warningText =>
+      isDarkMode ? const Color(0xFFFDE047) : const Color(0xFF8C6500);
   static const warningIcon = NawaqsColors.stickerYellow;
 
-  static const dangerBg = NawaqsColors.coralSoft;
-  static const dangerText = NawaqsColors.coral;
-  static const dangerIcon = NawaqsColors.coral;
+  static Color get dangerBg =>
+      isDarkMode ? const Color(0xFF3E1E1B) : NawaqsColors.coralSoft;
+  static Color get dangerText =>
+      isDarkMode ? const Color(0xFFF87171) : NawaqsColors.coral;
+  static Color get dangerIcon =>
+      isDarkMode ? const Color(0xFFF87171) : NawaqsColors.coral;
 
-  // Surfaces (Brand Kit Page 5)
-  static const page = NawaqsColors.cream;
-  static const card = Colors.white;
-  static const fieldBg = Colors.white;
-  static const hairline = Color(0xFFE2EFE9);
-  static const neutralChipBg = NawaqsColors.mint;
+  // Real Dark Mode & Light Surfaces (Brand Kit Page 5)
+  static Color get page =>
+      isDarkMode ? const Color(0xFF0A1A17) : NawaqsColors.cream;
+  static Color get card =>
+      isDarkMode ? const Color(0xFF142730) : Colors.white;
+  static Color get fieldBg =>
+      isDarkMode ? const Color(0xFF0F1E25) : Colors.white;
+  static Color get hairline =>
+      isDarkMode ? const Color(0xFF1E3A33) : const Color(0xFFE2EFE9);
+  static Color get neutralChipBg =>
+      isDarkMode ? const Color(0xFF162C27) : NawaqsColors.mint;
 
-  // Text (High-contrast Ink)
-  static const textPrimary = NawaqsColors.ink;
-  static const textSecondary = Color(0xFF4A5D68);
-  static const textMuted = Color(0xFF7F95A0);
-  static const textDark = textPrimary;
+  // High-Contrast Typography (Crisp Warm Cream #FBF7F0 on Dark, Deep Ink #12222B on Light)
+  static Color get textPrimary =>
+      isDarkMode ? const Color(0xFFFBF7F0) : NawaqsColors.ink;
+  static Color get textSecondary =>
+      isDarkMode ? const Color(0xFFA9DECB) : const Color(0xFF4A5D68);
+  static Color get textMuted =>
+      isDarkMode ? const Color(0xFF75918A) : const Color(0xFF7F95A0);
+  static Color get textDark => textPrimary;
 
-  // Legacy aliases for older screens
-  static const primary = accentBlue;
-  static const primaryLight = NawaqsColors.teal;
-  static const primaryDark = brand900;
-  static const primarySurface = accentBlueBg;
-  static const accent = coralAccent;
-  static const accentLight = coralAccentBg;
-  static const accentDark = dangerText;
-  static const success = successText;
-  static const successSurface = successBg;
-  static const danger = dangerText;
-  static const dangerSurface = dangerBg;
-  static const warning = warningText;
-  static const warningSurface = warningBg;
-  static const info = accentBlue;
-  static const infoSurface = accentBlueBg;
-  static const available = successIcon;
-  static const unavailable = dangerIcon;
-  static const background = page;
-  static const surface = card;
-  static const surfaceVariant = NawaqsColors.mint;
-  static const border = hairline;
-  static const shadow = Color(0x14101828);
-  static const textHint = textMuted;
+  // Aliases for legacy & current screen implementations
+  static Color get primary => accentBlue;
+  static Color get primaryLight => NawaqsColors.teal;
+  static Color get primaryDark => brand900;
+  static Color get primarySurface => isDarkMode ? const Color(0xFF133830) : accentBlueBg;
+  static Color get accent => coralAccent;
+  static Color get accentLight => isDarkMode ? const Color(0xFF3E1E1B) : coralAccentBg;
+  static Color get accentDark => dangerText;
+  static Color get success => successText;
+  static Color get successSurface => successBg;
+  static Color get danger => dangerText;
+  static Color get dangerSurface => dangerBg;
+  static Color get warning => warningText;
+  static Color get warningSurface => warningBg;
+  static Color get info => accentBlue;
+  static Color get infoSurface => primarySurface;
+  static Color get available => successIcon;
+  static Color get unavailable => dangerIcon;
+  static Color get background => page;
+  static Color get surface => card;
+  static Color get surfaceVariant => neutralChipBg;
+  static Color get border => hairline;
+  static Color get shadow =>
+      isDarkMode ? const Color(0x33000000) : const Color(0x14101828);
+  static Color get textHint => textMuted;
 }
 
 class AppShadows {
@@ -138,42 +158,42 @@ class AppTheme {
     ThemeData base = ThemeData(
       useMaterial3: true,
       colorScheme: scheme,
-      scaffoldBackgroundColor: AppColors.page,
+      scaffoldBackgroundColor: NawaqsColors.cream,
       fontFamily: family,
       splashFactory: InkSparkle.splashFactory,
     );
 
     return base.copyWith(
-      appBarTheme: const AppBarTheme(
-        backgroundColor: AppColors.page,
-        foregroundColor: AppColors.textPrimary,
+      appBarTheme: AppBarTheme(
+        backgroundColor: NawaqsColors.cream,
+        foregroundColor: NawaqsColors.ink,
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
         titleSpacing: 0,
         systemOverlayStyle: SystemUiOverlayStyle.dark,
-        iconTheme: IconThemeData(color: AppColors.textPrimary),
+        iconTheme: const IconThemeData(color: NawaqsColors.ink),
       ),
       cardTheme: CardThemeData(
-        color: AppColors.card,
+        color: Colors.white,
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.all(Radius.circular(AppRadius.lg)),
-          side: const BorderSide(color: AppColors.hairline, width: 1),
+          side: const BorderSide(color: Color(0xFFE2EFE9), width: 1),
         ),
         margin: EdgeInsets.zero,
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: AppColors.fieldBg,
+        fillColor: Colors.white,
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.hairline),
+          borderSide: const BorderSide(color: Color(0xFFE2EFE9)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.hairline),
+          borderSide: const BorderSide(color: Color(0xFFE2EFE9)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -187,15 +207,15 @@ class AppTheme {
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: NawaqsColors.coral, width: 1.6),
         ),
-        hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 13.5),
-        labelStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+        hintStyle: const TextStyle(color: Color(0xFF7F95A0), fontSize: 13.5),
+        labelStyle: const TextStyle(color: Color(0xFF4A5D68), fontSize: 13),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: NawaqsColors.teal,
           foregroundColor: Colors.white,
           disabledBackgroundColor: const Color(0xFFE5E7EA),
-          disabledForegroundColor: AppColors.textMuted,
+          disabledForegroundColor: const Color(0xFF7F95A0),
           minimumSize: const Size(64, 48),
           elevation: 0,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
@@ -208,8 +228,9 @@ class AppTheme {
           backgroundColor: NawaqsColors.teal,
           foregroundColor: Colors.white,
           disabledBackgroundColor: const Color(0xFFE5E7EA),
-          disabledForegroundColor: AppColors.textMuted,
+          disabledForegroundColor: const Color(0xFF7F95A0),
           minimumSize: const Size(64, 48),
+          elevation: 0,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
           textStyle: const TextStyle(
               fontFamily: family, fontSize: 14, fontWeight: FontWeight.w700),
@@ -217,10 +238,10 @@ class AppTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.textPrimary,
+          foregroundColor: NawaqsColors.ink,
           minimumSize: const Size(64, 46),
-          side: const BorderSide(color: AppColors.hairline, width: 1),
-          backgroundColor: AppColors.card,
+          side: const BorderSide(color: Color(0xFFE2EFE9), width: 1),
+          backgroundColor: Colors.white,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
           textStyle: const TextStyle(
               fontFamily: family, fontSize: 13, fontWeight: FontWeight.w700),
@@ -252,14 +273,14 @@ class AppTheme {
             fontFamily: family,
             fontSize: 10.5,
             fontWeight: FontWeight.w600,
-            color: AppColors.textMuted,
+            color: Color(0xFF7F95A0),
           );
         }),
         iconTheme: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
             return const IconThemeData(size: 22, color: NawaqsColors.teal);
           }
-          return const IconThemeData(size: 22, color: AppColors.textMuted);
+          return const IconThemeData(size: 22, color: Color(0xFF7F95A0));
         }),
       ),
       switchTheme: SwitchThemeData(
@@ -286,7 +307,7 @@ class AppTheme {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       ),
       dividerTheme: const DividerThemeData(
-          color: AppColors.hairline, thickness: 1, space: 1),
+          color: Color(0xFFE2EFE9), thickness: 1, space: 1),
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
         backgroundColor: NawaqsColors.coral,
         foregroundColor: Colors.white,
@@ -304,24 +325,24 @@ class AppTheme {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
       dialogTheme: DialogThemeData(
-        backgroundColor: AppColors.card,
+        backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.lg)),
         titleTextStyle: const TextStyle(
             fontFamily: family,
-            color: AppColors.textPrimary,
+            color: NawaqsColors.ink,
             fontSize: 16.5,
             fontWeight: FontWeight.w800),
         contentTextStyle: const TextStyle(
             fontFamily: family,
-            color: AppColors.textSecondary,
+            color: Color(0xFF4A5D68),
             fontSize: 13.5,
             height: 1.55),
       ),
       bottomSheetTheme: const BottomSheetThemeData(
-        backgroundColor: AppColors.card,
+        backgroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,
-        modalBackgroundColor: AppColors.card,
+        modalBackgroundColor: Colors.white,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
         ),
@@ -334,71 +355,71 @@ class AppTheme {
             fontFamily: family,
             fontSize: 28,
             fontWeight: FontWeight.w800,
-            color: AppColors.textPrimary,
+            color: NawaqsColors.ink,
             height: 1.25),
         headlineMedium: TextStyle(
             fontFamily: family,
             fontSize: 22,
             fontWeight: FontWeight.w800,
-            color: AppColors.textPrimary,
+            color: NawaqsColors.ink,
             height: 1.3),
         headlineSmall: TextStyle(
             fontFamily: family,
             fontSize: 18.5,
             fontWeight: FontWeight.w800,
-            color: AppColors.textPrimary,
+            color: NawaqsColors.ink,
             height: 1.3),
         titleLarge: TextStyle(
             fontFamily: family,
             fontSize: 16.5,
             fontWeight: FontWeight.w800,
-            color: AppColors.textPrimary,
+            color: NawaqsColors.ink,
             height: 1.35),
         titleMedium: TextStyle(
             fontFamily: family,
             fontSize: 15,
             fontWeight: FontWeight.w700,
-            color: AppColors.textPrimary,
+            color: NawaqsColors.ink,
             height: 1.35),
         titleSmall: TextStyle(
             fontFamily: family,
             fontSize: 13.5,
             fontWeight: FontWeight.w700,
-            color: AppColors.textPrimary,
+            color: NawaqsColors.ink,
             height: 1.35),
         bodyLarge: TextStyle(
             fontFamily: family,
             fontSize: 14.5,
             fontWeight: FontWeight.w500,
-            color: AppColors.textPrimary,
+            color: NawaqsColors.ink,
             height: 1.55),
         bodyMedium: TextStyle(
             fontFamily: family,
             fontSize: 13,
             fontWeight: FontWeight.w400,
-            color: AppColors.textPrimary,
+            color: NawaqsColors.ink,
             height: 1.55),
         bodySmall: TextStyle(
             fontFamily: family,
             fontSize: 12.5,
             fontWeight: FontWeight.w400,
-            color: AppColors.textSecondary,
+            color: Color(0xFF4A5D68),
             height: 1.5),
         labelLarge: TextStyle(
             fontFamily: family,
             fontSize: 13,
             fontWeight: FontWeight.w700,
-            color: AppColors.textPrimary),
+            color: NawaqsColors.ink),
         labelMedium: TextStyle(
             fontFamily: family,
             fontSize: 11.5,
             fontWeight: FontWeight.w700,
-            color: AppColors.textSecondary),
+            color: Color(0xFF4A5D68)),
         labelSmall: TextStyle(
             fontFamily: family,
             fontSize: 10.5,
             fontWeight: FontWeight.w700,
-            color: AppColors.textMuted,
+            color: Color(0xFF7F95A0),
             letterSpacing: 0.0,
             height: 1.3),
       ),
@@ -444,6 +465,9 @@ class AppTheme {
       useMaterial3: true,
       colorScheme: scheme,
       scaffoldBackgroundColor: darkScaffold,
+      cardColor: darkCard,
+      canvasColor: darkScaffold,
+      dialogBackgroundColor: darkCard,
       fontFamily: family,
       splashFactory: InkSparkle.splashFactory,
     );
@@ -515,6 +539,7 @@ class AppTheme {
           disabledBackgroundColor: const Color(0xFF1F2D33),
           disabledForegroundColor: darkTextMuted,
           minimumSize: const Size(64, 48),
+          elevation: 0,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
           textStyle: const TextStyle(
               fontFamily: family, fontSize: 14, fontWeight: FontWeight.w700),
@@ -583,9 +608,9 @@ class AppTheme {
             height: 1.55),
       ),
       bottomSheetTheme: const BottomSheetThemeData(
-        backgroundColor: darkSurface,
+        backgroundColor: darkCard,
         surfaceTintColor: Colors.transparent,
-        modalBackgroundColor: darkSurface,
+        modalBackgroundColor: darkCard,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
         ),
@@ -689,7 +714,7 @@ class AppTypography {
         fontFamily: titleFont,
         fontWeight: FontWeight.w400,
         fontSize: fontSize,
-        color: color ?? NawaqsColors.ink,
+        color: color ?? AppColors.textPrimary,
         height: height,
       );
 
@@ -703,7 +728,7 @@ class AppTypography {
         fontFamily: titleFont,
         fontWeight: FontWeight.w400,
         fontSize: fontSize,
-        color: color ?? NawaqsColors.ink,
+        color: color ?? AppColors.textPrimary,
         height: height,
       );
 
@@ -717,7 +742,7 @@ class AppTypography {
         fontFamily: bodyFont,
         fontWeight: FontWeight.w400,
         fontSize: fontSize,
-        color: color ?? NawaqsColors.ink,
+        color: color ?? AppColors.textPrimary,
         height: height,
       );
 
@@ -731,7 +756,7 @@ class AppTypography {
         fontFamily: bodyFont,
         fontWeight: FontWeight.w700,
         fontSize: fontSize,
-        color: color ?? NawaqsColors.ink,
+        color: color ?? AppColors.textPrimary,
         height: height,
       );
 

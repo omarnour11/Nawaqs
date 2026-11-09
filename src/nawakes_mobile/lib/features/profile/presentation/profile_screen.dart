@@ -247,7 +247,7 @@ class _ProfileBody extends HookConsumerWidget {
                     Container(
                       width: 42,
                       height: 42,
-                      decoration: const BoxDecoration(
+                      decoration: BoxDecoration(
                         color: AppColors.accentBlueBg,
                         shape: BoxShape.circle,
                       ),
@@ -1195,8 +1195,8 @@ void _showDeleteAccountDialog(BuildContext context, WidgetRef ref) {
               bottom: MediaQuery.of(ctx).viewInsets.bottom,
             ),
             child: Container(
-              decoration: const BoxDecoration(
-                color: Colors.white,
+              decoration: BoxDecoration(
+                color: AppColors.card,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
               ),
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),

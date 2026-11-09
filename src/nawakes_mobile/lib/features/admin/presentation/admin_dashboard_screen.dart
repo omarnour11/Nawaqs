@@ -5,6 +5,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
+import 'package:nawakes_mobile/core/utils/arabic_digits.dart';
 import 'package:nawakes_mobile/core/network/api_client.dart';
 import 'package:nawakes_mobile/core/ui/widgets.dart';
 import 'package:nawakes_mobile/features/auth/presentation/auth_controller.dart';
@@ -1272,7 +1273,7 @@ class _MedicineCatalogCard extends StatelessWidget {
               const Spacer(),
               if (medicine.officialPriceEGP != null)
                 Text(
-                  '${medicine.officialPriceEGP!.toStringAsFixed(2)} ج.م',
+                  medicine.officialPriceEGP!.toArabicPrice(),
                   style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w800,

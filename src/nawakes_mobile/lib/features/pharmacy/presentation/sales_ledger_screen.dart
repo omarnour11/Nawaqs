@@ -5,6 +5,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
+import 'package:nawakes_mobile/core/utils/arabic_digits.dart';
 import 'package:nawakes_mobile/core/network/api_client.dart';
 import 'package:nawakes_mobile/core/ui/widgets.dart';
 import 'package:nawakes_mobile/features/pharmacy/data/sales_ledger_models.dart';
@@ -73,7 +74,7 @@ class SalesLedgerScreen extends HookConsumerWidget {
                             Expanded(
                               child: _MetricCard(
                                 label: 'إجمالي الإيراد',
-                                value: '${ledger.totalRevenue % 1 == 0 ? ledger.totalRevenue.toStringAsFixed(0) : ledger.totalRevenue.toStringAsFixed(2)} ج.م',
+                                value: ledger.totalRevenue.toArabicPrice(),
                                 color: AppColors.successText,
                               ),
                             ),
@@ -264,7 +265,7 @@ class _LedgerRow extends StatelessWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text('${(entry.price * entry.quantity).toStringAsFixed(2)} ج.م',
+                      Text((entry.price * entry.quantity).toArabicPrice(),
                           style: const TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w800,
@@ -427,7 +428,7 @@ void _showOrderDetailsSheet(BuildContext context, SalesLedgerEntryDto entry) {
                 Expanded(
                   child: InfoCell(
                     label: 'المبلغ المدفوع',
-                    value: '${(entry.price * entry.quantity).toStringAsFixed(2)} ج.م (${entry.quantity} × ${entry.price.toStringAsFixed(2)} ج.م)',
+                    value: '${(entry.price * entry.quantity).toArabicPrice()} (${entry.quantity.toArabicDigits()} × ${entry.price.toArabicPrice()})',
                   ),
                 ),
               ],

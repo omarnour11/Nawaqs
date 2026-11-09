@@ -7,6 +7,7 @@ import 'package:nawakes_mobile/core/network/api_client.dart';
 import 'package:nawakes_mobile/core/network/api_response_models.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
 import 'package:nawakes_mobile/core/ui/nawaqss_brand_widgets.dart';
+import 'package:nawakes_mobile/core/utils/arabic_digits.dart';
 import 'package:nawakes_mobile/features/reservations/presentation/passes_screen.dart'
     show passesControllerProvider;
 import 'package:url_launcher/url_launcher.dart';
@@ -881,7 +882,7 @@ class BatchSearchResultsScreen extends HookConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'الإجمالي: ${totalEstimatedPrice.toStringAsFixed(0)} ج.م',
+                            'الإجمالي: ${totalEstimatedPrice.toArabicPrice()}',
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w800,
@@ -889,7 +890,7 @@ class BatchSearchResultsScreen extends HookConsumerWidget {
                             ),
                           ),
                           Text(
-                            '$totalAssignedMeds أدوية عبر ${greedyResult.groups.length} صيدليات',
+                            '${totalAssignedMeds.toArabicDigits()} أدوية عبر ${greedyResult.groups.length.toArabicDigits()} صيدليات',
                             style: const TextStyle(fontSize: 11.5, color: AppColors.textMuted),
                           ),
                         ],
@@ -1219,7 +1220,7 @@ class _SplitPlanCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    'توفر ${savings.toStringAsFixed(0)} ج.م',
+                    'توفر ${savings.toArabicPrice()}',
                     style: const TextStyle(
                       fontSize: 11.5,
                       fontWeight: FontWeight.w800,
@@ -1231,10 +1232,10 @@ class _SplitPlanCard extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            '${plan.coveredItemsCount}/${plan.totalRequestedItems} دواء · '
-            '${plan.combinedTotalPrice.toStringAsFixed(0)} ج.م · '
-            'مسار ${plan.totalRouteDistanceKm.toStringAsFixed(1)} كم · '
-            'ثقة ${(plan.averageTrustScore).toStringAsFixed(0)}%',
+            '${plan.coveredItemsCount.toArabicDigits()}/${plan.totalRequestedItems.toArabicDigits()} دواء · '
+            '${plan.combinedTotalPrice.toArabicPrice()} · '
+            'مسار ${plan.totalRouteDistanceKm.toArabicDigits(formatDecimals: true)} كم · '
+            'ثقة ${plan.averageTrustScore.toArabicDigits()}%',
             style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
           ),
           const SizedBox(height: 10),
@@ -1249,7 +1250,7 @@ class _SplitPlanCard extends StatelessWidget {
                     Expanded(
                       child: Text(
                         '${stop.pharmacyName} — ${stop.assignedItems.map((i) => i.medication).join('، ')} '
-                        '(${stop.subtotalPrice.toStringAsFixed(0)} ج.م)',
+                        '(${stop.subtotalPrice.toArabicPrice()})',
                         style: const TextStyle(fontSize: 12.5, height: 1.35),
                       ),
                     ),
@@ -1377,7 +1378,7 @@ class _GreedyPharmacyGroupCard extends StatelessWidget {
                           Icon(Icons.near_me_rounded, size: 14, color: Colors.grey.shade600),
                           const SizedBox(width: 4),
                           Text(
-                            '${group.distanceKm.toStringAsFixed(1)} كم',
+                            '${group.distanceKm.toArabicDigits(formatDecimals: true)} كم',
                             style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
                           ),
                           if (group.addressLine.isNotEmpty) ...[
@@ -1458,7 +1459,7 @@ class _GreedyPharmacyGroupCard extends StatelessWidget {
                         if (it.price > 0) ...[
                           const SizedBox(width: 12),
                           Text(
-                            '${(it.price * it.requestedQuantity).toStringAsFixed(0)} ج.م',
+                            (it.price * it.requestedQuantity).toArabicPrice(),
                             style: const TextStyle(
                               fontSize: 13.5,
                               fontWeight: FontWeight.bold,
@@ -1492,7 +1493,7 @@ class _GreedyPharmacyGroupCard extends StatelessWidget {
                             fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textDark),
                       ),
                       Text(
-                        '${group.totalPrice.toStringAsFixed(0)} جنيه مصري',
+                        group.totalPrice.toArabicPrice(),
                         style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w800,

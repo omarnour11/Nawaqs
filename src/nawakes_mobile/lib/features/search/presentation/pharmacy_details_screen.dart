@@ -3,6 +3,7 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
+import 'package:nawakes_mobile/core/utils/arabic_digits.dart';
 import 'package:nawakes_mobile/core/network/api_client.dart';
 import 'package:nawakes_mobile/core/ui/widgets.dart';
 import 'package:nawakes_mobile/features/auth/presentation/auth_controller.dart';
@@ -118,7 +119,7 @@ class PharmacyDetailsScreen extends HookConsumerWidget {
               showBell: true,
               onBell: () => context.push('/notifications'),
             ),
-            ScreenSubtitle('${item.price.toStringAsFixed(2)} ج.م · تحديث لحظي من الصيدلية'),
+            ScreenSubtitle('${item.price.toArabicPrice()} · تحديث لحظي من الصيدلية'),
             if (item.officialEdaPriceEgp != null)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
@@ -405,15 +406,15 @@ class PharmacyDetailsScreen extends HookConsumerWidget {
   }
 
   String _formatDistance(double km) {
-    if (km < 1) return '${(km * 1000).round()} متر';
-    return '${km.toStringAsFixed(1)} كم';
+    if (km < 1) return '${(km * 1000).round().toArabicDigits()} متر';
+    return '${km.toArabicDigits(formatDecimals: true)} كم';
   }
 
   String _timeAgo(DateTime utc) {
     final diff = DateTime.now().toUtc().difference(utc);
     if (diff.inMinutes < 1) return 'الآن';
-    if (diff.inMinutes < 60) return 'تحديث من ${diff.inMinutes} دقايق';
-    return 'تحديث من ${diff.inHours} ساعة';
+    if (diff.inMinutes < 60) return 'تحديث من ${diff.inMinutes.toArabicDigits()} دقايق';
+    return 'تحديث من ${diff.inHours.toArabicDigits()} ساعة';
   }
 
   void _showReportSheet(BuildContext context, WidgetRef ref) {

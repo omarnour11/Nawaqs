@@ -6,6 +6,7 @@ import 'package:nawakes_mobile/features/search/data/search_models.dart';
 import 'package:nawakes_mobile/features/search/presentation/pharmacy_details_screen.dart';
 import 'package:nawakes_mobile/features/search/presentation/widgets/eda_price_badge.dart';
 import 'package:go_router/go_router.dart';
+import 'package:nawakes_mobile/core/utils/arabic_digits.dart';
 
 String _timeAgo(DateTime utc) {
   final diff = DateTime.now().toUtc().difference(utc);
@@ -16,8 +17,8 @@ String _timeAgo(DateTime utc) {
 
 String _formatDistance(double km) {
   if (km <= 0) return 'قريب جدًا';
-  if (km < 1) return '${(km * 1000).round()} متر';
-  return '${km.toStringAsFixed(1)} كم';
+  if (km < 1) return '${ArabicDigits.convert((km * 1000).round())} م';
+  return '${ArabicDigits.convert(km.toStringAsFixed(1), formatDecimals: true)} كم';
 }
 
 (ChipTone, String) _availabilityOf(PharmacySearchResultDto r) {
@@ -154,7 +155,7 @@ class _ResultRow extends StatelessWidget {
                           fontWeight: FontWeight.w700,
                           color: AppColors.textPrimary)),
                   const SizedBox(height: 4),
-                  Text('${item.price.toStringAsFixed(0)} ج.م',
+                  Text(item.price.toArabicPrice(),
                       style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,

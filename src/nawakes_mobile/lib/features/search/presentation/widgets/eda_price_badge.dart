@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
+import 'package:nawakes_mobile/core/utils/arabic_digits.dart';
 
 /// Official EDA ceiling-price badge for pharmacy search results.
 ///
@@ -34,14 +35,14 @@ class EdaPriceBadge extends StatelessWidget {
     final icon = verified ? Icons.verified_outlined : Icons.trending_up;
 
     final variance = priceVariancePercent != null && priceVariancePercent! > 0
-        ? ' (+${priceVariancePercent!.toStringAsFixed(0)}%)'
+        ? ' (+${ArabicDigits.convert(priceVariancePercent!.toStringAsFixed(0))}%)'
         : '';
 
     final text = edaPriceBadgeText != null && edaPriceBadgeText!.isNotEmpty
         ? edaPriceBadgeText!
         : verified
-            ? 'مطابق لتسعيرة هيئة الدواء (${officialEdaPriceEgp!.toStringAsFixed(2)} ج.م)'
-            : 'أعلى من تسعيرة الهيئة (${officialEdaPriceEgp!.toStringAsFixed(2)} ج.م)$variance';
+            ? 'مطابق لتسعيرة هيئة الدواء (${officialEdaPriceEgp!.toArabicPrice()})'
+            : 'أعلى من تسعيرة الهيئة (${officialEdaPriceEgp!.toArabicPrice()})$variance';
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),

@@ -16,8 +16,8 @@ class PaymentMethodsScreen extends ConsumerWidget {
         ),
         centerTitle: true,
         elevation: 0,
-        backgroundColor: Colors.white,
-        foregroundColor: NawaqsColors.ink,
+        backgroundColor: AppColors.page,
+        foregroundColor: AppColors.textPrimary,
       ),
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
@@ -76,13 +76,13 @@ class PaymentMethodsScreen extends ConsumerWidget {
           const SizedBox(height: 20),
 
           // ── Section 1: Active Payment Method ──
-          const Text(
+          Text(
             'طريقة الدفع النشطة الحالية',
             style: TextStyle(
               fontFamily: 'Cairo',
               fontWeight: FontWeight.w800,
               fontSize: 15,
-              color: NawaqsColors.ink,
+              color: AppColors.textPrimary,
             ),
           ),
           const SizedBox(height: 8),
@@ -90,9 +90,12 @@ class PaymentMethodsScreen extends ConsumerWidget {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: AppColors.card,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFF86EFAC), width: 1.5),
+              border: Border.all(
+                color: AppColors.isDarkMode ? const Color(0xFF1E3A33) : const Color(0xFF86EFAC),
+                width: 1.5,
+              ),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.03),
@@ -109,26 +112,30 @@ class PaymentMethodsScreen extends ConsumerWidget {
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFDCFCE7),
+                        color: AppColors.isDarkMode ? const Color(0xFF133830) : const Color(0xFFDCFCE7),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(Icons.local_atm_rounded, color: Color(0xFF15803D), size: 24),
+                      child: Icon(
+                        Icons.local_atm_rounded,
+                        color: AppColors.isDarkMode ? const Color(0xFF4ADE80) : const Color(0xFF15803D),
+                        size: 24,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
+                        children: [
                           Text(
                             'الدفع نقدًا عند الاستلام (كاش)',
                             style: TextStyle(
                               fontFamily: 'Cairo',
                               fontWeight: FontWeight.w800,
                               fontSize: 15,
-                              color: NawaqsColors.ink,
+                              color: AppColors.textPrimary,
                             ),
                           ),
-                          SizedBox(height: 2),
+                          const SizedBox(height: 2),
                           Text(
                             'معتمد لجميع طلبات التوصيل المنزلي وحجوزات الصيدلية',
                             style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
@@ -139,45 +146,53 @@ class PaymentMethodsScreen extends ConsumerWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFDCFCE7),
+                        color: AppColors.isDarkMode ? const Color(0xFF133830) : const Color(0xFFDCFCE7),
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: const Text(
+                      child: Text(
                         'مفعل ✓',
                         style: TextStyle(
                           fontFamily: 'Cairo',
                           fontWeight: FontWeight.w800,
                           fontSize: 11.5,
-                          color: Color(0xFF15803D),
+                          color: AppColors.isDarkMode ? const Color(0xFF4ADE80) : const Color(0xFF15803D),
                         ),
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 12),
-                const Divider(height: 1),
+                Divider(height: 1, color: AppColors.hairline),
                 const SizedBox(height: 12),
                 Row(
-                  children: const [
-                    Icon(Icons.check_circle_outline_rounded, color: Color(0xFF16A34A), size: 16),
-                    SizedBox(width: 8),
+                  children: [
+                    Icon(
+                      Icons.check_circle_outline_rounded,
+                      color: AppColors.isDarkMode ? const Color(0xFF4ADE80) : const Color(0xFF16A34A),
+                      size: 16,
+                    ),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         'لا يتطلب أي بطاقات بنكية أو بيانات إلكترونية.',
-                        style: TextStyle(fontSize: 12, color: Color(0xFF334155)),
+                        style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 6),
                 Row(
-                  children: const [
-                    Icon(Icons.check_circle_outline_rounded, color: Color(0xFF16A34A), size: 16),
-                    SizedBox(width: 8),
+                  children: [
+                    Icon(
+                      Icons.check_circle_outline_rounded,
+                      color: AppColors.isDarkMode ? const Color(0xFF4ADE80) : const Color(0xFF16A34A),
+                      size: 16,
+                    ),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         'يتم تسليم المبلغ يدويًا لمندوب التوصيل (الطيار) فور فحص الدواء.',
-                        style: TextStyle(fontSize: 12, color: Color(0xFF334155)),
+                        style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                       ),
                     ),
                   ],
@@ -190,29 +205,29 @@ class PaymentMethodsScreen extends ConsumerWidget {
           // ── Section 2: Online Payments Status (Under Maintenance / CBE Licensing) ──
           Row(
             children: [
-              const Text(
+              Text(
                 'بوابات الدفع الإلكتروني',
                 style: TextStyle(
                   fontFamily: 'Cairo',
                   fontWeight: FontWeight.w800,
                   fontSize: 15,
-                  color: NawaqsColors.ink,
+                  color: AppColors.textPrimary,
                 ),
               ),
               const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFEF3C7),
+                  color: AppColors.isDarkMode ? const Color(0xFF332608) : const Color(0xFFFEF3C7),
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child: const Text(
+                child: Text(
                   'قيد الاعتماد القانوني 🔒',
                   style: TextStyle(
                     fontFamily: 'Cairo',
                     fontSize: 10.5,
                     fontWeight: FontWeight.w800,
-                    color: Color(0xFFB45309),
+                    color: AppColors.isDarkMode ? const Color(0xFFFDE047) : const Color(0xFFB45309),
                   ),
                 ),
               ),
@@ -223,15 +238,21 @@ class PaymentMethodsScreen extends ConsumerWidget {
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: const Color(0xFFFFFBEB),
+              color: AppColors.isDarkMode ? const Color(0xFF1F1C12) : const Color(0xFFFFFBEB),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFFFDE68A)),
+              border: Border.all(
+                color: AppColors.isDarkMode ? const Color(0xFF332608) : const Color(0xFFFDE68A),
+              ),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                Icon(Icons.verified_user_outlined, color: Color(0xFFB45309), size: 22),
-                SizedBox(width: 10),
+              children: [
+                Icon(
+                  Icons.verified_user_outlined,
+                  color: AppColors.isDarkMode ? const Color(0xFFFDE047) : const Color(0xFFB45309),
+                  size: 22,
+                ),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     'تنبيه قانوني ومصرفي:\nحرصاً على أموالك ومنع أي معاملات غير رسمية، لا يتم تفعيل الدفع الإلكتروني إلا بعد استكمال السجل التجاري والربط البنكي المعتمد مع البنك المركزي المصري. لن يُطلب منك إدخال أي أرقام سرية أو بطاقات بنكية حالياً.',
@@ -239,7 +260,7 @@ class PaymentMethodsScreen extends ConsumerWidget {
                       fontFamily: 'Cairo',
                       fontSize: 11.5,
                       height: 1.45,
-                      color: Color(0xFF92400E),
+                      color: AppColors.isDarkMode ? const Color(0xFFFDE047) : const Color(0xFF92400E),
                     ),
                   ),
                 ),
@@ -286,7 +307,7 @@ class PaymentMethodsScreen extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.card,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.hairline),
       ),
@@ -307,7 +328,7 @@ class PaymentMethodsScreen extends ConsumerWidget {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Cairo',
                     fontWeight: FontWeight.w700,
                     fontSize: 13.5,
@@ -316,7 +337,7 @@ class PaymentMethodsScreen extends ConsumerWidget {
                 ),
                 Text(
                   subtitle,
-                  style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                  style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
                 ),
               ],
             ),
@@ -324,10 +345,11 @@ class PaymentMethodsScreen extends ConsumerWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
-              color: Colors.grey.shade100,
+              color: AppColors.fieldBg,
               borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: AppColors.hairline),
             ),
-            child: const Text(
+            child: Text(
               'قيد التفعيل 🔒',
               style: TextStyle(
                 fontFamily: 'Cairo',

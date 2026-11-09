@@ -3,6 +3,7 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
+import 'package:nawakes_mobile/core/utils/arabic_digits.dart';
 import 'package:nawakes_mobile/core/network/api_client.dart';
 import 'package:nawakes_mobile/core/location/location_service.dart';
 import 'package:nawakes_mobile/core/ui/widgets.dart';
@@ -162,7 +163,7 @@ class _ShortageCard extends HookConsumerWidget {
                             fontSize: 14, fontWeight: FontWeight.w700)),
                     const SizedBox(height: 2),
                     Text(
-                        '${request.quantityNeeded} وحدة · ${request.distanceKm.toStringAsFixed(1)} كم · تطلب قبل $hoursLeft ساعة',
+                        '${request.quantityNeeded.toArabicDigits()} وحدة · ${request.distanceKm.toArabicDigits(formatDecimals: true)} كم · تطلب قبل ${hoursLeft.toArabicDigits()} ساعة',
                         style: const TextStyle(
                             fontSize: 12, color: AppColors.textSecondary)),
                   ],

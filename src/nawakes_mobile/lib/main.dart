@@ -35,6 +35,9 @@ class NawakesApp extends ConsumerWidget {
     final router = ref.watch(appRouterProvider);
     final themeMode = ref.watch(themeModeProvider);
 
+    // Keep global design tokens synchronized with active theme mode
+    AppColors.isDarkMode = (themeMode == ThemeMode.dark);
+
     return MaterialApp.router(
       title: 'نواقص',
       theme: AppTheme.lightTheme,

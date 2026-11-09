@@ -1,7 +1,8 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
+import 'package:nawakes_mobile/core/utils/arabic_digits.dart';
 import 'package:nawakes_mobile/core/ui/widgets.dart';
 import 'package:dio/dio.dart' show MultipartFile;
 import 'package:nawakes_mobile/core/network/api_client.dart';
@@ -441,7 +442,7 @@ class _MedCard extends HookConsumerWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis),
                     const SizedBox(height: 2),
-                    Text('${item.price.toStringAsFixed(2)} ج.م',
+                    Text(item.price.toArabicPrice(),
                         style: const TextStyle(
                             fontSize: 12.5, color: AppColors.textSecondary)),
                   ],

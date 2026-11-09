@@ -697,7 +697,7 @@ class _HomeCatalogViewState extends ConsumerState<HomeCatalogView> {
                     top: 8,
                     left: 8,
                     child: NawaqssSingleMedSticker(
-                      label: 'المحافظة (${p.minDistanceKm.toStringAsFixed(0)} كم)',
+                      label: 'المحافظة (${ArabicDigits.convert(p.minDistanceKm.toStringAsFixed(0))} كم)',
                       fontSize: 9.0,
                       enableTilt: true,
                     ),
@@ -739,8 +739,8 @@ class _HomeCatalogViewState extends ConsumerState<HomeCatalogView> {
                       const SizedBox(width: 2),
                       Text(
                         p.minDistanceKm < 1
-                            ? '${(p.minDistanceKm * 1000).round()} م'
-                            : '${p.minDistanceKm.toStringAsFixed(1)} كم',
+                            ? '${ArabicDigits.convert((p.minDistanceKm * 1000).round())} م'
+                            : '${ArabicDigits.convert(p.minDistanceKm.toStringAsFixed(1), formatDecimals: true)} كم',
                         style: const TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.bold,

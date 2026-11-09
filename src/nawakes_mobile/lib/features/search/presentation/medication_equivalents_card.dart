@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
 import 'package:nawakes_mobile/core/ui/widgets.dart';
+import 'package:nawakes_mobile/core/utils/arabic_digits.dart';
 import 'package:nawakes_mobile/features/search/data/search_models.dart';
 
 String _formatDistance(double km) {
-  if (km < 1) return '${(km * 1000).round()} متر';
-  return '${km.toStringAsFixed(1)} كم';
+  if (km < 1) return '${ArabicDigits.convert((km * 1000).round())} م';
+  return '${ArabicDigits.convert(km.toStringAsFixed(1), formatDecimals: true)} كم';
 }
 
 /// Bioequivalent substitutes card (Phase 4). Rendered below empty search
@@ -101,7 +102,7 @@ class _EquivalentRow extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text('${e.priceAtPharmacy.toStringAsFixed(0)} ج.م',
+              Text(e.priceAtPharmacy.toArabicPrice(),
                   style: const TextStyle(
                       fontSize: 12.5, fontWeight: FontWeight.w800, color: AppColors.accentBlue)),
               const SizedBox(height: 4),
@@ -112,7 +113,7 @@ class _EquivalentRow extends StatelessWidget {
                     color: AppColors.successBg,
                     borderRadius: BorderRadius.circular(999),
                   ),
-                  child: Text('يوفر ${e.priceSavingPercent.toStringAsFixed(0)}%',
+                  child: Text('يوفر ${ArabicDigits.convert(e.priceSavingPercent.toStringAsFixed(0))}%',
                       style: const TextStyle(
                           fontSize: 10.5, fontWeight: FontWeight.w800, color: AppColors.successIcon)),
                 ),

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:nawakes_mobile/core/network/api_client.dart';
 import 'package:nawakes_mobile/core/network/api_response_models.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
+import 'package:nawakes_mobile/core/utils/arabic_digits.dart';
 import 'package:nawakes_mobile/core/ui/medication_image_view.dart';
 import 'package:nawakes_mobile/features/auth/presentation/auth_controller.dart'
     show describeApiError;
@@ -287,7 +288,7 @@ class _NearbyPharmacyOptionsSheetState
                           ),
                           const Spacer(),
                           Text(
-                            '${p.price.toStringAsFixed(2)} ج.م',
+                            p.price.toArabicPrice(),
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w800,
@@ -381,8 +382,8 @@ class _NearbyPharmacyOptionsSheetState
                         const SizedBox(height: 3),
                         Text(
                           p.pharmacies.any((x) => x.supportsDelivery)
-                              ? 'الدواء موجود بنطاق المحافظة على بُعد ${p.minDistanceKm.toStringAsFixed(1)} كم، ويمكنك طلبه عبر التوصيل المنزلي من الصيدليات المتاحة أدناه.'
-                              : 'الدواء موجود في صيدلية بعيدة (${p.minDistanceKm.toStringAsFixed(1)} كم) ولا تدعم التوصيل إلى منطقتك. يمكنك تفعيل التنبيه وسنرسل لك إشعاراً فور توفره في صيدلية قريبة منك.',
+                              ? 'الدواء موجود بنطاق المحافظة على بُعد ${p.minDistanceKm.toArabicDigits(formatDecimals: true)} كم، ويمكنك طلبه عبر التوصيل المنزلي من الصيدليات المتاحة أدناه.'
+                              : 'الدواء موجود في صيدلية بعيدة (${p.minDistanceKm.toArabicDigits(formatDecimals: true)} كم) ولا تدعم التوصيل إلى منطقتك. يمكنك تفعيل التنبيه وسنرسل لك إشعاراً فور توفره في صيدلية قريبة منك.',
                           style: const TextStyle(
                             fontSize: 11.5,
                             color: Color(0xFFC2410C),
@@ -453,7 +454,7 @@ class _NearbyPharmacyOptionsSheetState
                   child: Text(
                     p.minDistanceKm <= 15.0
                         ? 'متوفر في ${_formatPharmacyCount(p.availablePharmaciesCount)} قريبة منك (ضمن 15 كم)'
-                        : 'متوفر في ${_formatPharmacyCount(p.availablePharmaciesCount)} (نطاق المحافظة - ${p.minDistanceKm.toStringAsFixed(1)} كم)',
+                        : 'متوفر في ${_formatPharmacyCount(p.availablePharmaciesCount)} (نطاق المحافظة - ${p.minDistanceKm.toArabicDigits(formatDecimals: true)} كم)',
                     style: const TextStyle(
                       fontSize: 13.5,
                       fontWeight: FontWeight.bold,
@@ -538,8 +539,8 @@ class _NearbyPharmacyOptionsSheetState
                                     const SizedBox(width: 2),
                                     Text(
                                       opt.distanceKm < 1
-                                          ? '${(opt.distanceKm * 1000).round()} متر'
-                                          : '${opt.distanceKm.toStringAsFixed(1)} كم',
+                                          ? '${(opt.distanceKm * 1000).round().toArabicDigits()} متر'
+                                          : '${opt.distanceKm.toArabicDigits(formatDecimals: true)} كم',
                                       style: const TextStyle(
                                         fontSize: 11.5,
                                         color: AppColors.textMuted,

@@ -2,13 +2,21 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
 
-/// Official Nawaqss Brand Logo rendered in pure vector graphics.
+enum NawaqssLogoVariant {
+  onLight,
+  onTeal,
+  auto,
+}
+
+/// Official Nawaqss Brand Logo rendered in pure vector graphics (Brand Kit Pages 1, 3, 4, 14).
 /// Displays the capsule with magnifying glass lens and coral medicine dot.
 class NawaqssLogo extends StatelessWidget {
   final double size;
   final bool showText;
   final bool isHorizontal;
   final Color? textColor;
+  final NawaqssLogoVariant variant;
+  final bool? onDark;
 
   const NawaqssLogo({
     super.key,
@@ -16,15 +24,22 @@ class NawaqssLogo extends StatelessWidget {
     this.showText = false,
     this.isHorizontal = true,
     this.textColor,
+    this.variant = NawaqssLogoVariant.auto,
+    this.onDark,
   });
 
   @override
   Widget build(BuildContext context) {
+    final isDarkBg = onDark ??
+        (variant == NawaqssLogoVariant.onTeal ||
+            (variant == NawaqssLogoVariant.auto &&
+                Theme.of(context).brightness == Brightness.dark));
+
     final mark = SizedBox(
       width: size * 1.5,
       height: size,
       child: CustomPaint(
-        painter: _NawaqssMarkPainter(),
+        painter: _NawaqssMarkPainter(onDark: isDarkBg),
       ),
     );
 
@@ -33,11 +48,11 @@ class NawaqssLogo extends StatelessWidget {
     final title = Text(
       'نواقص',
       style: TextStyle(
-        fontFamily: 'Cairo',
-        fontSize: size * 0.42,
-        fontWeight: FontWeight.w900,
-        color: textColor ?? NawaqsColors.ink,
-        height: 1.1,
+        fontFamily: 'Lalezar',
+        fontSize: size * 0.46,
+        fontWeight: FontWeight.w400,
+        color: textColor ?? (isDarkBg ? Colors.white : AppColors.textPrimary),
+        height: 1.05,
       ),
     );
 
@@ -45,11 +60,11 @@ class NawaqssLogo extends StatelessWidget {
       'Nawaqss',
       style: TextStyle(
         fontFamily: 'Cairo',
-        fontSize: size * 0.22,
-        fontWeight: FontWeight.w600,
-        color: textColor?.withValues(alpha: 0.7) ??
-            NawaqsColors.ink.withValues(alpha: 0.6),
-        letterSpacing: 0.8,
+        fontSize: size * 0.20,
+        fontWeight: FontWeight.w700,
+        color: textColor?.withValues(alpha: 0.85) ??
+            (isDarkBg ? NawaqsColors.mint : NawaqsColors.teal),
+        letterSpacing: 1.2,
       ),
     );
 
@@ -83,6 +98,10 @@ class NawaqssLogo extends StatelessWidget {
 }
 
 class _NawaqssMarkPainter extends CustomPainter {
+  final bool onDark;
+
+  const _NawaqssMarkPainter({this.onDark = false});
+
   @override
   void paint(Canvas canvas, Size size) {
     final w = size.width;
@@ -95,7 +114,7 @@ class _NawaqssMarkPainter extends CustomPainter {
     final capTop = (h - capH) / 2;
     final capR = capH / 2;
 
-    // Left half: Teal (#0E7C6B)
+    // Left half: White on Teal/Dark, Teal (#0E7C6B) on Light
     final leftRect = Rect.fromLTWH(capLeft, capTop, capW / 2 + 1, capH);
     final leftPath = Path()
       ..addRRect(RRect.fromRectAndCorners(
@@ -103,8 +122,8 @@ class _NawaqssMarkPainter extends CustomPainter {
         topLeft: Radius.circular(capR),
         bottomLeft: Radius.circular(capR),
       ));
-    final tealPaint = Paint()..color = NawaqsColors.teal;
-    canvas.drawPath(leftPath, tealPaint);
+    final leftPaint = Paint()..color = onDark ? Colors.white : NawaqsColors.teal;
+    canvas.drawPath(leftPath, leftPaint);
 
     // Right half: Coral (#FF5A4E)
     final rightRect = Rect.fromLTWH(capLeft + capW / 2 - 1, capTop, capW / 2 + 1, capH);
@@ -117,33 +136,35 @@ class _NawaqssMarkPainter extends CustomPainter {
     final coralPaint = Paint()..color = NawaqsColors.coral;
     canvas.drawPath(rightPath, coralPaint);
 
-    // White capsule outline for crisp contrast
-    final capOutline = Paint()
-      ..color = Colors.white
+    // Subtle curved glare reflection line on left side
+    final glarePen = Paint()
+      ..color = Colors.white.withValues(alpha: onDark ? 0.6 : 0.8)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = math.max(1.8, h * 0.05);
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-          Rect.fromLTWH(capLeft, capTop, capW, capH), Radius.circular(capR)),
-      capOutline,
-    );
+      ..strokeWidth = math.max(1.8, h * 0.04)
+      ..strokeCap = StrokeCap.round;
+
+    final leftArcRect = Rect.fromLTWH(capLeft + 4, capTop + 4, capH - 8, capH - 8);
+    canvas.drawArc(leftArcRect, math.pi * 0.85, math.pi * 0.40, false, glarePen);
+
+    final rightArcRect = Rect.fromLTWH(capLeft + capW - capH + 4, capTop + 4, capH - 8, capH - 8);
+    canvas.drawArc(rightArcRect, math.pi * 1.65, math.pi * 0.40, false, glarePen);
 
     // Magnifying glass lens centered in the capsule
     final lensCenterX = capLeft + capW / 2;
     final lensCenterY = capTop + capH / 2;
     final lensRadius = capH * 0.44;
 
-    // Lens circle fill (translucent white)
+    // Lens circle fill (translucent white or teal behind)
     final lensFill = Paint()
-      ..color = Colors.white
+      ..color = onDark ? NawaqsColors.tealDark.withValues(alpha: 0.8) : Colors.white
       ..style = PaintingStyle.fill;
     canvas.drawCircle(Offset(lensCenterX, lensCenterY), lensRadius, lensFill);
 
-    // Lens rim
+    // Lens rim (White on Dark, Teal on Light)
     final lensRim = Paint()
-      ..color = NawaqsColors.tealDark
+      ..color = onDark ? Colors.white : NawaqsColors.teal
       ..style = PaintingStyle.stroke
-      ..strokeWidth = math.max(2.2, h * 0.07);
+      ..strokeWidth = math.max(2.4, h * 0.075);
     canvas.drawCircle(Offset(lensCenterX, lensCenterY), lensRadius, lensRim);
 
     // Found medicine dot in lens center: Coral (#FF5A4E)
@@ -151,10 +172,10 @@ class _NawaqssMarkPainter extends CustomPainter {
     canvas.drawCircle(
         Offset(lensCenterX, lensCenterY), lensRadius * 0.42, dotPaint);
 
-    // Handle angling down-right
+    // Handle angling down-right at 45 degrees
     final handlePaint = Paint()
-      ..color = NawaqsColors.tealDark
-      ..strokeWidth = math.max(2.5, h * 0.08)
+      ..color = onDark ? Colors.white : NawaqsColors.teal
+      ..strokeWidth = math.max(2.6, h * 0.085)
       ..strokeCap = StrokeCap.round;
 
     final angle = math.pi / 4; // 45 degrees
@@ -170,7 +191,8 @@ class _NawaqssMarkPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _NawaqssMarkPainter oldDelegate) =>
+      oldDelegate.onDark != onDark;
 }
 
 /// Nuqous Mascot ("نقوص") states

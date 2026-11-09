@@ -6,8 +6,8 @@ import 'package:nawakes_mobile/core/theme/app_theme.dart';
 import 'package:nawakes_mobile/core/ui/nawaqss_brand_widgets.dart';
 import 'package:nawakes_mobile/features/auth/presentation/auth_controller.dart';
 
-/// Official Nawaqss Splash Screen (Brand Kit Pages 4, 6 & 14)
-/// Displays brand teal background, vector capsule logo, and Lalezar typography.
+/// Official Nawaqss Splash Screen (Brand Kit Pages 1, 3, 4 & 14)
+/// Displays brand teal background, pure vector capsule logo on teal, and Lalezar typography.
 class SplashScreen extends HookConsumerWidget {
   const SplashScreen({super.key});
 
@@ -43,47 +43,46 @@ class SplashScreen extends HookConsumerWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // ── Brand Vector Mark ──
-              Container(
-                width: 96,
-                height: 96,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(26),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.15),
-                      blurRadius: 18,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
-                ),
-                padding: const EdgeInsets.all(12),
-                child: const Center(
-                  child: NawaqssLogo(size: 64, showText: false),
-                ),
+              // ── Official Brand Vector Mark on Teal (Page 1, 4 & 14) ──
+              const NawaqssLogo(
+                size: 88,
+                showText: false,
+                onDark: true,
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 22),
 
-              // ── Main Header in Lalezar ──
+              // ── Main Header in Lalezar (Page 6 & 14) ──
               Text(
                 'نواقص',
                 style: AppTypography.mainHeader(
-                  fontSize: 52,
+                  fontSize: 54,
                   color: Colors.white,
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 2),
+
+              // ── English Wordmark Subtitle (Page 3) ──
+              const Text(
+                'Nawaqss',
+                style: TextStyle(
+                  fontFamily: 'Cairo',
+                  fontSize: 19,
+                  fontWeight: FontWeight.w700,
+                  color: NawaqsColors.mint,
+                  letterSpacing: 1.8,
+                ),
+              ),
+              const SizedBox(height: 16),
 
               // ── Subtitle in Lalezar ──
               Text(
                 'صوّر الروشتة وخلاص',
                 style: AppTypography.subHeader(
-                  fontSize: 22,
-                  color: NawaqsColors.mint,
+                  fontSize: 24,
+                  color: Colors.white,
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
 
               // ── Tagline in Cairo ──
               Text(
@@ -91,10 +90,10 @@ class SplashScreen extends HookConsumerWidget {
                 textAlign: TextAlign.center,
                 style: AppTypography.body(
                   fontSize: 14,
-                  color: Colors.white.withValues(alpha: 0.9),
+                  color: NawaqsColors.mint.withValues(alpha: 0.95),
                 ),
               ),
-              const SizedBox(height: 42),
+              const SizedBox(height: 38),
 
               // ── Loading indicator in Mint ──
               const SizedBox(
