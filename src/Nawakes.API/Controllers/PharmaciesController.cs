@@ -7,6 +7,7 @@ using Nawakes.Application.Reports.Commands.CreateReport;
 using Nawakes.Application.Pharmacies.Commands.RatePharmacy;
 using Nawakes.Application.Pharmacies.Commands.ToggleFavorite;
 using Nawakes.Application.Pharmacies.Queries.GetMyFavorites;
+using Nawakes.Application.Pharmacies.Queries.GetTopRatedPharmacies;
 using Nawakes.Domain.Enums;
 using System.ComponentModel.DataAnnotations;
 
@@ -22,6 +23,21 @@ namespace Nawakes.API.Controllers;
 [Authorize]
 public sealed class PharmaciesController(ISender mediator) : ControllerBase
 {
+    /// <summary>
+    /// Retrieve the highest rated verified pharmacies near the patient.
+    /// </summary>
+    [HttpGet("top-rated")]
+    [ProducesResponseType(typeof(IReadOnlyList<TopRatedPharmacyDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyList<TopRatedPharmacyDto>>> GetTopRated(
+        [FromQuery] double? lat,
+        [FromQuery] double? lng,
+        [FromQuery] int limit = 2,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await mediator.Send(new GetTopRatedPharmaciesQuery(lat, lng, limit), cancellationToken);
+        return Ok(result);
+    }
+
     /// <summary>
     /// Get full pharmacy details including address, phone, trust score, and
     /// a pre-built Google Maps directions deep-link.

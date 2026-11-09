@@ -10,6 +10,7 @@ import 'package:nawakes_mobile/core/network/api_client.dart';
 import 'package:nawakes_mobile/core/services/on_device_ocr_service.dart';
 import 'package:nawakes_mobile/core/services/prescription_frame_crop.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
+import 'package:nawakes_mobile/features/search/data/active_prescription_provider.dart';
 import 'package:nawakes_mobile/features/search/presentation/prescription_basket_screen.dart';
 
 /// Full-screen high-tech Scanner HUD that animates a live laser sweep and radar
@@ -208,6 +209,7 @@ class _PrescriptionScannerHudScreenState
             footerRatio: 0.18,
           ) ?? fullFrameBytes;
           final sanitizedBase64 = base64Encode(sanitizedCrop);
+          ref.read(activePrescriptionCropBase64Provider.notifier).state = sanitizedBase64;
 
           await Future<void>.delayed(const Duration(milliseconds: 500));
           if (!mounted) return;

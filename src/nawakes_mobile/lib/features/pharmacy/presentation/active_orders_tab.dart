@@ -1,3 +1,4 @@
+﻿import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
@@ -630,6 +631,46 @@ class _OrderCard extends HookWidget {
                           ),
                         ),
                         const Icon(Icons.chevron_left_rounded, size: 16, color: AppColors.textMuted),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+
+              if (reservation.prescriptionCropUrl != null &&
+                  reservation.prescriptionCropUrl!.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                GestureDetector(
+                  onTap: () => _showPrescriptionZoomDialog(
+                      context, reservation.prescriptionCropUrl!),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.successBg,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: AppColors.successText.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(
+                          Icons.receipt_long_rounded,
+                          size: 16,
+                          color: AppColors.successText,
+                        ),
+                        SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'مرفق مقتطف الروشتة للأمان السريري · اضغط للمعاينة والتكبير',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.successText,
+                            ),
+                          ),
+                        ),
+                        Icon(Icons.zoom_in_rounded, size: 16, color: AppColors.successText),
                       ],
                     ),
                   ),
@@ -1328,6 +1369,113 @@ void _showClinicalReviewSheet(BuildContext context, WidgetRef ref, dynamic reser
                 ),
                 const SizedBox(height: 18),
 
+                // ── Prescription Snippet Verification Section ─────────────────
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppColors.card,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.hairline),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.receipt_long_rounded,
+                              size: 18, color: AppColors.primary),
+                          const SizedBox(width: 8),
+                          const Expanded(
+                            child: Text(
+                              'مقتطف الروشتة المرفقة للأمان السريري',
+                              style: TextStyle(
+                                  fontSize: 13.5, fontWeight: FontWeight.w800),
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: reservation.prescriptionCropUrl != null &&
+                                      reservation.prescriptionCropUrl!.isNotEmpty
+                                  ? AppColors.successBg
+                                  : AppColors.fieldBg,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              reservation.prescriptionCropUrl != null &&
+                                      reservation.prescriptionCropUrl!.isNotEmpty
+                                  ? 'قانون 151 معتمد'
+                                  : 'طلب بدون روشتة',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: reservation.prescriptionCropUrl != null &&
+                                        reservation.prescriptionCropUrl!.isNotEmpty
+                                    ? AppColors.successText
+                                    : AppColors.textMuted,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      if (reservation.prescriptionCropUrl != null &&
+                          reservation.prescriptionCropUrl!.isNotEmpty) ...[
+                        GestureDetector(
+                          onTap: () => _showPrescriptionZoomDialog(
+                              context, reservation.prescriptionCropUrl!),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Stack(
+                              alignment: Alignment.bottomCenter,
+                              children: [
+                                Container(
+                                  height: 140,
+                                  width: double.infinity,
+                                  color: Colors.black12,
+                                  child: _buildPrescriptionImage(
+                                    reservation.prescriptionCropUrl!,
+                                    fit: BoxFit.cover,
+                                    height: 140,
+                                  ),
+                                ),
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 6, horizontal: 10),
+                                  color: Colors.black.withValues(alpha: 0.65),
+                                  child: const Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.zoom_in_rounded,
+                                          color: Colors.white, size: 16),
+                                      SizedBox(width: 6),
+                                      Text(
+                                        'اضغط لتكبير وفحص خط الطبيب والجرعة',
+                                        style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ] else ...[
+                        const Text(
+                          'لم يتم إرفاق مقتطف روشتة مع هذا الطلب (تم الطلب والبحث بالاسم مباشرة).',
+                          style: TextStyle(
+                              fontSize: 12, color: AppColors.textSecondary),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 18),
                 // ── Clinical Decision Buttons ─────────────────────────────────
                 if (reservation.status == 'Active' || reservation.status == 'Ready') ...[
                   FilledButton.icon(
@@ -1709,4 +1857,104 @@ class _FailedOrderCard extends StatelessWidget {
       ),
     );
   }
+}
+
+Widget _buildPrescriptionImage(String cropUrl, {BoxFit fit = BoxFit.cover, double? height, double? width}) {
+  try {
+    if (cropUrl.startsWith('data:image')) {
+      final comma = cropUrl.indexOf(',');
+      final b64 = comma != -1 ? cropUrl.substring(comma + 1) : cropUrl;
+      return Image.memory(base64Decode(b64), fit: fit, height: height, width: width);
+    } else if (cropUrl.startsWith('http://') || cropUrl.startsWith('https://')) {
+      return Image.network(
+        cropUrl,
+        fit: fit,
+        height: height,
+        width: width,
+        errorBuilder: (_, __, ___) => Container(
+          color: Colors.grey.shade100,
+          child: const Center(child: Icon(Icons.broken_image, color: AppColors.textMuted)),
+        ),
+      );
+    } else {
+      return Image.memory(base64Decode(cropUrl), fit: fit, height: height, width: width);
+    }
+  } catch (_) {
+    return Container(
+      color: Colors.grey.shade100,
+      child: const Center(child: Icon(Icons.receipt_long, size: 40, color: AppColors.textMuted)),
+    );
+  }
+}
+
+void _showPrescriptionZoomDialog(BuildContext context, String cropUrl) {
+  showDialog(
+    context: context,
+    builder: (ctx) => Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.hairline),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              color: AppColors.surfaceVariant.withValues(alpha: 0.5),
+              child: Row(
+                children: [
+                  const Icon(Icons.receipt_long_rounded, color: AppColors.primary, size: 20),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'مقتطف الروشتة للأمان السريري (فحص خط الطبيب)',
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                        color: AppColors.textDark,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 20),
+                    onPressed: () => Navigator.of(ctx).pop(),
+                    tooltip: 'إغلاق',
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              constraints: const BoxConstraints(maxHeight: 400),
+              color: Colors.black,
+              child: InteractiveViewer(
+                minScale: 0.8,
+                maxScale: 4.0,
+                child: Center(
+                  child: _buildPrescriptionImage(cropUrl, fit: BoxFit.contain),
+                ),
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.all(12),
+              child: Text(
+                'يمكنك التكبير بإصبعيك للتحقق من اسم الدواء، التركيز، وتوقيع الطبيب وفقاً لمعايير قانون 151 المصري.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'Cairo',
+                  fontSize: 11,
+                  color: AppColors.textMuted,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }

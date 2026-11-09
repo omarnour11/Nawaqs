@@ -1,3 +1,4 @@
+﻿import 'package:nawakes_mobile/features/pharmacy/data/top_rated_pharmacy_model.dart';
 import 'dart:async';
 import 'dart:typed_data';
 import 'package:dio/dio.dart';
@@ -134,6 +135,43 @@ class MockApiClient implements ApiClient {
     ));
   }
 
+  @override
+  Future<List<TopRatedPharmacyDto>> getTopRatedPharmacies({
+    double? latitude,
+    double? longitude,
+    int limit = 2,
+  }) async {
+    return [
+      TopRatedPharmacyDto(
+        id: 'pharm-1',
+        name: 'ØµÙŠØ¯Ù„ÙŠØ© Ø§Ù„Ù†ÙŠÙ„ Ø§Ù„ÙƒØ¨Ø±Ù‰',
+        addressLine: 'Ø´Ø§Ø±Ø¹ Ø¹Ø¨Ø§Ø³ Ø§Ù„Ø¹Ù‚Ø§Ø¯ØŒ Ù…Ø¯ÙŠÙ†Ø© Ù†ØµØ±',
+        city: 'Ø§Ù„Ù‚Ø§Ù‡Ø±Ø©',
+        phone: '01012345678',
+        latitude: 30.05,
+        longitude: 31.34,
+        distanceKm: 1.2,
+        trustScore: 98.0,
+        averageRating: 4.9,
+        ratingCount: 154,
+        offersDelivery: true,
+      ),
+      TopRatedPharmacyDto(
+        id: 'pharm-2',
+        name: 'ØµÙŠØ¯Ù„ÙŠØ© Ø§Ù„Ø£Ù‡Ø±Ø§Ù… Ø§Ù„Ø­Ø¯ÙŠØ«Ø©',
+        addressLine: 'Ù…ÙŠØ¯Ø§Ù† Ø§Ù„ØªØ­Ø±ÙŠØ±ØŒ ÙˆØ³Ø· Ø§Ù„Ø¨Ù„Ø¯',
+        city: 'Ø§Ù„Ù‚Ø§Ù‡Ø±Ø©',
+        phone: '01123456789',
+        latitude: 30.04,
+        longitude: 31.23,
+        distanceKm: 2.5,
+        trustScore: 95.0,
+        averageRating: 4.8,
+        ratingCount: 98,
+        offersDelivery: true,
+      ),
+    ];
+  }
   @override
   Future<ReservationResponse> createReservation(CreateReservationRequest body) async {
     return ReservationResponse(
@@ -780,5 +818,31 @@ void main() {
       final phNoDelivY = tester.getTopLeft(find.text('صيدلية قريبة بدون توصيل')).dy;
       expect(phDelivY, lessThan(phNoDelivY));
     });
+    testWidgets('HomeCatalogView renders top 2 rated pharmacies at top of home view', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            apiClientProvider.overrideWithValue(MockApiClient()),
+          ],
+          child: MaterialApp(
+            home: Scaffold(
+              body: SingleChildScrollView(
+                child: HomeCatalogView(
+                  onOpenScanner: () {},
+                  onSearchKeyword: (_) {},
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Ø£Ø¹Ù„Ù‰ Ø§Ù„ØµÙŠØ¯Ù„ÙŠØ§Øª ØªÙ‚ÙŠÙŠÙ…Ø§Ù‹ â­ï¸'), findsOneWidget);
+      expect(find.text('ØµÙŠØ¯Ù„ÙŠØ© Ø§Ù„Ù†ÙŠÙ„ Ø§Ù„ÙƒØ¨Ø±Ù‰'), findsOneWidget);
+      expect(find.text('ØµÙŠØ¯Ù„ÙŠØ© Ø§Ù„Ø£Ù‡Ø±Ø§Ù… Ø§Ù„Ø­Ø¯ÙŠØ«Ø©'), findsOneWidget);
+      expect(find.text('Ù…Ø¹ØªÙ…Ø¯Ø© ÙˆÙ…ÙˆØ«Ù‚Ø© âœ“'), findsOneWidget);
+    });
+
   });
 }

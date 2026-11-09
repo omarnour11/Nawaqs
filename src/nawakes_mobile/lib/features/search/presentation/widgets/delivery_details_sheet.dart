@@ -7,6 +7,7 @@ import 'package:nawakes_mobile/core/services/payment_methods_service.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
 import 'package:nawakes_mobile/core/utils/arabic_digits.dart';
 import 'package:nawakes_mobile/features/reservations/data/reservation_models.dart';
+import 'package:nawakes_mobile/features/search/data/active_prescription_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class DeliveryDetailsSheet extends HookConsumerWidget {
@@ -629,6 +630,7 @@ class DeliveryDetailsSheet extends HookConsumerWidget {
 
                       final req = CreateReservationRequest(
                         inventoryItemId: inventoryItemId,
+                        prescriptionCropBase64: ref.read(activePrescriptionCropBase64Provider),
                         fulfillmentType: 'Delivery',
                         deliveryAddress: fullAddress,
                         deliveryLatitude: effectiveLat,

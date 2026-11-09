@@ -36,6 +36,7 @@ PharmacyReservationResponse _$PharmacyReservationResponseFromJson(
   deliveryStatus: json['deliveryStatus'] as String?,
   patientGender: json['patientGender'] as String?,
   patientAge: (json['patientAge'] as num?)?.toInt(),
+  prescriptionCropUrl: json['prescriptionCropUrl'] as String?,
 );
 
 Map<String, dynamic> _$PharmacyReservationResponseToJson(
@@ -64,6 +65,7 @@ Map<String, dynamic> _$PharmacyReservationResponseToJson(
   'deliveryStatus': instance.deliveryStatus,
   'patientGender': instance.patientGender,
   'patientAge': instance.patientAge,
+  'prescriptionCropUrl': instance.prescriptionCropUrl,
 };
 
 ClinicalRejectRequest _$ClinicalRejectRequestFromJson(

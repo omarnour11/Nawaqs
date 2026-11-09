@@ -1,3 +1,6 @@
+﻿import 'package:url_launcher/url_launcher.dart';
+import 'package:nawakes_mobile/features/pharmacy/data/top_rated_pharmacy_model.dart';
+import 'package:nawakes_mobile/features/pharmacy/presentation/top_rated_pharmacies_provider.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -237,6 +240,9 @@ class _HomeCatalogViewState extends ConsumerState<HomeCatalogView> {
         ),
 
         const SizedBox(height: 18),
+
+        // ── Top-Rated Partner Pharmacies (أعلى الصيدليات تقييماً ⭐️) ─────────
+        _buildTopRatedPharmaciesSection(context),
 
         // ── 4. Quick Services (العزبي pattern) ────────────────────────────────
         const Text(
@@ -1433,4 +1439,407 @@ class _LocationPickerBottomSheetState
       },
     );
   }
+
+  Widget _buildTopRatedPharmaciesSection(BuildContext context) {
+    final topRatedAsync = ref.watch(topRatedPharmaciesProvider);
+
+    return topRatedAsync.when(
+      data: (pharmacies) {
+        if (pharmacies.isEmpty) return const SizedBox.shrink();
+
+        final items = pharmacies.take(2).toList();
+        return Container(
+          margin: const EdgeInsets.only(bottom: 18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.stars_rounded, color: Color(0xFFF59E0B), size: 20),
+                      const SizedBox(width: 6),
+                      Text(
+                        'أعلى الصيدليات تقييماً ⭐️',
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                          color: context.textColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppColors.primarySurface,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                    ),
+                    child: const Text(
+                      'معتمدة وموثقة ✓',
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 3),
+              const Text(
+                'صيدليات معتمدة بأعلى تقييم وأسرع خدمة بالقرب منك',
+                style: TextStyle(
+                  fontFamily: 'Cairo',
+                  fontSize: 11.5,
+                  color: AppColors.textMuted,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  for (int i = 0; i < items.length; i++) ...[
+                    if (i > 0) const SizedBox(width: 10),
+                    Expanded(
+                      child: _buildTopRatedPharmacyCard(context, items[i]),
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+    );
+  }
+
+  Widget _buildTopRatedPharmacyCard(BuildContext context, TopRatedPharmacyDto pharmacy) {
+    final distText = pharmacy.distanceKm != null
+        ? '${pharmacy.distanceKm!.toStringAsFixed(1).toArabicDigits()} كم'
+        : 'قريبة منك';
+
+    return InkWell(
+      onTap: () => _showTopRatedPharmacyModal(context, pharmacy),
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: context.surfaceColor,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.hairline),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: AppColors.primarySurface,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.local_pharmacy_rounded,
+                      size: 18, color: AppColors.primary),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFEF3C7),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.star_rounded, size: 14, color: Color(0xFFD97706)),
+                      const SizedBox(width: 3),
+                      Text(
+                        pharmacy.averageRating.toStringAsFixed(1).toArabicDigits(),
+                        style: const TextStyle(
+                          fontFamily: 'Cairo',
+                          fontWeight: FontWeight.w900,
+                          fontSize: 11,
+                          color: Color(0xFF92400E),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              pharmacy.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontFamily: 'Cairo',
+                fontWeight: FontWeight.w800,
+                fontSize: 13,
+                color: context.textColor,
+              ),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              pharmacy.city.isNotEmpty ? pharmacy.city : pharmacy.addressLine,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontFamily: 'Cairo',
+                fontSize: 11,
+                color: AppColors.textMuted,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.near_me_outlined, size: 12, color: AppColors.textMuted),
+                const SizedBox(width: 4),
+                Text(
+                  distText,
+                  style: const TextStyle(
+                    fontFamily: 'Cairo',
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceVariant,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    pharmacy.offersDelivery ? '🛵 توصيل' : '🏪 استلام',
+                    style: const TextStyle(
+                      fontFamily: 'Cairo',
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showTopRatedPharmacyModal(BuildContext context, TopRatedPharmacyDto pharmacy) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetCtx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppColors.primarySurface,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.local_pharmacy_rounded,
+                        size: 26, color: AppColors.primary),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                pharmacy.name,
+                                style: const TextStyle(
+                                  fontFamily: 'Cairo',
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            const Icon(Icons.verified_rounded,
+                                size: 16, color: AppColors.primary),
+                          ],
+                        ),
+                        Text(
+                          pharmacy.addressLine.isNotEmpty
+                              ? pharmacy.addressLine
+                              : pharmacy.city,
+                          style: const TextStyle(
+                            fontFamily: 'Cairo',
+                            fontSize: 12,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceVariant.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    Column(
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.star_rounded,
+                                size: 16, color: Color(0xFFD97706)),
+                            const SizedBox(width: 4),
+                            Text(
+                              pharmacy.averageRating.toStringAsFixed(1).toArabicDigits(),
+                              style: const TextStyle(
+                                  fontFamily: 'Cairo',
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 14),
+                            ),
+                          ],
+                        ),
+                        Text(
+                          '${pharmacy.ratingCount.toString().toArabicDigits()} تقييم',
+                          style: const TextStyle(
+                              fontFamily: 'Cairo',
+                              fontSize: 11,
+                              color: AppColors.textMuted),
+                        ),
+                      ],
+                    ),
+                    Container(height: 24, width: 1, color: AppColors.hairline),
+                    Column(
+                      children: [
+                        Text(
+                          pharmacy.distanceKm != null
+                              ? '${pharmacy.distanceKm!.toStringAsFixed(1).toArabicDigits()} كم'
+                              : 'قريبة جداً',
+                          style: const TextStyle(
+                              fontFamily: 'Cairo',
+                              fontWeight: FontWeight.w800,
+                              fontSize: 14),
+                        ),
+                        const Text(
+                          'المسافة التقديرية',
+                          style: TextStyle(
+                              fontFamily: 'Cairo',
+                              fontSize: 11,
+                              color: AppColors.textMuted),
+                        ),
+                      ],
+                    ),
+                    Container(height: 24, width: 1, color: AppColors.hairline),
+                    Column(
+                      children: [
+                        Text(
+                          pharmacy.offersDelivery ? '🛵 توصيل متاح' : '🏪 استلام فقط',
+                          style: const TextStyle(
+                              fontFamily: 'Cairo',
+                              fontWeight: FontWeight.w800,
+                              fontSize: 14),
+                        ),
+                        Text(
+                          pharmacy.offersDelivery ? 'خدمة سريعة' : 'بالفرع',
+                          style: const TextStyle(
+                              fontFamily: 'Cairo',
+                              fontSize: 11,
+                              color: AppColors.textMuted),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  if (pharmacy.phone.isNotEmpty) ...[
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: NawaqsColors.tealDark,
+                          side: const BorderSide(color: NawaqsColors.tealDark),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                        ),
+                        onPressed: () async {
+                          final uri = Uri.parse('tel:${pharmacy.phone}');
+                          if (await canLaunchUrl(uri)) await launchUrl(uri);
+                        },
+                        icon: const Icon(Icons.phone_in_talk_rounded, size: 18),
+                        label: Text(
+                          'اتصال (${pharmacy.phone.toArabicDigits()})',
+                          style: const TextStyle(
+                              fontFamily: 'Cairo',
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                  ],
+                  Expanded(
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: NawaqsColors.tealDark,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: () {
+                        Navigator.of(sheetCtx).pop();
+                        widget.onSearchKeyword(pharmacy.name);
+                      },
+                      icon: const Icon(Icons.search_rounded, size: 18),
+                      label: const Text(
+                        'بحث عن دواء هنا',
+                        style: TextStyle(
+                            fontFamily: 'Cairo',
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
 }

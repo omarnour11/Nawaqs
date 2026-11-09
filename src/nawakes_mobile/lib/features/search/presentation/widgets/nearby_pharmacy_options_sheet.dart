@@ -10,6 +10,7 @@ import 'package:nawakes_mobile/core/ui/medication_image_view.dart';
 import 'package:nawakes_mobile/features/auth/presentation/auth_controller.dart'
     show describeApiError;
 import 'package:nawakes_mobile/features/reservations/data/reservation_models.dart';
+import 'package:nawakes_mobile/features/search/data/active_prescription_provider.dart';
 import 'package:nawakes_mobile/features/search/presentation/nearby_products_provider.dart'
     show deliveryLocationProvider;
 import 'package:nawakes_mobile/features/search/presentation/widgets/safety_shield_dialog.dart';
@@ -171,6 +172,7 @@ class _NearbyPharmacyOptionsSheetState
 
       final req = CreateReservationRequest(
         inventoryItemId: targetItemId,
+        prescriptionCropBase64: ref.read(activePrescriptionCropBase64Provider),
       );
 
       final resp = await ref.read(apiClientProvider).createReservation(req);

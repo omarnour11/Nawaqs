@@ -40,6 +40,7 @@ class PharmacyReservationResponse {
   final String? deliveryStatus;
   final String? patientGender;
   final int? patientAge;
+  final String? prescriptionCropUrl;
 
   PharmacyReservationResponse({
     required this.id,
@@ -64,6 +65,7 @@ class PharmacyReservationResponse {
     this.deliveryStatus,
     this.patientGender,
     this.patientAge,
+    this.prescriptionCropUrl,
   });
 
   factory PharmacyReservationResponse.fromJson(Map<String, dynamic> json) =>

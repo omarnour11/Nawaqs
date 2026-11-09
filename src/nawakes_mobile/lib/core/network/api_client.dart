@@ -23,6 +23,7 @@ import 'package:nawakes_mobile/features/support/data/ticket_models.dart';
 import 'package:nawakes_mobile/features/profile/data/medication_models.dart';
 import 'package:nawakes_mobile/features/pharmacy/data/sales_ledger_models.dart';
 import 'package:nawakes_mobile/features/family_cabinet/data/family_cabinet_models.dart';
+import 'package:nawakes_mobile/features/pharmacy/data/top_rated_pharmacy_model.dart';
 
 part 'api_client.g.dart';
 
@@ -126,6 +127,13 @@ abstract class ApiClient {
 
   @GET("/pharmacies/favorites")
   Future<List<FavoritePharmacyDto>> getMyFavorites();
+
+  @GET("/pharmacies/top-rated")
+  Future<List<TopRatedPharmacyDto>> getTopRatedPharmacies({
+    @Query("lat") double? lat,
+    @Query("lng") double? lng,
+    @Query("limit") int limit = 2,
+  });
 
   // ── Alerts (availability subscriptions) ────────────────────────────────
   @POST("/subscriptions")
