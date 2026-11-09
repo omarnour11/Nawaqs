@@ -5,7 +5,7 @@ import 'package:nawakes_mobile/core/utils/arabic_digits.dart';
 import 'package:nawakes_mobile/features/search/data/search_models.dart';
 
 String _formatDistance(double km) {
-  if (km < 1) return '${ArabicDigits.convert((km * 1000).round())} م';
+  if (km < 1) return '${ArabicDigits.convert((km * 1000).round())} متر';
   return '${ArabicDigits.convert(km.toStringAsFixed(1), formatDecimals: true)} كم';
 }
 

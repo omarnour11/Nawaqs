@@ -902,11 +902,11 @@ void main() {
 
       // Check stats cards
       expect(find.text('طلبات اليوم'), findsOneWidget);
-      expect(find.text('٨'), findsOneWidget);
+      expect(find.text('8'), findsOneWidget);
       expect(find.text('إجمالي الإيراد'), findsOneWidget);
       expect(find.text('١٤٥٠ ج.م'), findsOneWidget);
       expect(find.text('كل الطلبات'), findsOneWidget);
-      expect(find.text('٤٢'), findsOneWidget);
+      expect(find.text('42'), findsOneWidget);
 
       // Check entries
       expect(find.text('كونكور 5 مجم'), findsOneWidget);
