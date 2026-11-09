@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
@@ -1871,7 +1871,7 @@ Widget _buildPrescriptionImage(String cropUrl, {BoxFit fit = BoxFit.cover, doubl
         fit: fit,
         height: height,
         width: width,
-        errorBuilder: (_, __, ___) => Container(
+        errorBuilder: (context, error, stackTrace) => Container(
           color: Colors.grey.shade100,
           child: const Center(child: Icon(Icons.broken_image, color: AppColors.textMuted)),
         ),

@@ -209,7 +209,7 @@ class _PrescriptionScannerHudScreenState
             footerRatio: 0.18,
           ) ?? fullFrameBytes;
           final sanitizedBase64 = base64Encode(sanitizedCrop);
-          ref.read(activePrescriptionCropBase64Provider.notifier).state = sanitizedBase64;
+          ref.read(activePrescriptionCropBase64Provider.notifier).setCrop(sanitizedBase64);
 
           await Future<void>.delayed(const Duration(milliseconds: 500));
           if (!mounted) return;

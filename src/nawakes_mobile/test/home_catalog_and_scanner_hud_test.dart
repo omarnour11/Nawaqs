@@ -1,4 +1,4 @@
-﻿import 'package:nawakes_mobile/features/pharmacy/data/top_rated_pharmacy_model.dart';
+import 'package:nawakes_mobile/features/pharmacy/data/top_rated_pharmacy_model.dart';
 import 'dart:async';
 import 'dart:typed_data';
 import 'package:dio/dio.dart';
@@ -137,8 +137,8 @@ class MockApiClient implements ApiClient {
 
   @override
   Future<List<TopRatedPharmacyDto>> getTopRatedPharmacies({
-    double? latitude,
-    double? longitude,
+    double? lat,
+    double? lng,
     int limit = 2,
   }) async {
     return [

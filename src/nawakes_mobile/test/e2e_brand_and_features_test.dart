@@ -1,4 +1,4 @@
-﻿import 'package:nawakes_mobile/features/pharmacy/data/top_rated_pharmacy_model.dart';
+import 'package:nawakes_mobile/features/pharmacy/data/top_rated_pharmacy_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -100,8 +100,8 @@ class FakeE2EApiClient implements ApiClient {
 
   @override
   Future<List<TopRatedPharmacyDto>> getTopRatedPharmacies({
-    double? latitude,
-    double? longitude,
+    double? lat,
+    double? lng,
     int limit = 2,
   }) async {
     return [

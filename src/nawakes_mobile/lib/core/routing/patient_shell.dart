@@ -14,7 +14,20 @@ import 'package:nawakes_mobile/features/notifications/presentation/notifications
 
 /// In-memory cache of notification IDs that were already presented to the user
 /// in dialogs during this app session to prevent persistent annoying popups on every rebuild.
-final dismissedPopupAlertIdsProvider = StateProvider<Set<String>>((ref) => {});
+class DismissedPopupAlertsNotifier extends Notifier<Set<String>> {
+  @override
+  Set<String> build() => {};
+
+  void markDismissed(String id) {
+    if (id.isEmpty) return;
+    state = {...state, id};
+  }
+}
+
+final dismissedPopupAlertIdsProvider =
+    NotifierProvider<DismissedPopupAlertsNotifier, Set<String>>(
+  DismissedPopupAlertsNotifier.new,
+);
 
 /// Patient bottom nav per the design spec: 4 items, icon above 11px label,
 /// active item in accent blue. Find / Passes / Account / Support.
@@ -66,7 +79,7 @@ class PatientShell extends HookConsumerWidget {
             // Mark as dismissed in-memory immediately so subsequent rebuilds never pop it up again
             ref
                 .read(dismissedPopupAlertIdsProvider.notifier)
-                .update((s) => {...s, alert.id});
+                .markDismissed(alert.id);
 
             await notifService.showCriticalNotification(
               id: alert.id.hashCode,
@@ -386,6 +399,7 @@ class PatientShell extends HookConsumerWidget {
                                       .replaceAll(RegExp(r'[.،,]+$'), '')
                                       .trim();
                                 }
+                                if (!context.mounted) return;
                                 if (medName != null && medName.isNotEmpty) {
                                   context.push(
                                       '/search?query=${Uri.encodeComponent(medName)}');

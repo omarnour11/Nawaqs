@@ -10,8 +10,8 @@ final topRatedPharmaciesProvider = FutureProvider.autoDispose<List<TopRatedPharm
 
   try {
     return await client.getTopRatedPharmacies(
-      latitude: loc.latitude,
-      longitude: loc.longitude,
+      lat: loc.latitude,
+      lng: loc.longitude,
       limit: 2,
     );
   } catch (_) {
