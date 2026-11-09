@@ -514,7 +514,7 @@ class PassDetailScreen extends HookConsumerWidget {
                                   const SizedBox(height: 4),
                                   Text(
                                     reservation.recommendedAlternativeMedication!,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 15,
                                       fontWeight: FontWeight.w800,
                                       color: context.textColor,
@@ -585,7 +585,7 @@ class PassDetailScreen extends HookConsumerWidget {
                                               : isReady
                                                   ? 'جاهز للاستلام'
                                                   : 'مؤكد',
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                           color: Color(0xFFDFF3EA),
                                           fontSize: 11.5,
                                           fontWeight: FontWeight.w700),
@@ -604,7 +604,7 @@ class PassDetailScreen extends HookConsumerWidget {
                               Directionality(
                                 textDirection: TextDirection.ltr,
                                 child: Text(reservation.reservationCode,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                         color: Colors.white,
                                         fontSize: 24,
                                         fontWeight: FontWeight.w800,
@@ -635,7 +635,7 @@ class PassDetailScreen extends HookConsumerWidget {
                                           size: 14, color: Colors.white),
                                       const SizedBox(width: 6),
                                       Text(copied.value ? 'تم النسخ' : 'نسخ الكود',
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                               color: Colors.white,
                                               fontSize: 12.5,
                                               fontWeight: FontWeight.w700)),
@@ -710,12 +710,12 @@ class PassDetailScreen extends HookConsumerWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(reservation.pharmacyName,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                           fontSize: 14.5,
                                           fontWeight: FontWeight.w700)),
                                   const SizedBox(height: 2),
                                   Text(reservation.medicationName,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                           fontSize: 12.5,
                                           color: AppColors.textSecondary)),
                                 ],

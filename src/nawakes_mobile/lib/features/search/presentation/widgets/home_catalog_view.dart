@@ -304,7 +304,7 @@ class _HomeCatalogViewState extends ConsumerState<HomeCatalogView> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
+            Text(
               'تسوق حسب الفئة',
               style: TextStyle(
                 fontSize: 15,
@@ -376,11 +376,11 @@ class _HomeCatalogViewState extends ConsumerState<HomeCatalogView> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Row(
+            Row(
               children: [
-                Icon(Icons.inventory_2_rounded,
+                const Icon(Icons.inventory_2_rounded,
                     size: 18, color: AppColors.primary),
-                SizedBox(width: 6),
+                const SizedBox(width: 6),
                 Text(
                   'منتجات متوفرة بالقرب منك ومحافظتك',
                   style: TextStyle(
@@ -1041,7 +1041,7 @@ class _LocationPickerBottomSheetState
               children: [
                 const Icon(Icons.location_on_rounded, color: AppColors.primary, size: 22),
                 const SizedBox(width: 8),
-                const Text(
+                Text(
                   'تحديد موقع التوصيل',
                   style: TextStyle(
                     fontSize: 16,
@@ -1166,7 +1166,7 @@ class _LocationPickerBottomSheetState
                           children: [
                             Row(
                               children: [
-                                const Text(
+                                Text(
                                   'استخدام موقعي الحالي (GPS)',
                                   style: TextStyle(
                                     fontSize: 13.5,
@@ -1363,7 +1363,7 @@ class _LocationPickerBottomSheetState
                 ),
               ),
               const SizedBox(height: 4),
-              const Text(
+              Text(
                 'يمكنك تحديد هذا النص مباشرة كعنوان للتوصيل:',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 11.5, color: AppColors.textMuted),

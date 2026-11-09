@@ -937,7 +937,7 @@ class SearchScreen extends HookConsumerWidget {
                         padding: const EdgeInsets.only(bottom: 8),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: const [
+                          children: [
                             Text(
                               'أدوية شائعة البحث',
                               style: TextStyle(
