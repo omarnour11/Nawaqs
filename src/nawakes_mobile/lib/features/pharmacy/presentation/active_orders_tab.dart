@@ -25,16 +25,23 @@ class ActiveOrdersTab extends HookConsumerWidget {
         onRetry: () => ref.invalidate(pharmacyReservationsControllerProvider),
       ),
       data: (reservations) {
+        final nowUtc = DateTime.now().toUtc();
         final activeReservations = reservations
             .where((r) =>
                 (r.status == 'Active' || r.status == 'Ready') &&
-                (r.status == 'Ready' || r.expiresAt.toUtc().isAfter(DateTime.now().toUtc())))
+                r.expiresAt.toUtc().isAfter(nowUtc))
+            .toList();
+
+        final completedReservations = reservations
+            .where((r) => r.status == 'Completed')
             .toList();
 
         final failedReservations = reservations
             .where((r) =>
                 r.status == 'Cancelled' ||
                 r.status == 'Expired' ||
+                ((r.status == 'Active' || r.status == 'Ready') &&
+                    r.expiresAt.toUtc().isBefore(nowUtc)) ||
                 (r.clinicalContraindicationReason != null &&
                     r.clinicalContraindicationReason!.isNotEmpty))
             .toList();
@@ -48,11 +55,11 @@ class ActiveOrdersTab extends HookConsumerWidget {
                   Expanded(
                     child: ChoiceChip(
                       label: Text(
-                        'الطلبات الجارية ()',
+                        'الجارية (${activeReservations.length})',
                         style: const TextStyle(
                           fontFamily: 'Cairo',
                           fontWeight: FontWeight.w700,
-                          fontSize: 12.5,
+                          fontSize: 11.5,
                         ),
                       ),
                       selected: selectedTab.value == 0,
@@ -62,20 +69,38 @@ class ActiveOrdersTab extends HookConsumerWidget {
                       selectedColor: NawaqsColors.mint,
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
                   Expanded(
                     child: ChoiceChip(
                       label: Text(
-                        'المتعثرة والملغية ()',
+                        'المستلمة (${completedReservations.length})',
                         style: const TextStyle(
                           fontFamily: 'Cairo',
                           fontWeight: FontWeight.w700,
-                          fontSize: 12.5,
+                          fontSize: 11.5,
                         ),
                       ),
                       selected: selectedTab.value == 1,
                       onSelected: (val) {
                         if (val) selectedTab.value = 1;
+                      },
+                      selectedColor: const Color(0xFFDCFCE7),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: ChoiceChip(
+                      label: Text(
+                        'الملغية (${failedReservations.length})',
+                        style: const TextStyle(
+                          fontFamily: 'Cairo',
+                          fontWeight: FontWeight.w700,
+                          fontSize: 11.5,
+                        ),
+                      ),
+                      selected: selectedTab.value == 2,
+                      onSelected: (val) {
+                        if (val) selectedTab.value = 2;
                       },
                       selectedColor: const Color(0xFFFEF2F2),
                     ),
@@ -108,34 +133,64 @@ class ActiveOrdersTab extends HookConsumerWidget {
                               ),
                             ),
                           ))
-                    : (failedReservations.isEmpty
-                        ? ListView(
-                            children: const [
-                              SizedBox(height: 140),
-                              Center(
-                                child: Text(
-                                  'لا توجد طلبات متعثرة أو ملغية',
-                                  style: TextStyle(
-                                    fontFamily: 'Cairo',
-                                    color: AppColors.textSecondary,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
+                    : selectedTab.value == 1
+                        ? (completedReservations.isEmpty
+                            ? ListView(
+                                children: const [
+                                  SizedBox(height: 140),
+                                  Center(
+                                    child: Text(
+                                      'لا توجد طلبات مستلمة بعد',
+                                      style: TextStyle(
+                                        fontFamily: 'Cairo',
+                                        color: AppColors.textSecondary,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : ListView.builder(
+                                padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                                itemCount: completedReservations.length,
+                                itemBuilder: (context, i) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: _OrderCard(
+                                    reservation: completedReservations[i],
+                                    ref: ref,
+                                    initiallyExpanded: false,
                                   ),
                                 ),
-                              ),
-                            ],
-                          )
-                        : ListView.builder(
-                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                            itemCount: failedReservations.length,
-                            itemBuilder: (context, i) => Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: _FailedOrderCard(
-                                reservation: failedReservations[i],
-                                ref: ref,
-                              ),
-                            ),
-                          )),
+                              ))
+                        : (failedReservations.isEmpty
+                            ? ListView(
+                                children: const [
+                                  SizedBox(height: 140),
+                                  Center(
+                                    child: Text(
+                                      'لا توجد طلبات متعثرة أو ملغية',
+                                      style: TextStyle(
+                                        fontFamily: 'Cairo',
+                                        color: AppColors.textSecondary,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : ListView.builder(
+                                padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                                itemCount: failedReservations.length,
+                                itemBuilder: (context, i) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: _FailedOrderCard(
+                                    reservation: failedReservations[i],
+                                    ref: ref,
+                                  ),
+                                ),
+                              )),
               ),
             ),
           ],
@@ -189,30 +244,34 @@ class _OrderCard extends HookWidget {
     }
 
     String statusArabic(String status) {
+      if (isCompleted) return 'تم الاستلام ✓';
+      if (isExpired) return 'منتهي الصلاحية ⏰';
       switch (status) {
         case 'Active':
-          return 'محجوز';
+          return 'قيد التجهيز ⏳';
         case 'Ready':
-          return 'جاهز للاستلام';
+          return 'جاهز للاستلام 📦';
         case 'Completed':
-          return 'تم الاستلام';
+          return 'تم الاستلام ✓';
         case 'Cancelled':
-          return 'ملغي';
+          return 'ملغي ❌';
         case 'Expired':
-          return 'منتهي';
+          return 'منتهي الصلاحية ⏰';
         default:
           return status;
       }
     }
 
     Color statusColor() {
+      if (isCompleted) return const Color(0xFF0D9488);
+      if (isExpired) return AppColors.danger;
       switch (reservation.status) {
         case 'Active':
-          return AppColors.accent;
+          return const Color(0xFFD97706);
         case 'Ready':
-          return AppColors.success;
+          return const Color(0xFF16A34A);
         case 'Completed':
-          return AppColors.success;
+          return const Color(0xFF0D9488);
         case 'Cancelled':
           return AppColors.danger;
         case 'Expired':
@@ -331,7 +390,13 @@ class _OrderCard extends HookWidget {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            '· ${countdown()}',
+                            isReady
+                                ? '· جاهز للتسليم'
+                                : isCompleted
+                                    ? '· تم التسليم'
+                                    : isExpired
+                                        ? '· انتهت المهلة'
+                                        : '· متبقي ${countdown()}',
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
@@ -423,7 +488,7 @@ class _OrderCard extends HookWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
-                            'الدواء المطلوب للاستلام:',
+                            'الصنف المطلوب للمريض:',
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
@@ -588,9 +653,15 @@ class _OrderCard extends HookWidget {
                   Expanded(
                     child: _InfoItem(
                       icon: Icons.timer_outlined,
-                      label: isReady ? 'حالة الحجز' : 'صلاحية الحجز',
-                      value: countdown(),
-                      valueColor: isReady
+                      label: isReady || isCompleted ? 'حالة الطلب' : 'صلاحية الحجز',
+                      value: isReady
+                          ? 'جاهز للتسليم 📦'
+                          : isCompleted
+                              ? 'تم الاستلام بنجاح ✓'
+                              : (isExpired
+                                  ? 'انتهت المهلة ⏰'
+                                  : countdown()),
+                      valueColor: isReady || isCompleted
                           ? AppColors.success
                           : (isExpired
                               ? AppColors.danger
@@ -735,7 +806,32 @@ class _OrderCard extends HookWidget {
                     ),
                   ],
                 ),
-              ] else if (reservation.status == 'Expired') ...[
+              ] else if (isCompleted) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFDCFCE7),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFF86EFAC)),
+                  ),
+                  child: Row(
+                    children: const [
+                      Icon(Icons.check_circle_rounded, color: Color(0xFF15803D), size: 18),
+                      SizedBox(width: 8),
+                      Text(
+                        'تم تسليم الطلب والتأكد من كود الاستلام بنجاح ✓',
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF15803D),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ] else if (reservation.status == 'Expired' || isExpired) ...[
                 const SizedBox(height: 10),
                 const Align(
                   alignment: Alignment.centerRight,
@@ -938,17 +1034,18 @@ Future<void> _dispatchRunnerViaWhatsApp(BuildContext context, dynamic reservatio
     buf.writeln('📞 *هاتف العميل:* ${reservation.deliveryContactPhone}');
   }
   if (reservation.deliveryAddress != null && reservation.deliveryAddress!.isNotEmpty) {
-    buf.writeln('📍 *العنوان:* ${reservation.deliveryAddress}');
+    buf.writeln('📍 *العنوان التفصيلي:* ${reservation.deliveryAddress}');
   }
   if (reservation.deliveryNotes != null && reservation.deliveryNotes!.isNotEmpty) {
     buf.writeln('📝 *ملاحظات التوصيل:* ${reservation.deliveryNotes}');
   }
+  buf.writeln('💵 *طريقة الدفع:* كاش عند الاستلام للطيار');
   if (reservation.deliveryLatitude != null && reservation.deliveryLongitude != null) {
-    buf.writeln('🗺️ *موقع العميل على الخريطة:*');
+    buf.writeln('🗺️ *رابط لوكيشن العميل الدقيق (GPS):*');
     buf.writeln('https://maps.google.com/?q=${reservation.deliveryLatitude},${reservation.deliveryLongitude}');
   }
   buf.writeln('--------------------------------');
-  buf.writeln('يرجى تأكيد الاستلام والتسليم للعميل.');
+  buf.writeln('يرجى تسليم الدواء واستلام الكود والمبلغ نقدًا من العميل.');
 
   final encoded = Uri.encodeComponent(buf.toString());
   final uri = Uri.parse('https://wa.me/?text=$encoded');

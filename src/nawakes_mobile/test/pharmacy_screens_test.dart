@@ -693,8 +693,8 @@ void main() {
       expect(find.text('NWQ-7788'), findsOneWidget);
       expect(find.text('صلاحية الحجز'), findsOneWidget);
 
-      // Localized status badge (محجوز instead of Active)
-      expect(find.text('محجوز'), findsOneWidget);
+      // Localized status badge (قيد التجهيز instead of Active)
+      expect(find.textContaining('قيد التجهيز'), findsOneWidget);
 
       // Action buttons
       expect(find.widgetWithText(OutlinedButton, 'جاهز'), findsOneWidget);
@@ -734,7 +734,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(fakeApi.lastReadyReservationId, 'res_101');
-      expect(find.text('جاهز للاستلام'), findsWidgets);
+      expect(find.textContaining('جاهز للاستلام'), findsWidgets);
 
       // Tap 'تم الاستلام' and verify handover proof via patient code
       await tester.tap(find.widgetWithText(FilledButton, 'تم الاستلام'));

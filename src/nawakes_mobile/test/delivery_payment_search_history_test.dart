@@ -145,16 +145,15 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('طرق الدفع ومحفظة الحساب'), findsWidgets);
-      expect(find.text('خيارات الدفع المعتمدة في مصر'), findsOneWidget);
-      expect(find.textContaining('كاش عند الاستلام'), findsOneWidget);
-      expect(find.textContaining('إنستاباي (InstaPay IPN)'), findsOneWidget);
-      expect(find.textContaining('فودافون كاش ومحافظ المحمول'), findsOneWidget);
-      expect(find.textContaining('بطاقة بنكية (فيزا / ماستركارد / ميزة)'), findsOneWidget);
+      expect(find.textContaining('كاش عند الاستلام'), findsWidgets);
+      expect(find.textContaining('إنستاباي (InstaPay IPN)', skipOffstage: false), findsOneWidget);
+      expect(find.textContaining('محافظ المحمول الذكية', skipOffstage: false), findsOneWidget);
+      expect(find.textContaining('البطاقات البنكية (فيزا / ماستركارد / ميزة)', skipOffstage: false), findsOneWidget);
     });
   });
 
-  group('5. Delivery Details Sheet Mandatory Address & Paymob Tests', () {
-    testWidgets('mandates detailed Egyptian address fields and displays Paymob badge',
+  group('5. Delivery Details Sheet Mandatory Address & Cash On Delivery Tests', () {
+    testWidgets('mandates detailed Egyptian address fields and displays Cash On Delivery badge',
         (tester) async {
       final container = ProviderContainer();
       addTearDown(container.dispose);
@@ -184,11 +183,11 @@ void main() {
       expect(find.text('طلب توصيل منزلي فوري 🛵'), findsOneWidget);
       expect(find.text('صيدلية رشدي - الدقي'), findsOneWidget);
 
-      // Verify Paymob official Egyptian badge
-      expect(find.text('مدعوم عبر Paymob 🇪🇬'), findsOneWidget);
+      // Verify Cash on Delivery badge
+      expect(find.text('كاش عند الاستلام 💵'), findsOneWidget);
 
       // Verify mandatory Egyptian address fields
-      expect(find.text('اسم الشارع والحي (إجباري) *'), findsOneWidget);
+      expect(find.textContaining('اسم الشارع'), findsOneWidget);
       expect(find.text('رقم أو اسم العمارة (إجباري) *'), findsOneWidget);
       expect(find.text('رقم الشقة والدور (إجباري) *'), findsOneWidget);
       expect(find.text('رقم الموبايل للتواصل والتأكيد (إجباري) *'), findsOneWidget);

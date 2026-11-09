@@ -535,10 +535,16 @@ class LocationService {
     }
   }
 
+  Future<Position?> getCurrentPosition() => getCurrentLocation();
+
   Future<String?> reverseGeocode(double lat, double lng) async {
+    return getDetailedEgyptianAddress(lat, lng);
+  }
+
+  Future<String?> getDetailedEgyptianAddress(double lat, double lng) async {
     try {
       final url =
-          'https://nominatim.openstreetmap.org/reverse?lat=$lat&lon=$lng&format=json&addressdetails=1&accept-language=ar';
+          'https://nominatim.openstreetmap.org/reverse?lat=$lat&lon=$lng&format=json&addressdetails=1&zoom=18&accept-language=ar';
       final resp = await _dio.get(
         url,
         options: Options(
@@ -551,35 +557,95 @@ class LocationService {
       if (resp.data is Map<String, dynamic>) {
         final data = resp.data as Map<String, dynamic>;
         final address = data['address'] as Map<String, dynamic>? ?? {};
+
+        final roadRaw = (address['road'] ??
+                address['pedestrian'] ??
+                address['street'] ??
+                address['footway'] ??
+                address['amenity'] ??
+                address['building'])
+            ?.toString()
+            .trim();
+        final village = (address['village'] ??
+                address['hamlet'] ??
+                address['isolated_dwelling'])
+            ?.toString()
+            .trim();
+        final neighbourhood = (address['neighbourhood'] ??
+                address['suburb'] ??
+                address['quarter'] ??
+                address['residential'])
+            ?.toString()
+            .trim();
+        final county = (address['county'] ??
+                address['city_district'] ??
+                address['district'])
+            ?.toString()
+            .trim();
+        final city = (address['city'] ??
+                address['town'] ??
+                address['municipality'])
+            ?.toString()
+            .trim();
+        final state = (address['state'] ??
+                address['governorate'] ??
+                address['province'])
+            ?.toString()
+            .trim();
+
+        final parts = <String>[];
+
+        if (roadRaw != null && roadRaw.isNotEmpty && roadRaw != 'مصر') {
+          String roadFormatted = roadRaw;
+          if (!roadFormatted.startsWith('شارع') &&
+              !roadFormatted.startsWith('طريق') &&
+              !roadFormatted.startsWith('ميدان') &&
+              !roadFormatted.startsWith('حارة') &&
+              !roadFormatted.startsWith('كفر') &&
+              !roadFormatted.startsWith('قرية')) {
+            roadFormatted = 'شارع $roadFormatted';
+          }
+          parts.add(roadFormatted);
+        }
+
+        if (village != null && village.isNotEmpty && !parts.contains(village)) {
+          parts.add(village);
+        }
+
+        if (neighbourhood != null &&
+            neighbourhood.isNotEmpty &&
+            !parts.contains(neighbourhood) &&
+            neighbourhood != village) {
+          parts.add(neighbourhood);
+        }
+
+        if (county != null && county.isNotEmpty && !parts.contains(county)) {
+          parts.add(county);
+        } else if (city != null && city.isNotEmpty && !parts.contains(city)) {
+          parts.add(city);
+        }
+
+        if (state != null && state.isNotEmpty && !parts.contains(state)) {
+          final stateFormatted = state.startsWith('محافظة') ? state : 'محافظة $state';
+          if (!parts.contains(stateFormatted)) {
+            parts.add(stateFormatted);
+          }
+        }
+
+        if (parts.isNotEmpty) {
+          return parts.join('، ');
+        }
+
         final displayName = (data['display_name'] as String? ?? '').trim();
-
-        final local = address['neighbourhood'] ??
-            address['suburb'] ??
-            address['quarter'] ??
-            address['road'] ??
-            address['residential'] ??
-            address['village'];
-        final city = address['city'] ??
-            address['town'] ??
-            address['county'] ??
-            address['state'] ??
-            address['governorate'];
-
-        if (local != null && city != null && local.toString().trim() != city.toString().trim()) {
-          return '${local.toString().trim()}، ${city.toString().trim()}';
-        } else if (local != null) {
-          return local.toString().trim();
-        } else if (city != null) {
-          return city.toString().trim();
-        } else if (displayName.isNotEmpty) {
-          final parts = displayName
+        if (displayName.isNotEmpty) {
+          final segments = displayName
               .split(',')
               .map((s) => s.trim())
-              .where((s) => s.isNotEmpty && s != 'مصر' && !RegExp(r'^\d+$').hasMatch(s))
-              .take(2)
+              .where((s) =>
+                  s.isNotEmpty && s != 'مصر' && !RegExp(r'^\d+$').hasMatch(s))
               .toList();
-          if (parts.isNotEmpty) {
-            return parts.join('، ');
+          if (segments.isNotEmpty) {
+            return segments.take(4).join('، ');
           }
         }
       }

@@ -98,7 +98,9 @@ public sealed class CreateReservationCommandHandler(
             DeliveryLongitude     = request.DeliveryLongitude,
             DeliveryContactPhone  = request.DeliveryContactPhone,
             DeliveryNotes         = request.DeliveryNotes,
-            DeliveryStatus        = request.FulfillmentType == Domain.Enums.FulfillmentType.Delivery ? Domain.Enums.DeliveryStatus.Pending : null
+            DeliveryStatus        = request.FulfillmentType == Domain.Enums.FulfillmentType.Delivery ? Domain.Enums.DeliveryStatus.Pending : null,
+            PaymentStatus         = request.FulfillmentType == Domain.Enums.FulfillmentType.Delivery ? "CashOnDelivery" : "Unpaid",
+            PaymentProvider       = request.FulfillmentType == Domain.Enums.FulfillmentType.Delivery ? "Cash" : null
         };
         context.Reservations.Add(reservation);
 

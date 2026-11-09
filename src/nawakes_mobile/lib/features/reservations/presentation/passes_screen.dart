@@ -199,7 +199,9 @@ class _PassRow extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final (chip, tone) = _statusChip(reservation.status);
+    final isExpired = reservation.expiresAt.toUtc().isBefore(DateTime.now().toUtc()) &&
+        reservation.status != 'Completed';
+    final (chip, tone) = _statusChip(reservation.status, isExpired);
     return Material(
       color: AppColors.card,
       borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -281,12 +283,13 @@ class _PassRow extends HookConsumerWidget {
     );
   }
 
-  (StatusChip, ChipTone) _statusChip(String status) => switch (status) {
-        'Active' => (const StatusChip('محجوز', tone: ChipTone.neutral), ChipTone.neutral),
-        'Ready' => (const StatusChip('جاهز للاستلام', tone: ChipTone.success), ChipTone.success),
+  (StatusChip, ChipTone) _statusChip(String status, bool isExpired) => switch (status) {
         'Completed' => (const StatusChip('تم الاستلام', tone: ChipTone.success), ChipTone.success),
+        'Ready' => (const StatusChip('جاهز للاستلام', tone: ChipTone.success), ChipTone.success),
         'Expired' => (const StatusChip('انتهى', tone: ChipTone.danger), ChipTone.danger),
         'Cancelled' => (const StatusChip('ملغي', tone: ChipTone.danger), ChipTone.danger),
+        'Active' when isExpired => (const StatusChip('انتهى', tone: ChipTone.danger), ChipTone.danger),
+        'Active' => (const StatusChip('محجوز', tone: ChipTone.neutral), ChipTone.neutral),
         _ => (StatusChip(status, tone: ChipTone.warning), ChipTone.warning),
       };
 }
@@ -323,25 +326,52 @@ class PassDetailScreen extends HookConsumerWidget {
               back: true,
               showBell: false,
             ),
-            // ── Brand Kit Page 16: Nuqous Celebrating Header & Countdown ──
+            // ── Brand Kit Page 16: Nuqous Header & Status Indicator ──
             Center(
               child: Column(
                 children: [
                   const SizedBox(height: 8),
-                  const NuqousMascot(height: 76, mood: NuqousMood.celebrating),
+                  NuqousMascot(
+                    height: 76,
+                    mood: isDone
+                        ? NuqousMood.celebrating
+                        : (expired || reservation.status == 'Expired' || reservation.status == 'Cancelled')
+                            ? NuqousMood.worried
+                            : NuqousMood.celebrating,
+                  ),
                   const SizedBox(height: 6),
-                  const Text(
-                    'اتحجز!',
+                  Text(
+                    isDone
+                        ? 'تم الاستلام بنجاح ✓'
+                        : (expired || reservation.status == 'Expired')
+                            ? 'انتهت صلاحية الحجز ⏰'
+                            : reservation.status == 'Cancelled'
+                                ? 'الحجز ملغي ❌'
+                                : isReady
+                                    ? 'جاهز للاستلام 📦'
+                                    : 'اتحجز بنجاح!',
                     style: TextStyle(
                       fontFamily: 'Cairo',
                       fontSize: 24,
                       fontWeight: FontWeight.w900,
-                      color: NawaqsColors.ink,
+                      color: isDone
+                          ? const Color(0xFF15803D)
+                          : (expired || reservation.status == 'Expired' || reservation.status == 'Cancelled')
+                              ? AppColors.dangerText
+                              : NawaqsColors.ink,
                     ),
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'الدوا محجوز في ${reservation.pharmacyName}',
+                    isDone
+                        ? 'تم تسليم الدواء بنجاح من ${reservation.pharmacyName}'
+                        : (expired || reservation.status == 'Expired')
+                            ? 'انتهت المهلة المحددة (ساعتان) ورجع الصنف للمخزون'
+                            : reservation.status == 'Cancelled'
+                                ? 'تم إلغاء هذا الحجز ورجع الصنف للمخزون'
+                                : isReady
+                                    ? 'الدواء مجهز وفي انتظارك في ${reservation.pharmacyName}'
+                                    : 'الدوا محجوز في ${reservation.pharmacyName}',
                     style: const TextStyle(
                       fontFamily: 'Cairo',
                       fontSize: 13,
@@ -353,31 +383,59 @@ class PassDetailScreen extends HookConsumerWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                     decoration: BoxDecoration(
-                      color: NawaqsColors.coralSoft,
+                      color: isDone
+                          ? const Color(0xFFDCFCE7)
+                          : (expired || reservation.status == 'Expired' || reservation.status == 'Cancelled')
+                              ? const Color(0xFFFEE2E2)
+                              : NawaqsColors.coralSoft,
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: NawaqsColors.coral.withValues(alpha: 0.3)),
+                      border: Border.all(
+                        color: isDone
+                            ? const Color(0xFF86EFAC)
+                            : (expired || reservation.status == 'Expired' || reservation.status == 'Cancelled')
+                                ? const Color(0xFFFCA5A5)
+                                : NawaqsColors.coral.withValues(alpha: 0.3),
+                      ),
                     ),
                     child: Column(
                       children: [
                         Text(
-                          expired
-                              ? '00:00:00'
-                              : '${remaining.inHours.toString().padLeft(2, '0')}:${(remaining.inMinutes % 60).toString().padLeft(2, '0')}:${(remaining.inSeconds % 60).toString().padLeft(2, '0')}',
-                          style: const TextStyle(
+                          isDone
+                              ? 'تم التسليم'
+                              : (expired || reservation.status == 'Expired')
+                                  ? '00:00:00'
+                                  : reservation.status == 'Cancelled'
+                                      ? 'ملغي'
+                                      : '${remaining.inHours.toString().padLeft(2, '0')}:${(remaining.inMinutes % 60).toString().padLeft(2, '0')}:${(remaining.inSeconds % 60).toString().padLeft(2, '0')}',
+                          style: TextStyle(
                             fontFamily: 'Cairo',
-                            fontSize: 28,
+                            fontSize: isDone || reservation.status == 'Cancelled' ? 22 : 28,
                             fontWeight: FontWeight.w900,
-                            letterSpacing: 2,
-                            color: NawaqsColors.coral,
+                            letterSpacing: isDone || reservation.status == 'Cancelled' ? 0 : 2,
+                            color: isDone
+                                ? const Color(0xFF15803D)
+                                : (expired || reservation.status == 'Expired' || reservation.status == 'Cancelled')
+                                    ? AppColors.dangerText
+                                    : NawaqsColors.coral,
                           ),
                         ),
-                        const Text(
-                          'الوقت المتبقي للاستلام (ساعتين)',
+                        Text(
+                          isDone
+                              ? 'تم التحقق من كود الاستلام بنجاح'
+                              : (expired || reservation.status == 'Expired')
+                                  ? 'انتهت مدة الحجز (الصنف متاح للآخرين)'
+                                  : reservation.status == 'Cancelled'
+                                      ? 'تم إلغاء الحجز'
+                                      : 'الوقت المتبقي للاستلام (ساعتين)',
                           style: TextStyle(
                             fontFamily: 'Cairo',
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
-                            color: NawaqsColors.coral,
+                            color: isDone
+                                ? const Color(0xFF15803D)
+                                : (expired || reservation.status == 'Expired' || reservation.status == 'Cancelled')
+                                    ? AppColors.dangerText
+                                    : NawaqsColors.coral,
                           ),
                         ),
                       ],
@@ -709,19 +767,32 @@ class PassDetailScreen extends HookConsumerWidget {
                               ? [
                                   StepperStep.done('محجوز', 'حجزك اتفعّل في الصيدلية'),
                                   StepperStep.done('جاهز للاستلام', 'الصيدلية جهزت الطلب'),
-                                  StepperStep.done('تم الاستلام', 'اتأكد الكود عند الكاشير'),
+                                  StepperStep.done('تم الاستلام والتسليم', 'تم استلام الدواء بنجاح بنجاح'),
                                 ]
-                              : isReady
+                              : (expired || reservation.status == 'Expired')
                                   ? [
-                                      StepperStep.done('محجوز', 'محجوز لك في الصيدلية'),
-                                      StepperStep.done('جاهز للاستلام', 'اعرض التصريح والروشتة'),
+                                      StepperStep.done('محجوز مسبقاً', 'تم إنشاء الحجز'),
+                                      StepperStep.pending('انتهت مهلة الاستلام ⏰',
+                                          'انتهت مهلة الساعتين ورجع الصنف لمخزون الصيدلية',
+                                          pendingIcon: Icons.timer_off_outlined),
                                     ]
-                                  : [
-                                      StepperStep.done('محجوز', 'محجوز لك في الصيدلية'),
-                                      StepperStep.pending('جاهز للاستلام',
-                                          'الصيدلية هتأكدلك لما يبقى جاهز',
-                                          pendingIcon: Icons.schedule_rounded),
-                                    ],
+                                  : reservation.status == 'Cancelled'
+                                      ? [
+                                          StepperStep.pending('حجز ملغي ❌',
+                                              'تم إلغاء الحجز من الصيدلية أو العميل',
+                                              pendingIcon: Icons.cancel_outlined),
+                                        ]
+                                      : isReady
+                                          ? [
+                                              StepperStep.done('محجوز', 'محجوز لك في الصيدلية'),
+                                              StepperStep.done('جاهز للاستلام 📦', 'الصيدلية جهزت الطلب وهو في انتظارك'),
+                                            ]
+                                          : [
+                                              StepperStep.done('محجوز', 'محجوز لك في الصيدلية'),
+                                              StepperStep.pending('جاهز للاستلام',
+                                                  'الصيدلية هتأكدلك أول ما الطلب يجهز',
+                                                  pendingIcon: Icons.schedule_rounded),
+                                            ],
                         ),
                       ],
                     ),

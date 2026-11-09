@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:nawakes_mobile/core/location/location_service.dart';
 import 'package:nawakes_mobile/core/network/api_client.dart';
 import 'package:nawakes_mobile/core/services/payment_methods_service.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
-import 'package:nawakes_mobile/core/ui/paymob_gateway_dialog.dart';
 import 'package:nawakes_mobile/features/reservations/data/reservation_models.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -66,9 +66,43 @@ class DeliveryDetailsSheet extends HookConsumerWidget {
     final landmarkCtrl = useTextEditingController();
     final phoneCtrl = useTextEditingController();
 
-    final paymentState = ref.watch(paymentMethodsProvider);
-    final selectedPayment = useState<PaymentType>(paymentState.defaultType);
-    final isSubmitting = useState(false);
+    final currentLat = useState<double?>(latitude);
+    final currentLng = useState<double?>(longitude);
+    final isLocating = useState<bool>(false);
+    final isSubmitting = useState<bool>(false);
+
+    // Auto-fetch precise location & address on open
+    useEffect(() {
+      Future(() async {
+        isLocating.value = true;
+        try {
+          final locService = ref.read(locationServiceProvider);
+          double? lat = currentLat.value;
+          double? lng = currentLng.value;
+
+          if (lat == null || lng == null) {
+            final pos = await locService.getCurrentPosition();
+            if (pos != null) {
+              lat = pos.latitude;
+              lng = pos.longitude;
+              currentLat.value = lat;
+              currentLng.value = lng;
+            }
+          }
+
+          if (lat != null && lng != null && streetCtrl.text.isEmpty) {
+            final detailed = await locService.getDetailedEgyptianAddress(lat, lng);
+            if (detailed != null && detailed.isNotEmpty) {
+              streetCtrl.text = detailed;
+            }
+          }
+        } catch (_) {
+        } finally {
+          isLocating.value = false;
+        }
+      });
+      return null;
+    }, const []);
 
     // Calculate Egyptian delivery fee (15 EGP base + 4 EGP per extra km)
     final deliveryFee = distanceKm <= 2.0
@@ -222,22 +256,79 @@ class DeliveryDetailsSheet extends HookConsumerWidget {
           const SizedBox(height: 16),
 
           // ── Address Fields (Mandatory Egyptian Address: Street, Building, Apt) ──
-          const Text(
-            'تفاصيل عنوان التوصيل الإلزامية',
-            style: TextStyle(
-              fontFamily: 'Cairo',
-              fontWeight: FontWeight.w800,
-              fontSize: 14,
-              color: NawaqsColors.ink,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Expanded(
+                child: Text(
+                  'تفاصيل عنوان التوصيل الإلزامية',
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13.5,
+                    color: NawaqsColors.ink,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              InkWell(
+                onTap: isLocating.value
+                    ? null
+                    : () async {
+                        isLocating.value = true;
+                        try {
+                          final locService = ref.read(locationServiceProvider);
+                          final pos = await locService.getCurrentPosition();
+                          if (pos != null) {
+                            currentLat.value = pos.latitude;
+                            currentLng.value = pos.longitude;
+                            final detailed = await locService.getDetailedEgyptianAddress(pos.latitude, pos.longitude);
+                            if (detailed != null && detailed.isNotEmpty) {
+                              streetCtrl.text = detailed;
+                            }
+                          }
+                        } catch (_) {
+                        } finally {
+                          isLocating.value = false;
+                        }
+                      },
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (isLocating.value)
+                        const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: NawaqsColors.tealDark),
+                        )
+                      else
+                        const Icon(Icons.my_location_rounded, size: 15, color: NawaqsColors.tealDark),
+                      const SizedBox(width: 4),
+                      Text(
+                        isLocating.value ? 'جارٍ تحديد موقعك…' : 'تحديد موقعي الدقيق 📍',
+                        style: const TextStyle(
+                          fontFamily: 'Cairo',
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w700,
+                          color: NawaqsColors.tealDark,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 8),
 
           TextField(
             controller: streetCtrl,
             decoration: const InputDecoration(
-              labelText: 'اسم الشارع والحي (إجباري) *',
-              hintText: 'مثال: شارع التحرير، الدقي',
+              labelText: 'اسم الشارع والحي والمركز (إجباري) *',
+              hintText: 'مثال: شارع أحمد خضر، كفر منصور، مركز طوخ، القليوبية',
               prefixIcon: Icon(Icons.edit_road_rounded, size: 20),
               isDense: true,
             ),
@@ -294,7 +385,7 @@ class DeliveryDetailsSheet extends HookConsumerWidget {
           ),
           const SizedBox(height: 18),
 
-          // ── Payment Method Selector (Paymob & Cash) ──
+          // ── Payment Method Section (Cash Only) ──
           Row(
             children: [
               const Text(
@@ -310,43 +401,87 @@ class DeliveryDetailsSheet extends HookConsumerWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFEFF6FF),
+                  color: const Color(0xFFDCFCE7),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: const Text(
-                  'مدعوم عبر Paymob 🇪🇬',
-                  style: TextStyle(fontFamily: 'Cairo', fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF1D4ED8)),
+                  'كاش عند الاستلام 💵',
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF15803D),
+                  ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 8),
 
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _buildPaymentChip(
-                label: 'كاش مع الدليفري 💵',
-                selected: selectedPayment.value == PaymentType.cash,
-                onTap: () => selectedPayment.value = PaymentType.cash,
-              ),
-              _buildPaymentChip(
-                label: 'فودافون كاش ومحافظ المحمول (Paymob) 📱',
-                selected: selectedPayment.value == PaymentType.vodafoneCash,
-                onTap: () => selectedPayment.value = PaymentType.vodafoneCash,
-              ),
-              _buildPaymentChip(
-                label: 'إنستاباي (InstaPay IPN) ⚡',
-                selected: selectedPayment.value == PaymentType.instapay,
-                onTap: () => selectedPayment.value = PaymentType.instapay,
-              ),
-              _buildPaymentChip(
-                label: 'فيزا / بطاقة بنكية (Paymob) 💳',
-                selected: selectedPayment.value == PaymentType.card,
-                onTap: () => selectedPayment.value = PaymentType.card,
-              ),
-            ],
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFF86EFAC), width: 1.2),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.payments_rounded, color: Color(0xFF15803D), size: 24),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      Text(
+                        'الدفع نقدًا لمندوب التوصيل (الطيار)',
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13,
+                          color: Color(0xFF166534),
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'تسليم قيمة الدواء ومصاريف التوصيل نقداً عند استلام الشحنة أمام باب المنزل.',
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
+                          fontSize: 11,
+                          color: Color(0xFF475569),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.check_circle_rounded, color: Color(0xFF15803D), size: 20),
+              ],
+            ),
+          ),
+          const SizedBox(height: 6),
+          // Note about online payment maintenance
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: const [
+                Icon(Icons.info_outline_rounded, size: 14, color: AppColors.textSecondary),
+                SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'خدمات الدفع الإلكتروني (فيزا، فودافون كاش، إنستاباي) قيد الصيانة والربط البنكي الرسمي.',
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
+                      fontSize: 10.5,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 16),
 
@@ -383,7 +518,7 @@ class DeliveryDetailsSheet extends HookConsumerWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text(
-                      'الإجمالي المطلوب:',
+                      'الإجمالي المطلوب نقدًا (كاش):',
                       style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800, fontSize: 14),
                     ),
                     Text(
@@ -440,13 +575,13 @@ class DeliveryDetailsSheet extends HookConsumerWidget {
                       final fullAddress =
                           '${streetCtrl.text.trim()}، عمارة ${buildingCtrl.text.trim()}، شقة ${aptCtrl.text.trim()}${landmarkCtrl.text.trim().isNotEmpty ? " (علامة: ${landmarkCtrl.text.trim()})" : ""}';
 
-                      final effectiveLat = latitude ?? 30.0444;
-                      final effectiveLng = longitude ?? 31.2357;
+                      final effectiveLat = currentLat.value ?? 30.0444;
+                      final effectiveLng = currentLng.value ?? 31.2357;
                       final riderMapsUrl = 'https://maps.google.com/?q=$effectiveLat,$effectiveLng';
 
-                      // ── Step 1: Create reservation first ───────────────
+                      // ── Create reservation with Cash on Delivery ───────────────
                       final notes =
-                          'طريقة الدفع: ${selectedPayment.value == PaymentType.cash ? "كاش عند الاستلام" : "دفع إلكتروني"} · إجمالي: ${grandTotal.toStringAsFixed(1)} ج.م شامل التوصيل (${deliveryFee.toStringAsFixed(1)} ج.م) · لوكيشن المريض: $riderMapsUrl';
+                          'طريقة الدفع: كاش عند الاستلام · إجمالي: ${grandTotal.toStringAsFixed(1)} ج.م شامل التوصيل (${deliveryFee.toStringAsFixed(1)} ج.م) · لوكيشن المريض: $riderMapsUrl';
 
                       final req = CreateReservationRequest(
                         inventoryItemId: inventoryItemId,
@@ -459,42 +594,6 @@ class DeliveryDetailsSheet extends HookConsumerWidget {
                       );
 
                       final resp = await ref.read(apiClientProvider).createReservation(req);
-                      final createdReservationId = resp.id.toString();
-
-                      // ── Step 2: Open Paymob gateway for non-cash payments ──
-                      if (selectedPayment.value != PaymentType.cash) {
-                        final gatewayResult = await showPaymobGatewaySheet(
-                          context: context,
-                          paymentType: selectedPayment.value,
-                          amountEgp: grandTotal,
-                          medicationName: medicationName,
-                          pharmacyName: pharmacyName,
-                          initialPhone: phoneCtrl.text.trim(),
-                          reservationId: createdReservationId,
-                          ref: ref,
-                        );
-
-                        if (gatewayResult == null || !gatewayResult.success) {
-                          // Payment cancelled — release reservation so the item is freed back for retry
-                          try {
-                            await ref.read(apiClientProvider).cancelReservation(createdReservationId);
-                          } catch (_) {}
-
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'تم إلغاء الدفع. يمكنك إعادة المحاولة في أي وقت.',
-                                  textDirection: TextDirection.rtl,
-                                ),
-                                backgroundColor: Colors.orange,
-                                duration: Duration(seconds: 4),
-                              ),
-                            );
-                          }
-                          return;
-                        }
-                      }
 
                       if (context.mounted) {
                         Navigator.of(context).pop(resp);
@@ -517,43 +616,12 @@ class DeliveryDetailsSheet extends HookConsumerWidget {
                   )
                 : const Icon(Icons.check_circle_rounded, color: Colors.white),
             label: Text(
-              isSubmitting.value ? 'جارٍ إرسال الطلب…' : 'تأكيد طلب التوصيل المنزلي (${grandTotal.toStringAsFixed(1)} ج.م)',
+              isSubmitting.value ? 'جارٍ إرسال الطلب…' : 'تأكيد طلب التوصيل كاش (${grandTotal.toStringAsFixed(1)} ج.م)',
               style: const TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800, fontSize: 14.5),
             ),
           ),
           const SizedBox(height: 10),
         ],
-      ),
-    );
-  }
-
-  Widget _buildPaymentChip({
-    required String label,
-    required bool selected,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: selected ? NawaqsColors.tealDark.withValues(alpha: 0.1) : Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: selected ? NawaqsColors.tealDark : AppColors.hairline,
-            width: selected ? 1.5 : 1.0,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontFamily: 'Cairo',
-            fontSize: 12,
-            fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-            color: selected ? NawaqsColors.tealDark : AppColors.textPrimary,
-          ),
-        ),
       ),
     );
   }
