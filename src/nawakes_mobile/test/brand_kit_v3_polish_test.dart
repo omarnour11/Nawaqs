@@ -91,11 +91,11 @@ void main() {
       final router = GoRouter(
         initialLocation: '/',
         routes: [
-          GoRoute(path: '/', builder: (_, __) => const SplashScreen()),
-          GoRoute(path: '/login', builder: (_, __) => const Scaffold(body: Text('Login'))),
-          GoRoute(path: '/home', builder: (_, __) => const Scaffold(body: Text('Home'))),
-          GoRoute(path: '/pharmacy', builder: (_, __) => const Scaffold(body: Text('Pharmacy'))),
-          GoRoute(path: '/admin', builder: (_, __) => const Scaffold(body: Text('Admin'))),
+          GoRoute(path: '/', builder: (context, state) => const SplashScreen()),
+          GoRoute(path: '/login', builder: (context, state) => const Scaffold(body: Text('Login'))),
+          GoRoute(path: '/home', builder: (context, state) => const Scaffold(body: Text('Home'))),
+          GoRoute(path: '/pharmacy', builder: (context, state) => const Scaffold(body: Text('Pharmacy'))),
+          GoRoute(path: '/admin', builder: (context, state) => const Scaffold(body: Text('Admin'))),
         ],
       );
 
