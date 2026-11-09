@@ -244,7 +244,7 @@ class RegisterScreen extends HookConsumerWidget {
     }
 
     return Scaffold(
-      backgroundColor: AppColors.page,
+
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(

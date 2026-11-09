@@ -122,7 +122,7 @@ class DeliveryDetailsSheet extends HookConsumerWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.card,
+        color: AppColors.surfaceOf(context),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       padding: EdgeInsets.only(

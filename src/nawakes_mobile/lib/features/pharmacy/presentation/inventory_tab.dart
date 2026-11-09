@@ -29,7 +29,7 @@ class InventoryTab extends HookConsumerWidget {
         pharmacyState.value?.verificationStatus ?? 'Pending';
 
     return Scaffold(
-      backgroundColor: AppColors.page,
+
       body: state.when(
         loading: () => const Center(
             child: CircularProgressIndicator(color: AppColors.accentBlue)),

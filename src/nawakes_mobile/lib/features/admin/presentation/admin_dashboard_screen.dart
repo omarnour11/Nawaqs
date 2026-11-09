@@ -94,7 +94,7 @@ class AdminDashboardScreen extends HookConsumerWidget {
     ];
 
     return Scaffold(
-      backgroundColor: AppColors.page,
+
       appBar: AppBar(
         automaticallyImplyLeading: false,
         titleSpacing: 16,

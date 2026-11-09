@@ -28,7 +28,7 @@ class AdminReportsScreen extends HookConsumerWidget {
     final showAll = useState(false);
 
     return Scaffold(
-      backgroundColor: AppColors.page,
+
       body: SafeArea(
         bottom: false,
         child: RefreshIndicator(

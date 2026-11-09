@@ -51,7 +51,7 @@ class AllResultsScreen extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      backgroundColor: AppColors.page,
+
       body: SafeArea(
         bottom: false,
         child: Column(

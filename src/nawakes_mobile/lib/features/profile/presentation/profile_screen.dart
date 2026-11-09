@@ -67,7 +67,7 @@ class ProfileScreen extends HookConsumerWidget {
     final profileState = ref.watch(profileControllerProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.page,
+
       body: SafeArea(
         bottom: false,
         child: profileState.when(
@@ -238,7 +238,7 @@ class _ProfileBody extends HookConsumerWidget {
               Container(
                 padding: const EdgeInsets.all(15),
                 decoration: BoxDecoration(
-                  color: AppColors.card,
+                  color: AppColors.surfaceOf(context),
                   borderRadius: BorderRadius.circular(AppRadius.lg),
                   border: Border.all(color: AppColors.hairline),
                 ),
@@ -299,7 +299,7 @@ class _ProfileBody extends HookConsumerWidget {
               Container(
                 padding: const EdgeInsets.all(15),
                 decoration: BoxDecoration(
-                  color: AppColors.card,
+                  color: AppColors.surfaceOf(context),
                   borderRadius: BorderRadius.circular(AppRadius.lg),
                   border: Border.all(color: AppColors.hairline),
                 ),
@@ -453,7 +453,7 @@ class _ProfileBody extends HookConsumerWidget {
               Container(
                 padding: const EdgeInsets.all(15),
                 decoration: BoxDecoration(
-                  color: AppColors.card,
+                  color: AppColors.surfaceOf(context),
                   borderRadius: BorderRadius.circular(AppRadius.lg),
                   border: Border.all(color: AppColors.hairline),
                 ),
@@ -496,7 +496,7 @@ class _ProfileBody extends HookConsumerWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 decoration: BoxDecoration(
-                  color: AppColors.card,
+                  color: AppColors.surfaceOf(context),
                   borderRadius: BorderRadius.circular(AppRadius.lg),
                   border: Border.all(color: AppColors.hairline),
                 ),
@@ -588,7 +588,7 @@ class _ProfileBody extends HookConsumerWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
-                  color: AppColors.card,
+                  color: AppColors.surfaceOf(context),
                   borderRadius: BorderRadius.circular(AppRadius.lg),
                   border: Border.all(color: AppColors.hairline),
                 ),
@@ -705,7 +705,7 @@ class _ProfileBody extends HookConsumerWidget {
           ? Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                color: AppColors.card,
+                color: AppColors.surfaceOf(context),
                 border: const Border(top: BorderSide(color: AppColors.hairline)),
                 boxShadow: [
                   BoxShadow(
@@ -1007,7 +1007,7 @@ class _ChipsCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
-        color: AppColors.card,
+        color: AppColors.surfaceOf(context),
         borderRadius: BorderRadius.circular(AppRadius.lg),
         border: Border.all(color: AppColors.hairline),
       ),
@@ -1060,7 +1060,7 @@ class _LinkCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppColors.card,
+      color: AppColors.surfaceOf(context),
       borderRadius: BorderRadius.circular(AppRadius.md),
       child: InkWell(
         borderRadius: BorderRadius.circular(AppRadius.md),
@@ -1196,7 +1196,7 @@ void _showDeleteAccountDialog(BuildContext context, WidgetRef ref) {
             ),
             child: Container(
               decoration: BoxDecoration(
-                color: AppColors.card,
+                color: AppColors.surfaceOf(context),
                 borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
               ),
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),

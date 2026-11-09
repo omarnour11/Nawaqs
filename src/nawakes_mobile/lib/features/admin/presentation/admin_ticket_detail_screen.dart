@@ -87,7 +87,7 @@ class AdminTicketDetailScreen extends HookConsumerWidget {
     final isInProgress = ticket.status == 'InProgress' || ticket.status == 'InReview';
 
     return Scaffold(
-      backgroundColor: AppColors.page,
+
       body: SafeArea(
         bottom: false,
         child: ListView(

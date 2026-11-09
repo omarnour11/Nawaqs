@@ -40,73 +40,82 @@ class AppColors {
   static const coralAccent = NawaqsColors.coral;
   static const coralAccentBg = NawaqsColors.coralSoft;
 
-  // Dynamic Semantic Triplets (Authentic High-Contrast across Light & Dark)
-  static Color get successBg =>
-      isDarkMode ? const Color(0xFF133830) : NawaqsColors.mint;
-  static Color get successText =>
-      isDarkMode ? const Color(0xFF4ADE80) : NawaqsColors.tealDark;
-  static Color get successIcon =>
-      isDarkMode ? const Color(0xFF4ADE80) : NawaqsColors.teal;
+  // Semantic triplets
+  static const successBg = NawaqsColors.mint;
+  static const successText = NawaqsColors.tealDark;
+  static const successIcon = NawaqsColors.teal;
 
-  static Color get warningBg =>
-      isDarkMode ? const Color(0xFF332608) : const Color(0xFFFFF9E6);
-  static Color get warningText =>
-      isDarkMode ? const Color(0xFFFDE047) : const Color(0xFF8C6500);
+  static const warningBg = Color(0xFFFFF9E6);
+  static const warningText = Color(0xFF8C6500);
   static const warningIcon = NawaqsColors.stickerYellow;
 
-  static Color get dangerBg =>
-      isDarkMode ? const Color(0xFF3E1E1B) : NawaqsColors.coralSoft;
-  static Color get dangerText =>
-      isDarkMode ? const Color(0xFFF87171) : NawaqsColors.coral;
-  static Color get dangerIcon =>
-      isDarkMode ? const Color(0xFFF87171) : NawaqsColors.coral;
+  static const dangerBg = NawaqsColors.coralSoft;
+  static const dangerText = NawaqsColors.coral;
+  static const dangerIcon = NawaqsColors.coral;
 
-  // Real Dark Mode & Light Surfaces (Brand Kit Page 5)
-  static Color get page =>
-      isDarkMode ? const Color(0xFF0A1A17) : NawaqsColors.cream;
-  static Color get card =>
-      isDarkMode ? const Color(0xFF142730) : Colors.white;
-  static Color get fieldBg =>
-      isDarkMode ? const Color(0xFF0F1E25) : Colors.white;
-  static Color get hairline =>
-      isDarkMode ? const Color(0xFF1E3A33) : const Color(0xFFE2EFE9);
-  static Color get neutralChipBg =>
-      isDarkMode ? const Color(0xFF162C27) : NawaqsColors.mint;
+  // Surfaces (Brand Kit Page 5)
+  static const page = NawaqsColors.cream;
+  static const card = Colors.white;
+  static const fieldBg = Colors.white;
+  static const hairline = Color(0xFFE2EFE9);
+  static const neutralChipBg = NawaqsColors.mint;
 
-  // High-Contrast Typography (Crisp Warm Cream #FBF7F0 on Dark, Deep Ink #12222B on Light)
-  static Color get textPrimary =>
-      isDarkMode ? const Color(0xFFFBF7F0) : NawaqsColors.ink;
-  static Color get textSecondary =>
-      isDarkMode ? const Color(0xFFA9DECB) : const Color(0xFF4A5D68);
-  static Color get textMuted =>
-      isDarkMode ? const Color(0xFF75918A) : const Color(0xFF7F95A0);
-  static Color get textDark => textPrimary;
+  // Text (High-contrast Ink)
+  static const textPrimary = NawaqsColors.ink;
+  static const textSecondary = Color(0xFF4A5D68);
+  static const textMuted = Color(0xFF7F95A0);
+  static const textDark = textPrimary;
 
-  // Aliases for legacy & current screen implementations
-  static Color get primary => accentBlue;
-  static Color get primaryLight => NawaqsColors.teal;
-  static Color get primaryDark => brand900;
-  static Color get primarySurface => isDarkMode ? const Color(0xFF133830) : accentBlueBg;
-  static Color get accent => coralAccent;
-  static Color get accentLight => isDarkMode ? const Color(0xFF3E1E1B) : coralAccentBg;
-  static Color get accentDark => dangerText;
-  static Color get success => successText;
-  static Color get successSurface => successBg;
-  static Color get danger => dangerText;
-  static Color get dangerSurface => dangerBg;
-  static Color get warning => warningText;
-  static Color get warningSurface => warningBg;
-  static Color get info => accentBlue;
-  static Color get infoSurface => primarySurface;
-  static Color get available => successIcon;
-  static Color get unavailable => dangerIcon;
-  static Color get background => page;
-  static Color get surface => card;
-  static Color get surfaceVariant => neutralChipBg;
-  static Color get border => hairline;
-  static Color get shadow =>
-      isDarkMode ? const Color(0x33000000) : const Color(0x14101828);
-  static Color get textHint => textMuted;
+  // Legacy aliases for older screens
+  static const primary = accentBlue;
+  static const primaryLight = NawaqsColors.teal;
+  static const primaryDark = brand900;
+  static const primarySurface = accentBlueBg;
+  static const accent = coralAccent;
+  static const accentLight = coralAccentBg;
+  static const accentDark = dangerText;
+  static const success = successText;
+  static const successSurface = successBg;
+  static const danger = dangerText;
+  static const dangerSurface = dangerBg;
+  static const warning = warningText;
+  static const warningSurface = warningBg;
+  static const info = accentBlue;
+  static const infoSurface = accentBlueBg;
+  static const available = successIcon;
+  static const unavailable = dangerIcon;
+  static const background = page;
+  static const surface = card;
+  static const surfaceVariant = NawaqsColors.mint;
+  static const border = hairline;
+  static const shadow = Color(0x14101828);
+  static const textHint = textMuted;
+
+  // Dynamic Theme Helpers
+  static Color surfaceOf(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+          ? const Color(0xFF142730)
+          : Colors.white;
+
+  static Color pageOf(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+          ? const Color(0xFF0A1A17)
+          : NawaqsColors.cream;
+
+  static Color textOf(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+          ? const Color(0xFFFBF7F0)
+          : NawaqsColors.ink;
+
+  static Color textSecondaryOf(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+          ? const Color(0xFFA9DECB)
+          : const Color(0xFF4A5D68);
+
+  static Color borderOf(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+          ? const Color(0xFF1E3A33)
+          : hairline;
 }
 
 class AppShadows {

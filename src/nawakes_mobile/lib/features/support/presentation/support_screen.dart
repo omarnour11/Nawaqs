@@ -31,7 +31,7 @@ class SupportScreen extends HookConsumerWidget {
     final showForm = useState(false);
 
     return Scaffold(
-      backgroundColor: AppColors.page,
+
       body: SafeArea(
         bottom: false,
         child: RefreshIndicator(

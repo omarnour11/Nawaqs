@@ -29,7 +29,7 @@ class SalesLedgerScreen extends HookConsumerWidget {
     final searchCtrl = useTextEditingController();
 
     return Scaffold(
-      backgroundColor: AppColors.page,
+
       body: SafeArea(
         bottom: false,
         child: RefreshIndicator(

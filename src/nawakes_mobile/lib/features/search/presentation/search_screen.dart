@@ -335,7 +335,7 @@ class SearchScreen extends HookConsumerWidget {
         }
       },
       child: Scaffold(
-        backgroundColor: AppColors.page,
+
         body: Stack(
         children: [
           SafeArea(

@@ -8,7 +8,7 @@ class PaymentMethodsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      backgroundColor: AppColors.page,
+
       appBar: AppBar(
         title: const Text(
           'طرق الدفع ومحفظة الحساب',
@@ -16,7 +16,7 @@ class PaymentMethodsScreen extends ConsumerWidget {
         ),
         centerTitle: true,
         elevation: 0,
-        backgroundColor: AppColors.page,
+  
         foregroundColor: AppColors.textPrimary,
       ),
       body: ListView(
@@ -90,7 +90,7 @@ class PaymentMethodsScreen extends ConsumerWidget {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.card,
+              color: AppColors.surfaceOf(context),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: AppColors.isDarkMode ? const Color(0xFF1E3A33) : const Color(0xFF86EFAC),
@@ -307,7 +307,7 @@ class PaymentMethodsScreen extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: AppColors.card,
+        color: AppColors.surfaceOf(context),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.hairline),
       ),

@@ -106,7 +106,7 @@ class PharmacyDetailsScreen extends HookConsumerWidget {
     final trust = (item.trustScore / 100).clamp(0.0, 1.0);
 
     return Scaffold(
-      backgroundColor: AppColors.page,
+
       body: SafeArea(
         bottom: false,
         child: ListView(

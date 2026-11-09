@@ -51,7 +51,7 @@ class PassesScreen extends HookConsumerWidget {
     final filter = useState<String>('الكل');
 
     return Scaffold(
-      backgroundColor: AppColors.page,
+
       body: SafeArea(
         bottom: false,
         child: state.when(
@@ -314,7 +314,7 @@ class PassDetailScreen extends HookConsumerWidget {
     final isReady = reservation.status == 'Ready';
     final isDone = reservation.status == 'Completed';
     return Scaffold(
-      backgroundColor: AppColors.page,
+
       body: SafeArea(
         bottom: false,
         child: ListView(

@@ -66,7 +66,7 @@ class AlertsScreen extends HookConsumerWidget {
     final alertsState = ref.watch(myAlertsProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.page,
+
       body: SafeArea(
         bottom: false,
         child: RefreshIndicator(

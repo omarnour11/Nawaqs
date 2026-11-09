@@ -36,7 +36,7 @@ class ShortageQueueTab extends HookConsumerWidget {
     final state = ref.watch(openShortageRequestsProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.page,
+
       body: RefreshIndicator(
         color: AppColors.accentBlue,
         onRefresh: () async => ref.invalidate(openShortageRequestsProvider),

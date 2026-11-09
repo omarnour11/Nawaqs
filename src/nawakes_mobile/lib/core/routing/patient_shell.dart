@@ -279,7 +279,7 @@ class PatientShell extends HookConsumerWidget {
     }, const []);
 
     return Scaffold(
-      backgroundColor: AppColors.page,
+
       body: child,
       bottomNavigationBar: NavigationBar(
         selectedIndex: selectedIndex,
