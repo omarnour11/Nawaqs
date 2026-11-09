@@ -249,7 +249,7 @@ class DeliveryDetailsSheet extends HookConsumerWidget {
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          'اتصال مباشر بالطيار: ${ArabicDigits.convert(courierPhone)} 📞',
+                          'اتصال مباشر بالطيار: $courierPhone 📞',
                           style: TextStyle(
                             fontFamily: 'Cairo',
                             fontWeight: FontWeight.w800,

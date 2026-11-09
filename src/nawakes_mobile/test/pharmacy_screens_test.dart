@@ -849,7 +849,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('إنسولين نوفورابيد فليكس بن'), findsOneWidget);
-      expect(find.textContaining('1.8 كم'), findsOneWidget);
+      expect(find.textContaining('١٫٨ كم'), findsOneWidget);
       expect(find.text('محتاج علبتين ضروري للوالد'), findsOneWidget);
 
       // Claim button
@@ -902,11 +902,11 @@ void main() {
 
       // Check stats cards
       expect(find.text('طلبات اليوم'), findsOneWidget);
-      expect(find.text('8'), findsOneWidget);
+      expect(find.text('٨'), findsOneWidget);
       expect(find.text('إجمالي الإيراد'), findsOneWidget);
-      expect(find.text('1450 ج.م'), findsOneWidget);
+      expect(find.text('١٤٥٠ ج.م'), findsOneWidget);
       expect(find.text('كل الطلبات'), findsOneWidget);
-      expect(find.text('42'), findsOneWidget);
+      expect(find.text('٤٢'), findsOneWidget);
 
       // Check entries
       expect(find.text('كونكور 5 مجم'), findsOneWidget);

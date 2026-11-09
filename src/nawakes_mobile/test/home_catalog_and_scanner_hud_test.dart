@@ -290,7 +290,7 @@ void main() {
 
       // Inside the sheet: pharmacy name and distance are displayed!
       expect(find.text('صيدلية النيل المعتمدة'), findsOneWidget);
-      expect(find.text('1.2 كم'), findsOneWidget);
+      expect(find.text('١٫٢ كم'), findsOneWidget);
       expect(find.text('متوفر (12 علب)'), findsOneWidget);
       expect(find.text('حجز'), findsOneWidget);
 
@@ -353,7 +353,7 @@ void main() {
 
       // Expect distance warning banner and delivery note
       expect(find.text('ملاحظة: الدواء متوفر في صيدلية بعيدة عنك'), findsOneWidget);
-      expect(find.textContaining('22.5 كم'), findsWidgets);
+      expect(find.textContaining('٢٢٫٥ كم'), findsWidgets);
       expect(find.textContaining('التوصيل المنزلي'), findsOneWidget);
       expect(find.textContaining('صيدلية واحدة'), findsOneWidget);
     });

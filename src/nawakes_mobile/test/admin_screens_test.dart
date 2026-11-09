@@ -654,10 +654,10 @@ void main() {
 
       expect(find.text('إجمالي المسجل: 2 دواء'), findsOneWidget);
       expect(find.text('كونكور 5 مجم (Concor 5mg)'), findsOneWidget);
-      expect(find.text('45.50 ج.م'), findsOneWidget);
+      expect(find.text('٤٥٫٥٠ ج.م'), findsOneWidget);
       expect(find.text('مزمن'), findsOneWidget);
       expect(find.text('أوجمنتين 1 جم (Augmentin 1g)'), findsOneWidget);
-      expect(find.text('99.00 ج.م'), findsOneWidget);
+      expect(find.text('٩٩ ج.م'), findsOneWidget);
 
       // Filter chronic only
       await tester.tap(find.text('أدوية الأمراض المزمنة فقط'));

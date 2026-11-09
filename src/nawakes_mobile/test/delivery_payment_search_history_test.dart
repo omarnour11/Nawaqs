@@ -196,9 +196,9 @@ void main() {
       expect(find.textContaining('اتصال مباشر بالطيار: 01029834112 📞'), findsOneWidget);
 
       // Verify delivery calculation: 45 EGP + 21 EGP = 66 EGP
-      expect(find.text('45.0 ج.م', skipOffstage: false), findsOneWidget);
-      expect(find.text('21.0 ج.م', skipOffstage: false), findsOneWidget);
-      expect(find.text('66.0 ج.م', skipOffstage: false), findsWidgets);
+      expect(find.text('٤٥ ج.م', skipOffstage: false), findsOneWidget);
+      expect(find.text('٢١ ج.م', skipOffstage: false), findsOneWidget);
+      expect(find.text('٦٦ ج.م', skipOffstage: false), findsWidgets);
     });
   });
 }
