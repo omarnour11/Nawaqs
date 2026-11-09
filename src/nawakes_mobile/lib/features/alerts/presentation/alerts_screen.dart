@@ -102,7 +102,7 @@ class AlertsScreen extends HookConsumerWidget {
                           return Container(
                             padding: const EdgeInsets.all(22),
                             decoration: BoxDecoration(
-                              color: AppColors.card,
+                              color: context.surfaceColor,
                               borderRadius:
                                   BorderRadius.circular(AppRadius.lg),
                               border: Border.all(color: AppColors.hairline),
@@ -276,7 +276,7 @@ class _CreateAlertCard extends HookConsumerWidget {
     return Container(
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
-        color: AppColors.card,
+        color: context.surfaceColor,
         borderRadius: BorderRadius.circular(AppRadius.lg),
         border: Border.all(color: AppColors.hairline),
       ),
@@ -495,7 +495,7 @@ class _AlertRow extends HookConsumerWidget {
     return Container(
       padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
-        color: AppColors.card,
+        color: context.surfaceColor,
         borderRadius: BorderRadius.circular(AppRadius.lg),
         border: Border.all(
           color: offerActive ? AppColors.warningIcon : AppColors.hairline,

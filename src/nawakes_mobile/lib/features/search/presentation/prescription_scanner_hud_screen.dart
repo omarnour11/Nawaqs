@@ -130,8 +130,8 @@ class _PrescriptionScannerHudScreenState
       // 1. Prepare full prescription image without premature cropping
       final fullFrameBytes = PrescriptionFrameCrop.prepareFullPrescriptionImage(
         bytes: rawBytes,
-        maxDimension: 1600,
-        quality: 82,
+        maxDimension: 1200,
+        quality: 75,
       );
       final compressedBytes = fullFrameBytes;
 

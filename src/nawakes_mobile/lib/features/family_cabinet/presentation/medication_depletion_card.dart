@@ -73,12 +73,12 @@ class MedicationDepletionCard extends HookConsumerWidget {
     }
 
     return Card(
-      color: AppColors.card,
+      color: context.surfaceColor,
       elevation: 0,
       margin: const EdgeInsets.symmetric(vertical: 6),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: AppColors.hairline),
+        side: BorderSide(color: context.borderColor),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),

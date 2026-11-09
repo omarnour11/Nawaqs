@@ -161,7 +161,7 @@ class _EmptyPasses extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
-        color: AppColors.card,
+        color: context.surfaceColor,
         borderRadius: BorderRadius.circular(AppRadius.lg),
         border: Border.all(color: AppColors.hairline),
       ),
@@ -203,7 +203,7 @@ class _PassRow extends HookConsumerWidget {
         reservation.status != 'Completed';
     final (chip, tone) = _statusChip(reservation.status, isExpired);
     return Material(
-      color: AppColors.card,
+      color: context.surfaceColor,
       borderRadius: BorderRadius.circular(AppRadius.lg),
       child: InkWell(
         borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -496,7 +496,7 @@ class PassDetailScreen extends HookConsumerWidget {
                             Container(
                               padding: const EdgeInsets.all(14),
                               decoration: BoxDecoration(
-                                color: Colors.white,
+                                color: context.surfaceColor,
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(color: AppColors.hairline),
                               ),
@@ -517,7 +517,7 @@ class PassDetailScreen extends HookConsumerWidget {
                                     style: const TextStyle(
                                       fontSize: 15,
                                       fontWeight: FontWeight.w800,
-                                      color: AppColors.brand900,
+                                      color: context.textColor,
                                     ),
                                   ),
                                   const SizedBox(height: 12),
@@ -690,7 +690,7 @@ class PassDetailScreen extends HookConsumerWidget {
                   Container(
                     padding: const EdgeInsets.all(15),
                     decoration: BoxDecoration(
-                      color: AppColors.card,
+                      color: context.surfaceColor,
                       borderRadius: BorderRadius.circular(AppRadius.lg),
                       border: Border.all(color: AppColors.hairline),
                     ),
@@ -753,7 +753,7 @@ class PassDetailScreen extends HookConsumerWidget {
                   Container(
                     padding: const EdgeInsets.all(15),
                     decoration: BoxDecoration(
-                      color: AppColors.card,
+                      color: context.surfaceColor,
                       borderRadius: BorderRadius.circular(AppRadius.lg),
                       border: Border.all(color: AppColors.hairline),
                     ),

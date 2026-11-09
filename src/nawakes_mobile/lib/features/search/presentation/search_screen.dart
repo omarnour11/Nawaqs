@@ -356,7 +356,7 @@ class SearchScreen extends HookConsumerWidget {
                         children: [
                           const NawaqssLogo(size: 18),
                           const SizedBox(width: 6),
-                          const Text(
+                          Text(
                             'أهلاً بيك 👋',
                             style: TextStyle(
                               fontFamily: 'Cairo',
@@ -368,20 +368,20 @@ class SearchScreen extends HookConsumerWidget {
                         ],
                       ),
                       const SizedBox(height: 2),
-                      const Text(
+                      Text(
                         'أي دوا ناقص؟',
                         style: TextStyle(
                           fontFamily: 'Cairo',
                           fontSize: 22,
                           fontWeight: FontWeight.w900,
-                          color: NawaqsColors.ink,
+                          color: context.textColor,
                         ),
                       ),
                     ],
                   ),
                   IconButton(
-                    icon: const Icon(Icons.notifications_none_rounded,
-                        size: 24, color: NawaqsColors.ink),
+                    icon: Icon(Icons.notifications_none_rounded,
+                        size: 24, color: context.textColor),
                     onPressed: () => context.push('/notifications'),
                   ),
                 ],
@@ -395,9 +395,9 @@ class SearchScreen extends HookConsumerWidget {
                   // ── Search pill with blue round action ───────────────────
                   Container(
                     decoration: BoxDecoration(
-                      color: AppColors.card,
+                      color: context.surfaceColor,
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: AppColors.hairline),
+                      border: Border.all(color: context.borderColor),
                     ),
                     padding: const EdgeInsetsDirectional.only(start: 4, end: 5),
                     child: Row(
@@ -413,7 +413,7 @@ class SearchScreen extends HookConsumerWidget {
                             focusNode: focusNode,
                             textInputAction: TextInputAction.search,
                             onSubmitted: doSearch,
-                            style: const TextStyle(fontSize: 13.5),
+                            style: TextStyle(fontSize: 13.5),
                             decoration: const InputDecoration(
                               hintText: 'دوّر باسم الدوا…',
                               border: InputBorder.none,
@@ -546,9 +546,9 @@ class SearchScreen extends HookConsumerWidget {
                     Container(
                       margin: const EdgeInsets.only(bottom: 12),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: context.surfaceColor,
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: AppColors.hairline),
+                        border: Border.all(color: context.borderColor),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withValues(alpha: 0.06),
@@ -578,7 +578,7 @@ class SearchScreen extends HookConsumerWidget {
                                   leading: const Icon(Icons.search_rounded,
                                       size: 18, color: AppColors.primary),
                                   title: Text(s,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                           fontFamily: 'Cairo',
                                           fontSize: 13,
                                           fontWeight: FontWeight.w700)),
@@ -598,7 +598,7 @@ class SearchScreen extends HookConsumerWidget {
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                 children: [
-                                  const Text(
+                                  Text(
                                     'عمليات البحث السابقة',
                                     style: TextStyle(
                                       fontFamily: 'Cairo',
@@ -625,7 +625,7 @@ class SearchScreen extends HookConsumerWidget {
                                   leading: const Icon(Icons.history_rounded,
                                       size: 18, color: AppColors.textSecondary),
                                   title: Text(q,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                           fontFamily: 'Cairo',
                                           fontSize: 13,
                                           fontWeight: FontWeight.w600)),
@@ -653,7 +653,7 @@ class SearchScreen extends HookConsumerWidget {
                       height: 220,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppColors.hairline),
+                        border: Border.all(color: context.borderColor),
                       ),
                       clipBehavior: Clip.antiAlias,
                       child: NawaqsMap(
@@ -668,9 +668,9 @@ class SearchScreen extends HookConsumerWidget {
                     Container(
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: AppColors.card,
+                        color: context.surfaceColor,
                         borderRadius: BorderRadius.circular(AppRadius.lg),
-                        border: Border.all(color: AppColors.hairline),
+                        border: Border.all(color: context.borderColor),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -705,7 +705,7 @@ class SearchScreen extends HookConsumerWidget {
                                 : (results == null || results.isEmpty)
                                     ? 'مفيش نتايج'
                                     : '${results.length} صيدلية موجودة',
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontSize: 16, fontWeight: FontWeight.w800),
                           ),
                           const SizedBox(height: 10),
@@ -753,7 +753,7 @@ class SearchScreen extends HookConsumerWidget {
                                   const SizedBox(height: 10),
                                   Text(
                                     'الدواء ناقص في الصيدليات المحيطة بنطاق ${radius.value.round()} كم.',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontFamily: 'Cairo',
                                       fontSize: 13,
                                       fontWeight: FontWeight.w600,
@@ -826,7 +826,7 @@ class SearchScreen extends HookConsumerWidget {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
+                                Text(
                                   'صوّر روشتتك',
                                   style: TextStyle(
                                     fontFamily: 'Cairo',
@@ -896,13 +896,13 @@ class SearchScreen extends HookConsumerWidget {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text(
+                            Text(
                               'آخر بحث',
                               style: TextStyle(
                                 fontFamily: 'Cairo',
                                 fontSize: 15,
                                 fontWeight: FontWeight.w800,
-                                color: NawaqsColors.ink,
+                                color: context.textColor,
                               ),
                             ),
                             TextButton(
@@ -944,7 +944,7 @@ class SearchScreen extends HookConsumerWidget {
                                 fontFamily: 'Cairo',
                                 fontSize: 15,
                                 fontWeight: FontWeight.w800,
-                                color: NawaqsColors.ink,
+                                color: context.textColor,
                               ),
                             ),
                             NawaqssStatusPill(status: 'متاح'),
@@ -1067,7 +1067,7 @@ class _FilterButton extends StatelessWidget {
             const Icon(Icons.filter_list_rounded, size: 14, color: AppColors.textSecondary),
             const SizedBox(width: 5),
             Text(label ?? 'فلترة',
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                     color: AppColors.textSecondary)),
@@ -1143,14 +1143,14 @@ class _PharmacyRow extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(item.pharmacyName,
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 14, fontWeight: FontWeight.w700),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis),
                     const SizedBox(height: 2),
                     Text(
                         '${item.addressLine} · ${_timeAgo(item.lastUpdatedAt)}',
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 12, color: AppColors.textSecondary),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis),
@@ -1193,13 +1193,13 @@ class _PharmacyRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(_formatDistance(item.distanceKm),
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 12.5,
                           fontWeight: FontWeight.w700,
                           color: AppColors.textPrimary)),
                   const SizedBox(height: 4),
                   Text(item.price.toArabicPrice(),
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w800,
                           color: AppColors.accentBlue)),
@@ -1252,7 +1252,7 @@ Widget _buildRecentSearchChip({
     child: Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.isDarkMode ? const Color(0xFF142730) : Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.hairline),
       ),
@@ -1274,18 +1274,18 @@ Widget _buildRecentSearchChip({
             children: [
               Text(
                 medName,
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Cairo',
                   fontSize: 12.5,
                   fontWeight: FontWeight.w700,
-                  color: NawaqsColors.ink,
+                  color: AppColors.isDarkMode ? const Color(0xFFFBF7F0) : NawaqsColors.ink,
                 ),
               ),
               Text(
                 timeAgo != null
                     ? (pharmacyCount != null ? '$timeAgo · $pharmacyCount صيدليات' : '$timeAgo · بحث سابق')
                     : (pharmacyCount != null ? '$pharmacyCount صيدليات متاحة' : 'بحث سابق'),
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Cairo',
                   fontSize: 10.5,
                   color: AppColors.textSecondary,

@@ -144,7 +144,7 @@ class _HomeCatalogViewState extends ConsumerState<HomeCatalogView> {
           margin: const EdgeInsets.only(bottom: 14),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.surfaceColor,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: AppColors.hairline),
           ),
@@ -156,7 +156,7 @@ class _HomeCatalogViewState extends ConsumerState<HomeCatalogView> {
               Expanded(
                 child: Text.rich(
                   TextSpan(
-                    style: const TextStyle(fontSize: 12.5, color: AppColors.textDark),
+                    style: TextStyle(fontSize: 12.5, color: context.textColor),
                     children: [
                       const TextSpan(
                         text: 'التوصيل إلى: ',
@@ -164,7 +164,7 @@ class _HomeCatalogViewState extends ConsumerState<HomeCatalogView> {
                       ),
                       TextSpan(
                         text: deliveryLoc.label,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                        style: TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),
@@ -309,7 +309,7 @@ class _HomeCatalogViewState extends ConsumerState<HomeCatalogView> {
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.bold,
-                color: AppColors.textDark,
+                color: context.textColor,
               ),
             ),
             if (selectedCategory != null)
@@ -386,7 +386,7 @@ class _HomeCatalogViewState extends ConsumerState<HomeCatalogView> {
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.bold,
-                    color: AppColors.textDark,
+                    color: context.textColor,
                   ),
                 ),
               ],
@@ -410,7 +410,7 @@ class _HomeCatalogViewState extends ConsumerState<HomeCatalogView> {
           error: (err, _) => Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: context.surfaceColor,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: AppColors.hairline),
             ),
@@ -428,7 +428,7 @@ class _HomeCatalogViewState extends ConsumerState<HomeCatalogView> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: context.surfaceColor,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: AppColors.hairline),
                 ),
@@ -555,8 +555,8 @@ class _HomeCatalogViewState extends ConsumerState<HomeCatalogView> {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: context.surfaceColor,
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
                       height: 1.25,
@@ -602,7 +602,7 @@ class _HomeCatalogViewState extends ConsumerState<HomeCatalogView> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 6),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.surfaceColor,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: AppColors.hairline),
           boxShadow: [
@@ -628,10 +628,10 @@ class _HomeCatalogViewState extends ConsumerState<HomeCatalogView> {
             Text(
               title,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.bold,
-                color: AppColors.textDark,
+                color: context.textColor,
               ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -647,7 +647,7 @@ class _HomeCatalogViewState extends ConsumerState<HomeCatalogView> {
       onTap: () => NearbyPharmacyOptionsSheet.show(context, p),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.surfaceColor,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(color: AppColors.hairline),
           boxShadow: [
@@ -713,10 +713,10 @@ class _HomeCatalogViewState extends ConsumerState<HomeCatalogView> {
                 children: [
                   Text(
                     p.commercialNameAr ?? p.tradeName,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13.5,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.textDark,
+                      color: context.textColor,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -724,7 +724,7 @@ class _HomeCatalogViewState extends ConsumerState<HomeCatalogView> {
                   const SizedBox(height: 1),
                   Text(
                     p.tradeName,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 10.5,
                       color: AppColors.textMuted,
                     ),
@@ -741,7 +741,7 @@ class _HomeCatalogViewState extends ConsumerState<HomeCatalogView> {
                         p.minDistanceKm < 1
                             ? '${ArabicDigits.convert((p.minDistanceKm * 1000).round())} م'
                             : '${ArabicDigits.convert(p.minDistanceKm.toStringAsFixed(1), formatDecimals: true)} كم',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
                           color: AppColors.primary,
@@ -750,11 +750,11 @@ class _HomeCatalogViewState extends ConsumerState<HomeCatalogView> {
                       const Spacer(),
                       Text(
                         p.price.toArabicPrice(),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'Cairo',
                           fontSize: 14,
                           fontWeight: FontWeight.w900,
-                          color: AppColors.textDark,
+                          color: context.textColor,
                         ),
                       ),
                     ],
@@ -1016,8 +1016,8 @@ class _LocationPickerBottomSheetState
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
       ),
-      decoration: const BoxDecoration(
-        color: Colors.white,
+      decoration: BoxDecoration(
+        color: context.surfaceColor,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: Column(
@@ -1046,7 +1046,7 @@ class _LocationPickerBottomSheetState
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: AppColors.textDark,
+                    color: context.textColor,
                   ),
                 ),
                 const Spacer(),
@@ -1185,7 +1185,7 @@ class _LocationPickerBottomSheetState
                                       ),
                                       child: Text(
                                         '($displayAddress)',
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 11.5,
                                           fontWeight: FontWeight.bold,
                                           color: AppColors.primaryDark,
@@ -1207,7 +1207,7 @@ class _LocationPickerBottomSheetState
                                       : 'تحديد موقعك تلقائياً والتأكد من العنوان عبر الخرائط'),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 11.5,
                                 color: AppColors.textMuted,
                               ),
@@ -1242,7 +1242,7 @@ class _LocationPickerBottomSheetState
                 const SizedBox(width: 6),
                 Text(
                   isQueryEmpty ? 'المناطق المقترحة والأكثر طلباً:' : 'نتائج البحث:',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                     color: AppColors.textMuted,
@@ -1303,15 +1303,15 @@ class _LocationPickerBottomSheetState
             ),
             title: Text(
               place.title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.bold,
-                color: AppColors.textDark,
+                color: context.textColor,
               ),
             ),
             subtitle: Text(
               place.subtitle,
-              style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+              style: TextStyle(fontSize: 11, color: AppColors.textMuted),
             ),
             trailing: const Icon(
               Icons.arrow_forward_ios_rounded,
@@ -1356,10 +1356,10 @@ class _LocationPickerBottomSheetState
               Text(
                 'لم نجد نتائج مطابقة لـ "$query"',
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.textDark,
+                  color: context.textColor,
                 ),
               ),
               const SizedBox(height: 4),
@@ -1420,7 +1420,7 @@ class _LocationPickerBottomSheetState
           subtitle: suggestion.subtitle.isNotEmpty
               ? Text(
                   suggestion.subtitle,
-                  style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                  style: TextStyle(fontSize: 11, color: AppColors.textMuted),
                 )
               : null,
           trailing: const Icon(

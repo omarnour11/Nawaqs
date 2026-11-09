@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:nawakes_mobile/core/network/api_client.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
+import 'package:nawakes_mobile/core/ui/nawaqss_brand_widgets.dart';
 import 'package:nawakes_mobile/features/auth/data/auth_models.dart';
 import 'package:nawakes_mobile/features/auth/presentation/auth_controller.dart';
 
@@ -244,6 +245,7 @@ class RegisterScreen extends HookConsumerWidget {
     }
 
     return Scaffold(
+      backgroundColor: context.pageColor,
 
       body: SafeArea(
         child: Center(
@@ -252,10 +254,29 @@ class RegisterScreen extends HookConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Center(
-                  child: Text('حساب جديد',
+                Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: context.surfaceColor,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: context.borderColor, width: 1.5),
+                        ),
+                        child: const NawaqssLogo(
+                          size: 40,
+                          showText: false,
+                          variant: NawaqssLogoVariant.auto,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Text('حساب جديد',
                       style:
-                          TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
+                          AppTypography.mainHeader(fontSize: 28, color: context.textColor)),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 12),
 
@@ -263,7 +284,7 @@ class RegisterScreen extends HookConsumerWidget {
                 Container(
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF1F3F5),
+                    color: context.isDarkMode ? const Color(0xFF142730) : const Color(0xFFF1F3F5),
                     borderRadius: BorderRadius.circular(AppRadius.md),
                     border: Border.all(color: AppColors.hairline),
                   ),
@@ -405,7 +426,7 @@ class RegisterScreen extends HookConsumerWidget {
                   child: LinearProgressIndicator(
                     value: step.value == 0 ? 0.5 : 1.0,
                     minHeight: 5,
-                    backgroundColor: const Color(0xFFE9EAED),
+                    backgroundColor: context.borderColor,
                     color: isPharmacy.value
                         ? AppColors.primary
                         : AppColors.brand700,
@@ -417,7 +438,7 @@ class RegisterScreen extends HookConsumerWidget {
                 Container(
                   padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
-                    color: AppColors.card,
+                    color: context.surfaceColor,
                     borderRadius: BorderRadius.circular(AppRadius.lg),
                     border: Border.all(color: AppColors.hairline),
                   ),
@@ -660,7 +681,7 @@ class _PatientRegistrationForm extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: const Color(0xFFF8F9FA),
+            color: context.isDarkMode ? const Color(0xFF142730) : const Color(0xFFF8F9FA),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: AppColors.hairline),
           ),
@@ -705,7 +726,7 @@ class _PatientRegistrationForm extends StatelessWidget {
                                   decoration: BoxDecoration(
                                     color: gender == 'ذكر'
                                         ? AppColors.brand900
-                                        : Colors.white,
+                                        : context.surfaceColor,
                                     borderRadius: BorderRadius.circular(8),
                                     border: Border.all(
                                       color: gender == 'ذكر'
@@ -738,7 +759,7 @@ class _PatientRegistrationForm extends StatelessWidget {
                                   decoration: BoxDecoration(
                                     color: gender == 'أنثى'
                                         ? AppColors.brand900
-                                        : Colors.white,
+                                        : context.surfaceColor,
                                     borderRadius: BorderRadius.circular(8),
                                     border: Border.all(
                                       color: gender == 'أنثى'
@@ -835,7 +856,7 @@ class _PatientRegistrationForm extends StatelessWidget {
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                 color: isSelected ? AppColors.brand700 : AppColors.textPrimary,
               ),
-              backgroundColor: const Color(0xFFF1F3F5),
+              backgroundColor: context.isDarkMode ? const Color(0xFF142730) : const Color(0xFFF1F3F5),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
                 side: BorderSide(
@@ -893,7 +914,7 @@ class _PatientRegistrationForm extends StatelessWidget {
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                 color: isSelected ? AppColors.warningText : AppColors.textPrimary,
               ),
-              backgroundColor: const Color(0xFFF1F3F5),
+              backgroundColor: context.isDarkMode ? const Color(0xFF142730) : const Color(0xFFF1F3F5),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
                 side: BorderSide(
@@ -1252,7 +1273,7 @@ class _PharmacyRegistrationForm extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF1F3F5),
+                  color: context.isDarkMode ? const Color(0xFF142730) : const Color(0xFFF1F3F5),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: AppColors.hairline),
                 ),

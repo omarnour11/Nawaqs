@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
 import 'package:nawakes_mobile/core/network/api_client.dart';
+import 'package:nawakes_mobile/core/ui/nawaqss_brand_widgets.dart';
 
 part 'widgets.g.dart';
 
@@ -109,11 +110,24 @@ class NawaqsTopBar extends ConsumerWidget {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: AppColors.brand900,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? const Color(0xFF142730)
+                    : NawaqsColors.mint,
+                border: Border.all(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? const Color(0xFF1E3A33)
+                      : const Color(0xFFBCE3D5),
+                  width: 1,
+                ),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.monitor_heart_outlined,
-                  color: Colors.white, size: 20),
+              alignment: Alignment.center,
+              child: const NawaqssLogo(
+                size: 24,
+                showText: false,
+                variant: NawaqssLogoVariant.auto,
+              ),
+
             ),
           const SizedBox(width: 10),
           Expanded(

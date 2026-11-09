@@ -4,6 +4,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
 import 'package:nawakes_mobile/core/ui/widgets.dart';
+import 'package:nawakes_mobile/core/ui/nawaqss_brand_widgets.dart';
 import 'package:nawakes_mobile/features/auth/presentation/auth_controller.dart';
 import 'package:nawakes_mobile/core/network/api_client.dart';
 import 'package:nawakes_mobile/features/profile/data/medication_models.dart';
@@ -47,7 +48,7 @@ class LoginScreen extends HookConsumerWidget {
     }
 
     return Scaffold(
-
+      backgroundColor: context.pageColor,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -58,41 +59,66 @@ class LoginScreen extends HookConsumerWidget {
                 // Brand mark
                 Center(
                   child: Container(
-                    width: 56,
-                    height: 56,
+                    padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: AppColors.brand900,
-                      borderRadius: BorderRadius.circular(16),
+                      color: context.surfaceColor,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: context.borderColor, width: 1.5),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: context.isDarkMode ? 0.25 : 0.05),
+                          blurRadius: 14,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
-                    child: const Icon(Icons.monitor_heart_outlined,
-                        color: Colors.white, size: 30),
+                    child: const NawaqssLogo(
+                      size: 48,
+                      showText: false,
+                      variant: NawaqssLogoVariant.auto,
+                    ),
                   ),
                 ),
-                const SizedBox(height: 18),
-                const Center(
-                  child: Text('نواقص',
-                      style: TextStyle(
-                          fontSize: 22, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 16),
+                Center(
+                  child: Text(
+                    'نواقص',
+                    style: AppTypography.mainHeader(
+                      fontSize: 32,
+                      color: context.textColor,
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 4),
-                const Center(
-                  child: Text('تتبع توفر الأدوية في صيدليات مصر',
-                      style: TextStyle(
-                          fontSize: 13, color: AppColors.textSecondary)),
+                Center(
+                  child: Text(
+                    'تتبع توفر الأدوية في صيدليات مصر',
+                    style: AppTypography.body(
+                      fontSize: 13.5,
+                      color: context.textSecondaryColor,
+                    ),
+                  ),
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 28),
                 Container(
-                  padding: const EdgeInsets.all(18),
+                  padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: AppColors.card,
+                    color: context.surfaceColor,
                     borderRadius: BorderRadius.circular(AppRadius.lg),
-                    border: Border.all(color: AppColors.hairline),
+                    border: Border.all(color: context.borderColor),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: context.isDarkMode ? 0.2 : 0.04),
+                        blurRadius: 12,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       const SectionLabel('تسجيل الدخول'),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 14),
                       TextField(
                         controller: emailCtrl,
                         keyboardType: TextInputType.emailAddress,
@@ -102,7 +128,7 @@ class LoginScreen extends HookConsumerWidget {
                               size: 19, color: AppColors.textMuted),
                         ),
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 12),
                       TextField(
                         controller: passwordCtrl,
                         obscureText: obscure.value,
@@ -129,12 +155,14 @@ class LoginScreen extends HookConsumerWidget {
                               style: TextStyle(fontSize: 12.5)),
                         ),
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 8),
                       SizedBox(
                         height: 48,
                         child: FilledButton(
                           onPressed: isLoading ? null : submit,
                           style: FilledButton.styleFrom(
+                            backgroundColor: NawaqsColors.teal,
+                            foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(13)),
                           ),
@@ -144,22 +172,33 @@ class LoginScreen extends HookConsumerWidget {
                                   height: 20,
                                   child: CircularProgressIndicator(
                                       strokeWidth: 2.2, color: Colors.white))
-                              : const Text('دخول'),
+                              : const Text('دخول',
+                                  style: TextStyle(
+                                      fontFamily: 'Cairo',
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 15)),
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 18),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text('معدش حساب؟',
+                    Text('معندكش حساب؟',
                         style: TextStyle(
-                            color: AppColors.textSecondary, fontSize: 13)),
+                            color: context.textSecondaryColor, fontSize: 13.5)),
                     TextButton(
                       onPressed: () => context.push('/register'),
-                      child: const Text('اعمل حساب'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: NawaqsColors.coral,
+                      ),
+                      child: const Text('اعمل حساب جديد',
+                          style: TextStyle(
+                              fontFamily: 'Cairo',
+                              fontWeight: FontWeight.w800,
+                              fontSize: 14)),
                     ),
                   ],
                 ),
@@ -184,6 +223,7 @@ Future<void> _showForgotPasswordSheet(BuildContext context) async {
   await showModalBottomSheet(
     context: context,
     isScrollControlled: true,
+    backgroundColor: Colors.transparent,
     builder: (sheetContext) => StatefulBuilder(
       builder: (sheetContext, setSheetState) {
         Future<void> submit() async {
@@ -222,10 +262,14 @@ Future<void> _showForgotPasswordSheet(BuildContext context) async {
           }
         }
 
-        return Padding(
+        return Container(
+          decoration: BoxDecoration(
+            color: context.surfaceColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
           padding: EdgeInsets.only(
               bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 24,
-              left: 20, right: 20, top: 4),
+              left: 20, right: 20, top: 16),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -266,6 +310,7 @@ Future<void> _showForgotPasswordSheet(BuildContext context) async {
               FilledButton(
                 onPressed: busy ? null : submit,
                 style: FilledButton.styleFrom(
+                    backgroundColor: NawaqsColors.teal,
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(13))),
                 child: busy
@@ -274,7 +319,8 @@ Future<void> _showForgotPasswordSheet(BuildContext context) async {
                         height: 18,
                         child: CircularProgressIndicator(
                             strokeWidth: 2, color: Colors.white))
-                    : Text(step == 0 ? 'إرسال كود الاستعادة' : 'تغيير كلمة السر'),
+                    : Text(step == 0 ? 'إرسال كود الاستعادة' : 'تغيير كلمة السر',
+                        style: const TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
               ),
             ],
           ),

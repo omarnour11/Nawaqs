@@ -723,7 +723,10 @@ class AppTypography {
         fontFamily: titleFont,
         fontWeight: FontWeight.w400,
         fontSize: fontSize,
-        color: color ?? AppColors.textPrimary,
+        color: color ??
+            (AppColors.isDarkMode
+                ? const Color(0xFFFBF7F0)
+                : NawaqsColors.ink),
         height: height,
       );
 
@@ -737,7 +740,10 @@ class AppTypography {
         fontFamily: titleFont,
         fontWeight: FontWeight.w400,
         fontSize: fontSize,
-        color: color ?? AppColors.textPrimary,
+        color: color ??
+            (AppColors.isDarkMode
+                ? const Color(0xFFFBF7F0)
+                : NawaqsColors.ink),
         height: height,
       );
 
@@ -751,7 +757,10 @@ class AppTypography {
         fontFamily: bodyFont,
         fontWeight: FontWeight.w400,
         fontSize: fontSize,
-        color: color ?? AppColors.textPrimary,
+        color: color ??
+            (AppColors.isDarkMode
+                ? const Color(0xFFFBF7F0)
+                : NawaqsColors.ink),
         height: height,
       );
 
@@ -765,7 +774,10 @@ class AppTypography {
         fontFamily: bodyFont,
         fontWeight: FontWeight.w700,
         fontSize: fontSize,
-        color: color ?? AppColors.textPrimary,
+        color: color ??
+            (AppColors.isDarkMode
+                ? const Color(0xFFFBF7F0)
+                : NawaqsColors.ink),
         height: height,
       );
 
@@ -782,4 +794,14 @@ class AppTypography {
         color: color ?? NawaqsColors.teal,
         height: height,
       );
+}
+
+/// Seamless context helpers for dark mode and surfaces
+extension NawaqssThemeContext on BuildContext {
+  bool get isDarkMode => Theme.of(this).brightness == Brightness.dark;
+  Color get surfaceColor => isDarkMode ? const Color(0xFF142730) : Colors.white;
+  Color get pageColor => isDarkMode ? const Color(0xFF0A1A17) : NawaqsColors.cream;
+  Color get textColor => isDarkMode ? const Color(0xFFFBF7F0) : NawaqsColors.ink;
+  Color get textSecondaryColor => isDarkMode ? const Color(0xFFA9DECB) : const Color(0xFF4A5D68);
+  Color get borderColor => isDarkMode ? const Color(0xFF1E3A33) : const Color(0xFFE2EFE9);
 }

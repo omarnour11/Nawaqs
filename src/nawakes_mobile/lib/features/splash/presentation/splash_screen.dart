@@ -86,7 +86,7 @@ class SplashScreen extends HookConsumerWidget {
 
               // ── Tagline in Cairo ──
               Text(
-                'أيدوا ناقص؟ هتلاقيه في أقرب صيدلية عنده',
+                'أي دوا ناقص؟ هتلاقيه في أقرب صيدلية عنده',
                 textAlign: TextAlign.center,
                 style: AppTypography.body(
                   fontSize: 14,

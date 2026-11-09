@@ -218,7 +218,7 @@ class FamilyCabinetScreen extends HookConsumerWidget {
                         ),
                         ...pendingInvites.value.map(
                           (invite) => Card(
-                            color: AppColors.card,
+                            color: context.surfaceColor,
                             elevation: 0,
                             margin: const EdgeInsets.symmetric(vertical: 6),
                             shape: RoundedRectangleBorder(
@@ -357,7 +357,7 @@ class FamilyCabinetScreen extends HookConsumerWidget {
                                   padding: const EdgeInsets.all(14),
                                   margin: const EdgeInsets.only(bottom: 12),
                                   decoration: BoxDecoration(
-                                    color: Colors.white,
+                                    color: context.surfaceColor,
                                     borderRadius: BorderRadius.circular(14),
                                     border: Border.all(color: NawaqsColors.mintDeep),
                                     boxShadow: [
@@ -418,7 +418,7 @@ class _PresetButton extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.surfaceColor,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: NawaqsColors.mintDeep),
             boxShadow: [

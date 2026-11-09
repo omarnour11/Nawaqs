@@ -277,12 +277,12 @@ public sealed class GeminiPrescriptionService : IGeminiPrescriptionService
         }
         else
         {
-            modelsToTry.Add(string.IsNullOrWhiteSpace(_options.Model) ? "gemini-3.5-flash" : _options.Model);
+            modelsToTry.Add(string.IsNullOrWhiteSpace(_options.Model) ? "gemini-1.5-flash" : _options.Model);
         }
 
         if (modelsToTry.Count == 0)
         {
-            modelsToTry.Add("gemini-3.5-flash");
+            modelsToTry.Add("gemini-1.5-flash");
         }
 
         for (int m = 0; m < modelsToTry.Count; m++)
