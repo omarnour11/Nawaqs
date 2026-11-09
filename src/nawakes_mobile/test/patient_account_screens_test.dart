@@ -1371,10 +1371,11 @@ void main() {
 
       expect(find.text('تنبيه طبي عاجل من الصيدلي!'), findsOneWidget);
       expect(find.text('نبهك الصيدلي لتعارض طبي: حساسية. ورشح لك بديلاً آمناً: بنادول أكتيفاست.'), findsOneWidget);
-      expect(find.text('حجز البديل (بنادول أكتيفاست)'), findsOneWidget);
-      expect(find.text('حسنًا'), findsOneWidget);
+      expect(find.text('احجز بنادول أكتيفاست من نفس الصيدلية (لو متاح)'), findsOneWidget);
+      expect(find.text('ابحث عن الدواء البديل (بنادول أكتيفاست)'), findsOneWidget);
+      expect(find.text('خروج'), findsOneWidget);
 
-      await tester.tap(find.text('حجز البديل (بنادول أكتيفاست)'));
+      await tester.tap(find.text('ابحث عن الدواء البديل (بنادول أكتيفاست)'));
       await tester.pumpAndSettle();
 
       expect(pushedRoute, equals('/search?query=بنادول أكتيفاست'));

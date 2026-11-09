@@ -136,9 +136,11 @@ class PatientShell extends HookConsumerWidget {
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          isClinicalConflict
-                              ? 'استشارة الصيدلي: ترشيح بديل آمن 💊'
-                              : 'تنبيه عاجل: توفر دواء مطلوب!',
+                          alert.title.isNotEmpty
+                              ? alert.title
+                              : (isClinicalConflict
+                                  ? 'استشارة الصيدلي: ترشيح بديل آمن 💊'
+                                  : 'تنبيه عاجل: توفر دواء مطلوب!'),
                           style: const TextStyle(
                               fontFamily: 'Cairo',
                               fontWeight: FontWeight.w800,

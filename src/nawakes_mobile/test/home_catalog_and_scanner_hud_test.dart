@@ -144,9 +144,9 @@ class MockApiClient implements ApiClient {
     return [
       TopRatedPharmacyDto(
         id: 'pharm-1',
-        name: 'ØµÙŠØ¯Ù„ÙŠØ© Ø§Ù„Ù†ÙŠÙ„ Ø§Ù„ÙƒØ¨Ø±Ù‰',
-        addressLine: 'Ø´Ø§Ø±Ø¹ Ø¹Ø¨Ø§Ø³ Ø§Ù„Ø¹Ù‚Ø§Ø¯ØŒ Ù…Ø¯ÙŠÙ†Ø© Ù†ØµØ±',
-        city: 'Ø§Ù„Ù‚Ø§Ù‡Ø±Ø©',
+        name: 'صيدلية النيل الكبرى',
+        addressLine: 'شارع عباس العقاد، مدينة نصر',
+        city: 'القاهرة',
         phone: '01012345678',
         latitude: 30.05,
         longitude: 31.34,
@@ -158,9 +158,9 @@ class MockApiClient implements ApiClient {
       ),
       TopRatedPharmacyDto(
         id: 'pharm-2',
-        name: 'ØµÙŠØ¯Ù„ÙŠØ© Ø§Ù„Ø£Ù‡Ø±Ø§Ù… Ø§Ù„Ø­Ø¯ÙŠØ«Ø©',
-        addressLine: 'Ù…ÙŠØ¯Ø§Ù† Ø§Ù„ØªØ­Ø±ÙŠØ±ØŒ ÙˆØ³Ø· Ø§Ù„Ø¨Ù„Ø¯',
-        city: 'Ø§Ù„Ù‚Ø§Ù‡Ø±Ø©',
+        name: 'صيدلية الأهرام الحديثة',
+        addressLine: 'ميدان التحرير، وسط البلد',
+        city: 'القاهرة',
         phone: '01123456789',
         latitude: 30.04,
         longitude: 31.23,
@@ -838,10 +838,10 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Ø£Ø¹Ù„Ù‰ Ø§Ù„ØµÙŠØ¯Ù„ÙŠØ§Øª ØªÙ‚ÙŠÙŠÙ…Ø§Ù‹ â­ï¸'), findsOneWidget);
-      expect(find.text('ØµÙŠØ¯Ù„ÙŠØ© Ø§Ù„Ù†ÙŠÙ„ Ø§Ù„ÙƒØ¨Ø±Ù‰'), findsOneWidget);
-      expect(find.text('ØµÙŠØ¯Ù„ÙŠØ© Ø§Ù„Ø£Ù‡Ø±Ø§Ù… Ø§Ù„Ø­Ø¯ÙŠØ«Ø©'), findsOneWidget);
-      expect(find.text('Ù…Ø¹ØªÙ…Ø¯Ø© ÙˆÙ…ÙˆØ«Ù‚Ø© âœ“'), findsOneWidget);
+      expect(find.text('أعلى الصيدليات تقييماً ⭐️'), findsOneWidget);
+      expect(find.text('صيدلية النيل الكبرى'), findsOneWidget);
+      expect(find.text('صيدلية الأهرام الحديثة'), findsOneWidget);
+      expect(find.text('معتمدة وموثقة ✓'), findsAtLeastNWidgets(1));
     });
 
   });
