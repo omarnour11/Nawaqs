@@ -22,3 +22,4 @@ final topRatedPharmaciesProvider = FutureProvider.autoDispose<List<TopRatedPharm
     }
   }
 });
+

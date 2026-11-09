@@ -61,3 +61,4 @@ class TopRatedPharmacyDto {
         'deliveryFee': deliveryFee,
       };
 }
+

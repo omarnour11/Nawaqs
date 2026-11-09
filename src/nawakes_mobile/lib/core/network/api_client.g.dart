@@ -747,10 +747,11 @@ class _ApiClient implements ApiClient {
   }) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{
-      if (lat != null) r'lat': lat,
-      if (lng != null) r'lng': lng,
+      r'lat': lat,
+      r'lng': lng,
       r'limit': limit,
     };
+    queryParameters.removeWhere((k, v) => v == null);
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
     final _options = _setStreamType<List<TopRatedPharmacyDto>>(

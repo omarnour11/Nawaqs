@@ -21,3 +21,4 @@ public sealed record TopRatedPharmacyDto(
     int RatingCount,
     bool OffersDelivery,
     decimal? DeliveryFee);
+
