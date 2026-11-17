@@ -13,7 +13,8 @@ public sealed record ProfileDto(
     string? Gender = null,
     int? Age = null,
     string? ChronicConditions = null,
-    string? KnownAllergies = null);
+    string? KnownAllergies = null,
+    bool? IsPregnant = null);
 
 public sealed record GetProfileQuery : IRequest<ProfileDto>;
 

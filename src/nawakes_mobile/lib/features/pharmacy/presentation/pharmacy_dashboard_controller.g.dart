@@ -39,7 +39,7 @@ final class PharmacyReservationsControllerProvider
 }
 
 String _$pharmacyReservationsControllerHash() =>
-    r'3f619521b26a5105f30c2911ee139c252f6bc3b3';
+    r'044a9f66e5e1b3b05eea2e4d2fca6b9389402555';
 
 abstract class _$PharmacyReservationsController
     extends $AsyncNotifier<List<PharmacyReservationResponse>> {

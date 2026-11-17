@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:nawakes_mobile/core/network/api_client.dart';
 import 'package:nawakes_mobile/core/network/api_response_models.dart';
+import 'package:nawakes_mobile/core/services/clinical_safety_service.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
 import 'package:nawakes_mobile/core/utils/arabic_digits.dart';
 import 'package:nawakes_mobile/core/ui/medication_image_view.dart';
@@ -208,6 +209,7 @@ class _NearbyPharmacyOptionsSheetState
   @override
   Widget build(BuildContext context) {
     final p = widget.product;
+    final isAllergyTestNeeded = ClinicalSafetyService.requiresInPersonAllergyTest(p.tradeName, p.commercialNameAr);
 
     return Container(
       constraints: BoxConstraints(
@@ -555,14 +557,18 @@ class _NearbyPharmacyOptionsSheetState
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 6, vertical: 1),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFFE8F5E9),
+                                    color: opt.inStockQuantity > 5
+                                        ? const Color(0xFFE8F5E9)
+                                        : const Color(0xFFFFF3E0),
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                   child: Text(
-                                    'متوفر (${opt.inStockQuantity} علب)',
-                                    style: const TextStyle(
+                                    opt.inStockQuantity > 5 ? 'متوفر' : 'كمية محدودة',
+                                    style: TextStyle(
                                       fontSize: 10,
-                                      color: Color(0xFF2E7D32),
+                                      color: opt.inStockQuantity > 5
+                                          ? const Color(0xFF2E7D32)
+                                          : const Color(0xFFE65100),
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
@@ -571,34 +577,44 @@ class _NearbyPharmacyOptionsSheetState
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 6, vertical: 1),
                                   decoration: BoxDecoration(
-                                    color: opt.supportsDelivery
-                                        ? const Color(0xFFE0F2FE)
-                                        : const Color(0xFFFFF3E0),
+                                    color: isAllergyTestNeeded
+                                        ? const Color(0xFFFEE2E2)
+                                        : (opt.supportsDelivery
+                                            ? const Color(0xFFE0F2FE)
+                                            : const Color(0xFFFFF3E0)),
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Icon(
-                                        opt.supportsDelivery
-                                            ? Icons.delivery_dining_rounded
-                                            : Icons.storefront_rounded,
+                                        isAllergyTestNeeded
+                                            ? Icons.warning_amber_rounded
+                                            : (opt.supportsDelivery
+                                                ? Icons.delivery_dining_rounded
+                                                : Icons.storefront_rounded),
                                         size: 10,
-                                        color: opt.supportsDelivery
-                                            ? const Color(0xFF0284C7)
-                                            : const Color(0xFFE65100),
+                                        color: isAllergyTestNeeded
+                                            ? const Color(0xFFDC2626)
+                                            : (opt.supportsDelivery
+                                                ? const Color(0xFF0284C7)
+                                                : const Color(0xFFE65100)),
                                       ),
                                       const SizedBox(width: 3),
                                       Text(
-                                        opt.supportsDelivery
-                                            ? 'توصيل متاح 🛵'
-                                            : 'استلام فقط',
+                                        isAllergyTestNeeded
+                                            ? 'يلزم كشف حساسية ⚠️'
+                                            : (opt.supportsDelivery
+                                                ? 'توصيل متاح 🛵'
+                                                : 'استلام فقط'),
                                         style: TextStyle(
                                           fontSize: 9.5,
                                           fontWeight: FontWeight.bold,
-                                          color: opt.supportsDelivery
-                                              ? const Color(0xFF0284C7)
-                                              : const Color(0xFFE65100),
+                                          color: isAllergyTestNeeded
+                                              ? const Color(0xFFDC2626)
+                                              : (opt.supportsDelivery
+                                                  ? const Color(0xFF0284C7)
+                                                  : const Color(0xFFE65100)),
                                         ),
                                       ),
                                     ],
@@ -649,7 +665,48 @@ class _NearbyPharmacyOptionsSheetState
 
                       // Action Buttons
                       const SizedBox(width: 8),
-                      if (opt.supportsDelivery) ...[
+                      if (isAllergyTestNeeded) ...[
+                        OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFFDC2626),
+                            side: const BorderSide(color: Color(0xFFFCA5A5)),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          onPressed: () {
+                            showDialog(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                title: const Row(
+                                  children: [
+                                    Icon(Icons.shield_outlined, color: Color(0xFFDC2626)),
+                                    SizedBox(width: 8),
+                                    Text('تنبيه أمان طبي', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                                  ],
+                                ),
+                                content: Text(
+                                  'دواء (${p.commercialNameAr ?? p.tradeName}) يتطلب إجراء اختبار حساسية بالجلد داخل الصيدلية تحت إشراف صيدلي معتمد قبل الاستخدام تجنباً للصدمة التحسسية.\n\nالتوصيل المنزلي غير متاح لهذا الدواء، ويجب الاستلام من الصيدلية شخصياً.',
+                                  style: const TextStyle(fontSize: 13, height: 1.5),
+                                ),
+                                actions: [
+                                  FilledButton(
+                                    onPressed: () => Navigator.of(ctx).pop(),
+                                    child: const Text('حسناً، فهمت'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.shield_outlined, size: 14),
+                          label: const Text(
+                            'كشف حساسية',
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                      ] else if (opt.supportsDelivery) ...[
                         OutlinedButton(
                           style: OutlinedButton.styleFrom(
                             foregroundColor: const Color(0xFF0284C7),

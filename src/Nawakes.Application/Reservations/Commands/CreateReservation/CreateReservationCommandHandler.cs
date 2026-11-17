@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Nawakes.Application.Common.Exceptions;
 using Nawakes.Application.Common.Interfaces;
+using Nawakes.Application.Common.Security;
 using Nawakes.Application.Reservations.Dtos;
 using Nawakes.Domain.Entities;
 using Nawakes.Domain.Enums;
@@ -56,7 +57,27 @@ public sealed class CreateReservationCommandHandler(
             throw new ConflictException("لا يمكن إتمام حجز جديد لأن الصيدلية معلقة أو قيد مراجعة الإدارة حالياً.");
         }
 
-        // 2.2 Clinical Safety Shield: cross-check against patient's active regimen, allergies, and chronic conditions
+        // 2.2 Delivery Policy: Medications requiring in-person allergy sensitivity testing cannot be delivered to home
+        if (request.FulfillmentType == FulfillmentType.Delivery &&
+            ClinicalSafetyRules.RequiresInPersonAllergyTest(item.MedicationName))
+        {
+            throw new ConflictException($"يتطلب دواء ({item.MedicationName}) إجراء اختبار حساسية بالجلد داخل الصيدلية تحت إشراف صيدلي معتمد قبل الاستلام. التوصيل المنزلي غير متاح حفاظاً على سلامتك.");
+        }
+
+        // 2.3 Pregnancy Safety Guard: teratogenic drugs contraindicated in pregnancy
+        if (userDirectory is not null)
+        {
+            var summaries = await userDirectory.GetClinicalSummariesAsync([currentUser.UserId], cancellationToken);
+            if (summaries.TryGetValue(currentUser.UserId, out var patientSummary) && patientSummary.IsPregnant == true)
+            {
+                if (ClinicalSafetyRules.IsContraindicatedInPregnancy(item.MedicationName))
+                {
+                    throw new ConflictException($"هذا الدواء ({item.MedicationName}) محظور تماماً أثناء فترة الحمل لما يسببه من تشوهات جنينية ومخاطر صحية جسيمة. يُرجى مراجعة الطبيب المعالج فوراً.");
+                }
+            }
+        }
+
+        // 2.4 Clinical Safety Shield: cross-check against patient's active regimen, allergies, and chronic conditions
         IReadOnlyList<SafetyAlertDto>? safetyAlerts = null;
         if (safetyAuditor is not null)
         {

@@ -8,6 +8,7 @@ using Nawakes.Application.Search.Queries.GetMedicationEquivalents;
 using Nawakes.Application.Search.Queries.SearchMedication;
 using Nawakes.Application.Search.Queries.GetNearbyProducts;
 using Nawakes.Application.Search.Queries.SuggestMedications;
+using Nawakes.Application.Search.Queries.CatalogLookup;
 
 namespace Nawakes.API.Controllers;
 
@@ -73,6 +74,14 @@ public sealed class SearchController(ISender mediator) : ControllerBase
     public async Task<ActionResult<IReadOnlyList<string>>> Suggest(
         [FromQuery] string prefix, CancellationToken cancellationToken)
         => Ok(await mediator.Send(new SuggestMedicationsQuery(prefix), cancellationToken));
+
+    /// <summary>Predictive catalog lookup with full details (strength, form, official price, active ingredient, clinical safety flags).</summary>
+    [HttpGet("catalog-lookup")]
+    [EnableRateLimiting("search")]
+    [ProducesResponseType(typeof(IReadOnlyList<MedicationCatalogItemDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyList<MedicationCatalogItemDto>>> CatalogLookup(
+        [FromQuery] string q, [FromQuery] int limit = 10, CancellationToken cancellationToken = default)
+        => Ok(await mediator.Send(new MedicationCatalogLookupQuery(q, limit), cancellationToken));
 
     /// <summary>
     /// Parses noisy voice/OCR text (Egyptian dialect or OCR errors) and resolves it

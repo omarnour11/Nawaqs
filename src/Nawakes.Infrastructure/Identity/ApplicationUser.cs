@@ -16,6 +16,9 @@ public sealed class ApplicationUser : IdentityUser<Guid>
     /// <summary>Gender: "Male" or "Female" (or null if not provided).</summary>
     public string? Gender { get; set; }
 
+    /// <summary>True if patient is currently pregnant (used for teratogenic safety blocks).</summary>
+    public bool? IsPregnant { get; set; }
+
     /// <summary>Age in years (used for pediatric/geriatric safety checks and clinical recommendations).</summary>
     public int? Age { get; set; }
 

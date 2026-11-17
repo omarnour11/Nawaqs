@@ -120,9 +120,35 @@ public sealed class CheckReservationSafetyQueryHandler(
         }
 
         var alerts = safetyAuditor.AuditPrescriptionSafety(inputs, allergies, chronicConditions);
+        var alertList = alerts.ToList();
 
-        var hasCritical = alerts.Any(a => a.Severity == SafetyAlertSeverity.Critical);
-        var hasWarnings = alerts.Any(a => a.Severity == SafetyAlertSeverity.Warning) || duplicateMeds.Count > 0;
+        if (clinicalSummary?.IsPregnant == true &&
+            Nawakes.Application.Common.Security.ClinicalSafetyRules.IsContraindicatedInPregnancy(medName, targetIngredient))
+        {
+            alertList.Insert(0, new SafetyAlertDto(
+                Id: "PREG_CONTRAINDICATION",
+                Severity: SafetyAlertSeverity.Critical,
+                Category: "PregnancyContraindication",
+                Title: "تحذير خطير: تعارض مع الحمل",
+                Description: $"دواء {medName} محظور تماماً أثناء الحمل لتسببه في تشوهات جنينية وأضرار جسيمة للجنين.",
+                InvolvedDrugs: [medName],
+                Recommendation: "يحظر تناول هذا الدواء أثناء الحمل ويجب استشارة الطبيب لوصف بديل آمن فوراً."));
+        }
+
+        if (Nawakes.Application.Common.Security.ClinicalSafetyRules.RequiresInPersonAllergyTest(medName, targetIngredient))
+        {
+            alertList.Add(new SafetyAlertDto(
+                Id: "ALLERGY_TEST_MANDATORY",
+                Severity: SafetyAlertSeverity.Warning,
+                Category: "AllergyTestMandatory",
+                Title: "يلزم كشف حساسية مسبق بالصيدلية",
+                Description: $"دواء {medName} يتطلب إجراء اختبار حساسية بالجلد داخل الصيدلية تحت إشراف صيدلي معتمد تجنباً للصدمة التحسسية. خدمة التوصيل المنزلي غير مفعلة لهذا الدواء.",
+                InvolvedDrugs: [medName],
+                Recommendation: "يجب زيارة الصيدلية شخصياً لإجراء اختبار الحساسية واستلام الدواء مباشرة."));
+        }
+
+        var hasCritical = alertList.Any(a => a.Severity == SafetyAlertSeverity.Critical);
+        var hasWarnings = alertList.Any(a => a.Severity == SafetyAlertSeverity.Warning) || duplicateMeds.Count > 0;
 
         return new ReservationSafetyCheckResultDto(
             TargetMedicationName: medName,
@@ -130,7 +156,7 @@ public sealed class CheckReservationSafetyQueryHandler(
             HasCriticalAlerts: hasCritical,
             HasWarnings: hasWarnings,
             DuplicateActiveIngredientMedications: duplicateMeds,
-            Alerts: alerts);
+            Alerts: alertList);
     }
 
     private static IReadOnlyList<string> ParseCommaList(string? raw)

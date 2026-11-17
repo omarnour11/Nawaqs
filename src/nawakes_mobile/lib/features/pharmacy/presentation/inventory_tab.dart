@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -6,6 +7,7 @@ import 'package:nawakes_mobile/core/utils/arabic_digits.dart';
 import 'package:nawakes_mobile/core/ui/widgets.dart';
 import 'package:dio/dio.dart' show MultipartFile;
 import 'package:nawakes_mobile/core/network/api_client.dart';
+import 'package:nawakes_mobile/core/network/api_response_models.dart';
 import 'package:nawakes_mobile/features/pharmacy/presentation/pharmacy_dashboard_controller.dart';
 import 'package:nawakes_mobile/features/pharmacy/presentation/quick_barcode_scanner_sheet.dart';
 import 'package:nawakes_mobile/features/auth/presentation/auth_controller.dart';
@@ -13,6 +15,115 @@ import 'package:intl/intl.dart' show DateFormat;
 import 'package:nawakes_mobile/features/pharmacy/data/pharmacy_dashboard_models.dart';
 import 'package:nawakes_mobile/features/pharmacy/presentation/pharmacy_onboarding_screen.dart'
     show myPharmacyProvider;
+
+enum PharmacyCategory {
+  all('الكل', Icons.dashboard_outlined),
+  tablets('أقراص وكبسولات', Icons.medication_rounded),
+  syrups('أشربة وفوار', Icons.liquor_outlined),
+  injections('حقن ومحاليل', Icons.vaccines_outlined),
+  topicals('كريمات ومراهم', Icons.healing_outlined),
+  drops('قطرات وبخاخات', Icons.colorize_outlined),
+  fridge('أدوية الثلاجة والأنسولين', Icons.ac_unit_rounded),
+  supplies('مستلزمات طبية', Icons.medical_services_outlined);
+
+  final String label;
+  final IconData icon;
+  const PharmacyCategory(this.label, this.icon);
+}
+
+bool _itemMatchesCategory(PharmacyInventoryItemDto item, PharmacyCategory cat) {
+  if (cat == PharmacyCategory.all) return true;
+  final name = item.medicationName.toLowerCase();
+  final note = (item.patientNote ?? '').toLowerCase();
+  final text = '$name $note';
+
+  switch (cat) {
+    case PharmacyCategory.all:
+      return true;
+    case PharmacyCategory.syrups:
+      return text.contains('شرب') ||
+          text.contains('شراب') ||
+          text.contains('معلق') ||
+          text.contains('فوار') ||
+          text.contains('syrup') ||
+          text.contains('susp') ||
+          text.contains('eff') ||
+          text.contains('sachet') ||
+          text.contains('oral sol') ||
+          text.contains('liquid');
+    case PharmacyCategory.injections:
+      return text.contains('حقن') ||
+          text.contains('حقنة') ||
+          text.contains('أمبول') ||
+          text.contains('امبول') ||
+          text.contains('فيال') ||
+          text.contains('محاليل') ||
+          text.contains('inj') ||
+          text.contains('amp') ||
+          text.contains('vial') ||
+          text.contains('infus') ||
+          text.contains('iv') ||
+          text.contains('im');
+    case PharmacyCategory.topicals:
+      return text.contains('كريم') ||
+          text.contains('مرهم') ||
+          text.contains('جيل') ||
+          text.contains('جل') ||
+          text.contains('لوشن') ||
+          text.contains('دهان') ||
+          text.contains('cream') ||
+          text.contains('oint') ||
+          text.contains('gel') ||
+          text.contains('lotion') ||
+          text.contains('topical');
+    case PharmacyCategory.drops:
+      return text.contains('قطرة') ||
+          text.contains('قطره') ||
+          text.contains('بخاخ') ||
+          text.contains('بخاخة') ||
+          text.contains('سبراي') ||
+          text.contains('استنشاق') ||
+          text.contains('drops') ||
+          text.contains('spray') ||
+          text.contains('nasal') ||
+          text.contains('eye drop') ||
+          text.contains('inhal');
+    case PharmacyCategory.fridge:
+      return text.contains('أنسولين') ||
+          text.contains('انسولين') ||
+          text.contains('ثلاجة') ||
+          text.contains('ثلاجه') ||
+          text.contains('لبوس') ||
+          text.contains('تحاميل') ||
+          text.contains('insulin') ||
+          text.contains('mixtard') ||
+          text.contains('lantus') ||
+          text.contains('novorapid') ||
+          text.contains('suppos');
+    case PharmacyCategory.supplies:
+      return text.contains('مستلزمات') ||
+          text.contains('شاش') ||
+          text.contains('قطن') ||
+          text.contains('بلاستر') ||
+          text.contains('سرنجة') ||
+          text.contains('سرنجات') ||
+          text.contains('جهاز') ||
+          text.contains('شريط') ||
+          text.contains('strips') ||
+          text.contains('syringe') ||
+          text.contains('gauze') ||
+          text.contains('mask') ||
+          text.contains('cannula');
+    case PharmacyCategory.tablets:
+      final isOther = _itemMatchesCategory(item, PharmacyCategory.syrups) ||
+          _itemMatchesCategory(item, PharmacyCategory.injections) ||
+          _itemMatchesCategory(item, PharmacyCategory.topicals) ||
+          _itemMatchesCategory(item, PharmacyCategory.drops) ||
+          _itemMatchesCategory(item, PharmacyCategory.fridge) ||
+          _itemMatchesCategory(item, PharmacyCategory.supplies);
+      return !isOther;
+  }
+}
 
 /// المخزون — verified pharmacy card + tinted stat grid + med list with
 /// available/limited/unavailable action buttons (per mockup).
@@ -23,13 +134,15 @@ class InventoryTab extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final searchQuery = useState('');
     final searchCtrl = useTextEditingController();
+    final selectedCategory = useState<PharmacyCategory>(PharmacyCategory.all);
+    final selectedStockFilter = useState<String?>('all'); // 'all', 'available', 'limited', 'unavailable'
+
     final state = ref.watch(pharmacyInventoryControllerProvider);
     final pharmacyState = ref.watch(myPharmacyProvider);
     final verificationStatus =
         pharmacyState.value?.verificationStatus ?? 'Pending';
 
     return Scaffold(
-
       body: state.when(
         loading: () => const Center(
             child: CircularProgressIndicator(color: AppColors.accentBlue)),
@@ -48,13 +161,21 @@ class InventoryTab extends HookConsumerWidget {
           ),
         ),
         data: (items) {
-          final filtered = searchQuery.value.isEmpty
-              ? items
-              : items
-                  .where((i) => i.medicationName
-                      .toLowerCase()
-                      .contains(searchQuery.value.toLowerCase()))
-                  .toList();
+          final filtered = items.where((i) {
+            if (searchQuery.value.isNotEmpty) {
+              final q = searchQuery.value.toLowerCase();
+              if (!i.medicationName.toLowerCase().contains(q)) return false;
+            }
+            if (!_itemMatchesCategory(i, selectedCategory.value)) return false;
+            if (selectedStockFilter.value == 'available') {
+              if (i.status != 'InStock' || i.quantity < 5) return false;
+            } else if (selectedStockFilter.value == 'limited') {
+              if (i.status != 'InStock' || i.quantity <= 0 || i.quantity > 4) return false;
+            } else if (selectedStockFilter.value == 'unavailable') {
+              if (i.status == 'InStock' && i.quantity > 0) return false;
+            }
+            return true;
+          }).toList();
 
           final available = items
               .where((i) => i.status == 'InStock' && i.quantity >= 5)
@@ -155,38 +276,129 @@ class InventoryTab extends HookConsumerWidget {
                   Row(
                     children: [
                       Expanded(
-                        child: StatCardTinted(
-                          value: available,
-                          label: 'متاح',
-                          icon: Icons.inventory_2_outlined,
-                          bg: AppColors.successBg,
-                          fg: AppColors.successText,
-                          iconColor: AppColors.successIcon,
+                        child: GestureDetector(
+                          onTap: () {
+                            if (selectedStockFilter.value == 'available') {
+                              selectedStockFilter.value = 'all';
+                            } else {
+                              selectedStockFilter.value = 'available';
+                            }
+                          },
+                          child: Opacity(
+                            opacity: (selectedStockFilter.value == 'all' || selectedStockFilter.value == 'available') ? 1.0 : 0.45,
+                            child: StatCardTinted(
+                              value: available,
+                              label: 'متاح',
+                              icon: Icons.inventory_2_outlined,
+                              bg: AppColors.successBg,
+                              fg: AppColors.successText,
+                              iconColor: AppColors.successIcon,
+                            ),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
-                        child: StatCardTinted(
-                          value: limited,
-                          label: 'محدود',
-                          icon: Icons.warning_amber_outlined,
-                          bg: AppColors.warningBg,
-                          fg: AppColors.warningText,
-                          iconColor: AppColors.warningIcon,
+                        child: GestureDetector(
+                          onTap: () {
+                            if (selectedStockFilter.value == 'limited') {
+                              selectedStockFilter.value = 'all';
+                            } else {
+                              selectedStockFilter.value = 'limited';
+                            }
+                          },
+                          child: Opacity(
+                            opacity: (selectedStockFilter.value == 'all' || selectedStockFilter.value == 'limited') ? 1.0 : 0.45,
+                            child: StatCardTinted(
+                              value: limited,
+                              label: 'محدود',
+                              icon: Icons.warning_amber_outlined,
+                              bg: AppColors.warningBg,
+                              fg: AppColors.warningText,
+                              iconColor: AppColors.warningIcon,
+                            ),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
-                        child: StatCardTinted(
-                          value: unavailable,
-                          label: 'غير متاح',
-                          icon: Icons.cancel_outlined,
-                          bg: AppColors.dangerBg,
-                          fg: AppColors.dangerText,
-                          iconColor: AppColors.dangerIcon,
+                        child: GestureDetector(
+                          onTap: () {
+                            if (selectedStockFilter.value == 'unavailable') {
+                              selectedStockFilter.value = 'all';
+                            } else {
+                              selectedStockFilter.value = 'unavailable';
+                            }
+                          },
+                          child: Opacity(
+                            opacity: (selectedStockFilter.value == 'all' || selectedStockFilter.value == 'unavailable') ? 1.0 : 0.45,
+                            child: StatCardTinted(
+                              value: unavailable,
+                              label: 'غير متاح',
+                              icon: Icons.cancel_outlined,
+                              bg: AppColors.dangerBg,
+                              fg: AppColors.dangerText,
+                              iconColor: AppColors.dangerIcon,
+                            ),
+                          ),
                         ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 14),
+
+                  // ── Pharmacy Sections / Categories Rack ────────────────────
+                  Row(
+                    children: [
+                      const Icon(Icons.shelves, size: 18, color: NawaqsColors.tealDark),
+                      const SizedBox(width: 6),
+                      const Text(
+                        'ترتيب المخزون حسب أقسام الصيدلية:',
+                        style: TextStyle(fontFamily: 'Cairo', fontSize: 13, fontWeight: FontWeight.w800, color: NawaqsColors.tealDark),
+                      ),
+                      if (selectedStockFilter.value != 'all') ...[
+                        const Spacer(),
+                        InkWell(
+                          onTap: () => selectedStockFilter.value = 'all',
+                          child: const Text('إلغاء الفلتر ✕', style: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: AppColors.dangerIcon, fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    physics: const BouncingScrollPhysics(),
+                    child: Row(
+                      children: PharmacyCategory.values.map((cat) {
+                        final isSelected = selectedCategory.value == cat;
+                        final count = items.where((i) => _itemMatchesCategory(i, cat)).length;
+                        return Padding(
+                          padding: const EdgeInsets.only(left: 6),
+                          child: ChoiceChip(
+                            selected: isSelected,
+                            onSelected: (_) => selectedCategory.value = cat,
+                            avatar: Icon(cat.icon, size: 16, color: isSelected ? Colors.white : NawaqsColors.tealDark),
+                            label: Text(
+                              '${cat.label} ($count)',
+                              style: TextStyle(
+                                fontFamily: 'Cairo',
+                                fontSize: 12,
+                                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                                color: isSelected ? Colors.white : NawaqsColors.tealDark,
+                              ),
+                            ),
+                            selectedColor: NawaqsColors.tealDark,
+                            backgroundColor: Colors.white,
+                            side: BorderSide(
+                              color: isSelected ? NawaqsColors.tealDark : NawaqsColors.mintDeep,
+                            ),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                            showCheckmark: false,
+                          ),
+                        );
+                      }).toList(),
+                    ),
                   ),
                   const SizedBox(height: 12),
 
@@ -864,6 +1076,11 @@ class _AddMedSheet extends HookConsumerWidget {
     final availability = useState<int>(10); // 10=available, 3=limited, 0=unavailable
     final submitting = useState(false);
 
+    final suggestions = useState<List<MedicationCatalogItemDto>>([]);
+    final isSearchingCatalog = useState(false);
+    final officialPriceBadge = useState<double?>(null);
+    final debounceTimer = useRef<Timer?>(null);
+
     double? parseArabicDouble(String? raw) {
       if (raw == null) return null;
       var s = raw.trim();
@@ -885,6 +1102,42 @@ class _AddMedSheet extends HookConsumerWidget {
         s = s.replaceAll(arabicDigits[i], '$i');
       }
       return int.tryParse(s);
+    }
+
+    void onNameChanged(String val) {
+      debounceTimer.value?.cancel();
+      final q = val.trim();
+      if (q.length < 2) {
+        suggestions.value = [];
+        isSearchingCatalog.value = false;
+        return;
+      }
+      isSearchingCatalog.value = true;
+      debounceTimer.value = Timer(const Duration(milliseconds: 250), () async {
+        try {
+          final res = await ref.read(apiClientProvider).catalogLookup(q, 6);
+          suggestions.value = res;
+        } catch (_) {
+          suggestions.value = [];
+        } finally {
+          isSearchingCatalog.value = false;
+        }
+      });
+    }
+
+    void selectCatalogItem(MedicationCatalogItemDto item) {
+      final displayName = item.commercialNameAr?.isNotEmpty == true
+          ? item.commercialNameAr!
+          : (item.tradeName ?? item.name);
+      nameCtrl.text = displayName;
+      if (item.strength != null && item.strength!.isNotEmpty) {
+        strengthCtrl.text = item.strength!;
+      }
+      if (item.officialPriceEgp != null && item.officialPriceEgp! > 0) {
+        priceCtrl.text = item.officialPriceEgp!.toStringAsFixed(2);
+        officialPriceBadge.value = item.officialPriceEgp;
+      }
+      suggestions.value = [];
     }
 
     Future<void> save() async {
@@ -930,15 +1183,102 @@ class _AddMedSheet extends HookConsumerWidget {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
             children: [
-            const SectionLabel('إضافة دواء'),
+            const SectionLabel('إضافة دواء للمخزون'),
+            const SizedBox(height: 6),
+            const Text(
+              'اكتب حرفين وسنقترح عليك الدواء والتركيز والسعر الرسمي بهيئة الدواء المصرية تلقائياً.',
+              style: TextStyle(fontFamily: 'Cairo', fontSize: 11.5, color: AppColors.textSecondary),
+            ),
             const SizedBox(height: 12),
             TextFormField(
               controller: nameCtrl,
-              decoration: const InputDecoration(
-                  labelText: 'اسم الدواء', hintText: 'مثلاً: أموكسيسيلين'),
+              onChanged: onNameChanged,
+              decoration: InputDecoration(
+                labelText: 'اسم الدواء',
+                hintText: 'مثلاً: كونكور، بنادول، أوجمنتين...',
+                suffixIcon: isSearchingCatalog.value
+                    ? const Padding(
+                        padding: EdgeInsets.all(12),
+                        child: SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      )
+                    : null,
+              ),
               validator: (v) =>
                   v == null || v.trim().isEmpty ? 'مطلوب' : null,
             ),
+
+            // Autocomplete suggestions box
+            if (suggestions.value.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: NawaqsColors.mintDeep),
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 8, offset: const Offset(0, 3)),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(12, 8, 12, 4),
+                      child: Text(
+                        'مقترحات من هيئة الدواء المصرية (اضغط للملء التلقائي):',
+                        style: TextStyle(fontFamily: 'Cairo', fontSize: 11, fontWeight: FontWeight.bold, color: NawaqsColors.tealDark),
+                      ),
+                    ),
+                    ...suggestions.value.map((item) {
+                      return ListTile(
+                        dense: true,
+                        leading: const Icon(Icons.medication_rounded, size: 20, color: NawaqsColors.teal),
+                        title: Text(
+                          item.commercialNameAr?.isNotEmpty == true
+                              ? '${item.commercialNameAr!} (${item.tradeName ?? item.name})'
+                              : (item.tradeName ?? item.name),
+                          style: const TextStyle(fontFamily: 'Cairo', fontSize: 12.5, fontWeight: FontWeight.bold),
+                        ),
+                        subtitle: Text(
+                          '${item.dosageForm ?? ""} ${item.strength ?? ""} · السعر الرسمي: ${item.officialPriceEgp != null ? "${item.officialPriceEgp} ج.م" : "غير محدد"}',
+                          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                        ),
+                        onTap: () => selectCatalogItem(item),
+                      );
+                    }),
+                  ],
+                ),
+              ),
+            ],
+
+            if (officialPriceBadge.value != null) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.successBg,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.successIcon.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.info_outline_rounded, size: 16, color: AppColors.successText),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'تم سحب السعر الجبري الرسمي (${officialPriceBadge.value!.toStringAsFixed(2)} ج.م) والتركيز تلقائياً — يمكنك تعديل السعر حسب رغبتك.',
+                        style: const TextStyle(fontFamily: 'Cairo', fontSize: 11, color: AppColors.successText, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
             const SizedBox(height: 10),
             Row(
               children: [

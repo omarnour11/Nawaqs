@@ -76,6 +76,7 @@ class SearchScreen extends HookConsumerWidget {
     final voice = useMemoized(VoiceSearchService.new, const []);
 
     final mapPins = useState<List<NawaqsMapPin>>([]);
+    final filterPharmacy = useState<({String id, String name})?>(null);
 
     // Debounced autocomplete
     useEffect(() {
@@ -539,6 +540,28 @@ class SearchScreen extends HookConsumerWidget {
                       ],
                     ),
                   ),
+                  if (filterPharmacy.value != null) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        InputChip(
+                          avatar: const Icon(Icons.storefront_rounded, size: 16, color: Color(0xFF0284C7)),
+                          label: Text(
+                            'البحث داخل: ${filterPharmacy.value!.name}',
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0369A1)),
+                          ),
+                          onDeleted: () {
+                            filterPharmacy.value = null;
+                            if (hasSearched.value) doSearch(searchCtrl.text);
+                          },
+                          deleteIconColor: const Color(0xFF0284C7),
+                          backgroundColor: const Color(0xFFE0F2FE),
+                          side: const BorderSide(color: Color(0xFFBAE6FD)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ],
+                    ),
+                  ],
                   const SizedBox(height: 12),
 
                   // ── Google-Style Suggestions / Search History Dropdown ──
@@ -769,8 +792,38 @@ class SearchScreen extends HookConsumerWidget {
                             const SizedBox(height: 10),
                             _EquivalentsLoader(medicationName: searchCtrl.text.trim()),
                           ]
+                          else if (filterPharmacy.value != null &&
+                              results.where((r) => r.pharmacyId == filterPharmacy.value!.id).isEmpty) ...[
+                            Container(
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFFF8E7),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: const Color(0xFFFFE082)),
+                              ),
+                              child: Column(
+                                children: [
+                                  Text(
+                                    'الدواء غير متوفر حالياً داخل ${filterPharmacy.value!.name}، لكنه متوفر في صيدليات أخرى قريبة!',
+                                    style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFFB45309)),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  TextButton.icon(
+                                    onPressed: () => filterPharmacy.value = null,
+                                    icon: const Icon(Icons.refresh_rounded, size: 16),
+                                    label: const Text('عرض باقي الصيدليات'),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ]
                           else
-                            ...results.take(6).map(
+                            ...(filterPharmacy.value == null
+                                    ? results
+                                    : results.where((r) => r.pharmacyId == filterPharmacy.value!.id))
+                                .take(6)
+                                .map(
                                   (r) => Padding(
                                     padding: const EdgeInsets.only(bottom: 9),
                                     child: _PharmacyRow(item: r),
@@ -794,7 +847,9 @@ class SearchScreen extends HookConsumerWidget {
                               ? null
                               : () => context.push('/all-results',
                                   extra: AllResultsArgs(
-                                    results: results,
+                                    results: filterPharmacy.value == null
+                                        ? results
+                                        : results.where((r) => r.pharmacyId == filterPharmacy.value!.id).toList(),
                                     medicationName: searchCtrl.text.trim(),
                                   )),
                         ),
@@ -1002,6 +1057,10 @@ class SearchScreen extends HookConsumerWidget {
                         searchCtrl.text = kw;
                         doSearch(kw);
                       },
+                      onFilterByPharmacy: (pId, pName) {
+                        filterPharmacy.value = (id: pId, name: pName);
+                        focusNode.requestFocus();
+                      },
                     ),
                   ],
                 ],
@@ -1142,18 +1201,21 @@ class _PharmacyRow extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(item.pharmacyName,
-                        style: TextStyle(
-                            fontSize: 14, fontWeight: FontWeight.w700),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis),
+                    Text(
+                      item.medicationName.isNotEmpty ? item.medicationName : item.pharmacyName,
+                      style: const TextStyle(
+                          fontSize: 14.5, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                     const SizedBox(height: 2),
                     Text(
-                        '${item.addressLine} · ${_timeAgo(item.lastUpdatedAt)}',
-                        style: TextStyle(
-                            fontSize: 12, color: AppColors.textSecondary),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis),
+                      '${item.pharmacyName} · ${item.addressLine} · ${_timeAgo(item.lastUpdatedAt)}',
+                      style: const TextStyle(
+                          fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                     const SizedBox(height: 5),
                     Row(
                       mainAxisSize: MainAxisSize.min,

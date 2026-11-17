@@ -23,6 +23,7 @@ class RegisterRequest {
   final String? chronicConditions;
   final dynamic knownAllergies;
   final List<String>? chronicIllnesses;
+  final bool? isPregnant;
   final PharmacyRegistrationDto? pharmacy;
 
   RegisterRequest({
@@ -35,6 +36,7 @@ class RegisterRequest {
     this.chronicConditions,
     this.knownAllergies,
     this.chronicIllnesses,
+    this.isPregnant,
     this.pharmacy,
   });
 
@@ -65,6 +67,7 @@ class RegisterRequest {
     if (role != null) data['role'] = role;
     if (gender != null) data['gender'] = gender;
     if (age != null) data['age'] = age;
+    if (isPregnant != null) data['isPregnant'] = isPregnant;
     if (chronicConditions != null) data['chronicConditions'] = chronicConditions;
     if (allergiesStr != null) data['knownAllergies'] = allergiesStr;
     if (allergiesList != null || chronicIllnesses != null) {

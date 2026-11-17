@@ -48,6 +48,7 @@ class RegisterScreen extends HookConsumerWidget {
 
     // Patient demographics & clinical attributes
     final selectedGender = useState('ذكر');
+    final isPregnant = useState(false);
     final ageCtrl = useTextEditingController();
     final selectedAllergies = useState<Set<String>>({});
     final selectedConditions = useState<Set<String>>({});
@@ -186,6 +187,7 @@ class RegisterScreen extends HookConsumerWidget {
           role: 'Patient',
           gender: selectedGender.value,
           age: int.tryParse(ageCtrl.text.trim()),
+          isPregnant: selectedGender.value == 'أنثى' ? isPregnant.value : false,
           chronicConditions:
               conditionsList.isNotEmpty ? conditionsList.join('، ') : null,
           knownAllergies:
@@ -478,6 +480,8 @@ class RegisterScreen extends HookConsumerWidget {
                           confirmCtrl: confirmCtrl,
                           gender: selectedGender.value,
                           onGenderChanged: (val) => selectedGender.value = val,
+                          isPregnant: isPregnant.value,
+                          onPregnantChanged: (val) => isPregnant.value = val,
                           ageCtrl: ageCtrl,
                           selectedConditions: selectedConditions.value,
                           onToggleCondition: toggleCondition,
@@ -535,6 +539,8 @@ class _PatientRegistrationForm extends StatelessWidget {
   final TextEditingController confirmCtrl;
   final String gender;
   final ValueChanged<String> onGenderChanged;
+  final bool isPregnant;
+  final ValueChanged<bool> onPregnantChanged;
   final TextEditingController ageCtrl;
   final Set<String> selectedConditions;
   final ValueChanged<String> onToggleCondition;
@@ -557,6 +563,8 @@ class _PatientRegistrationForm extends StatelessWidget {
     required this.confirmCtrl,
     required this.gender,
     required this.onGenderChanged,
+    required this.isPregnant,
+    required this.onPregnantChanged,
     required this.ageCtrl,
     required this.selectedConditions,
     required this.onToggleCondition,
@@ -805,6 +813,12 @@ class _PatientRegistrationForm extends StatelessWidget {
                           key: const Key('register_age_field'),
                           controller: ageCtrl,
                           keyboardType: TextInputType.number,
+                          validator: (v) {
+                            if (v == null || v.trim().isEmpty) return 'العمر مطلوب';
+                            final a = int.tryParse(v.trim());
+                            if (a == null || a < 1 || a > 120) return 'عمر غير صحيح';
+                            return null;
+                          },
                           decoration: const InputDecoration(
                             hintText: 'مثال: 30',
                             isDense: true,
@@ -819,6 +833,85 @@ class _PatientRegistrationForm extends StatelessWidget {
                   ),
                 ],
               ),
+              if (gender == 'أنثى') ...[
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFDF2F8),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFFBCFE8)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.pregnant_woman_rounded, color: Color(0xFFDB2777), size: 20),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          'هل أنتِ حامل حالياً؟',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF9D174D),
+                          ),
+                        ),
+                      ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          InkWell(
+                            key: const Key('pregnant_yes_chip'),
+                            onTap: () => onPregnantChanged(true),
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: isPregnant ? const Color(0xFFDB2777) : Colors.white,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: isPregnant ? const Color(0xFFDB2777) : const Color(0xFFF472B6),
+                                ),
+                              ),
+                              child: Text(
+                                'نعم',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: isPregnant ? Colors.white : const Color(0xFF9D174D),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          InkWell(
+                            key: const Key('pregnant_no_chip'),
+                            onTap: () => onPregnantChanged(false),
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: !isPregnant ? const Color(0xFFDB2777) : Colors.white,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: !isPregnant ? const Color(0xFFDB2777) : const Color(0xFFF472B6),
+                                ),
+                              ),
+                              child: Text(
+                                'لا',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: !isPregnant ? Colors.white : const Color(0xFF9D174D),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ],
           ),
         ),

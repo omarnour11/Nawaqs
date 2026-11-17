@@ -15,6 +15,7 @@ public interface IIdentityService
         int? age = null,
         string? chronicConditions = null,
         string? knownAllergies = null,
+        bool? isPregnant = null,
         CancellationToken cancellationToken = default);
 
     Task<(bool Success, string? UserId, string? Role, string? Error)> ValidateCredentialsAsync(
@@ -42,6 +43,7 @@ public interface IIdentityService
         int? age = null,
         string? chronicConditions = null,
         string? knownAllergies = null,
+        bool? isPregnant = null,
         CancellationToken cancellationToken = default);
 
     Task<(string Role, string Email)> GetRoleAndEmailAsync(Guid userId, CancellationToken cancellationToken = default);

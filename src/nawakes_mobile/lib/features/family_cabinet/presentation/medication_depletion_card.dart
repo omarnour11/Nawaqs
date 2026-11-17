@@ -14,10 +14,14 @@ class MedicationDepletionCard extends HookConsumerWidget {
     super.key,
     required this.medication,
     this.onChanged,
+    this.onEdit,
+    this.onDelete,
   });
 
   final FamilyMedicationModel medication;
   final VoidCallback? onChanged;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -101,6 +105,27 @@ class MedicationDepletionCard extends HookConsumerWidget {
                       : '${medication.daysRemaining} يوم',
                   style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: barColor),
                 ),
+                if (onEdit != null) ...[
+                  const SizedBox(width: 4),
+                  InkWell(
+                    onTap: onEdit,
+                    borderRadius: BorderRadius.circular(6),
+                    child: const Padding(
+                      padding: EdgeInsets.all(4),
+                      child: Icon(Icons.edit_outlined, size: 16, color: AppColors.textSecondary),
+                    ),
+                  ),
+                ],
+                if (onDelete != null) ...[
+                  InkWell(
+                    onTap: onDelete,
+                    borderRadius: BorderRadius.circular(6),
+                    child: const Padding(
+                      padding: EdgeInsets.all(4),
+                      child: Icon(Icons.delete_outline_rounded, size: 16, color: AppColors.dangerIcon),
+                    ),
+                  ),
+                ],
               ],
             ),
             const SizedBox(height: 6),

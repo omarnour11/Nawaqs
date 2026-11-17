@@ -61,6 +61,12 @@ abstract class ApiClient {
   @GET("/search/suggest")
   Future<List<String>> suggestMedications(@Query("prefix") String prefix);
 
+  @GET("/search/catalog-lookup")
+  Future<List<MedicationCatalogItemDto>> catalogLookup(
+    @Query("q") String q, [
+    @Query("limit") int limit = 10,
+  ]);
+
   @POST("/search/parse-multimodal")
   Future<ParsedMedicationResponse> parseMultimodal(@Body() ParseMultimodalBody body);
 
@@ -363,6 +369,18 @@ abstract class ApiClient {
     @Path("profileId") String profileId,
     @Body() FamilyMedicationRequest body,
   );
+
+  @PUT("/family-cabinets/medications/{id}")
+  Future<IdResponse> updateFamilyMedication(
+    @Path("id") String id,
+    @Body() FamilyMedicationRequest body,
+  );
+
+  @DELETE("/family-cabinets/medications/{id}")
+  Future<void> deleteFamilyMedication(@Path("id") String id);
+
+  @DELETE("/family-cabinets/{profileId}")
+  Future<void> deleteFamilyProfile(@Path("profileId") String profileId);
 
   @POST("/family-cabinets/medications/{id}/refill")
   Future<IdResponse> refillFamilyMedication(

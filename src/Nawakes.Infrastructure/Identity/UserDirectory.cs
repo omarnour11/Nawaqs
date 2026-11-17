@@ -39,7 +39,8 @@ public sealed class UserDirectory(ApplicationDbContext context) : IUserDirectory
                 u.Gender,
                 u.Age,
                 u.ChronicConditions,
-                u.KnownAllergies))
+                u.KnownAllergies,
+                u.IsPregnant))
             .ToDictionaryAsync(u => u.UserId, cancellationToken);
 
     public async Task<Guid?> FindUserIdByPhoneAsync(

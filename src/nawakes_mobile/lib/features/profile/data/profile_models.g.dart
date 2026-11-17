@@ -20,6 +20,7 @@ ProfileResponse _$ProfileResponseFromJson(Map<String, dynamic> json) =>
       age: (json['age'] as num?)?.toInt(),
       chronicConditions: json['chronicConditions'] as String?,
       knownAllergies: json['knownAllergies'] as String?,
+      isPregnant: json['isPregnant'] as bool?,
     );
 
 Map<String, dynamic> _$ProfileResponseToJson(ProfileResponse instance) =>
@@ -36,6 +37,7 @@ Map<String, dynamic> _$ProfileResponseToJson(ProfileResponse instance) =>
       'age': instance.age,
       'chronicConditions': instance.chronicConditions,
       'knownAllergies': instance.knownAllergies,
+      'isPregnant': instance.isPregnant,
     };
 
 UpdateProfileRequest _$UpdateProfileRequestFromJson(
@@ -50,6 +52,7 @@ UpdateProfileRequest _$UpdateProfileRequestFromJson(
   age: (json['age'] as num?)?.toInt(),
   chronicConditions: json['chronicConditions'] as String?,
   knownAllergies: json['knownAllergies'] as String?,
+  isPregnant: json['isPregnant'] as bool?,
 );
 
 Map<String, dynamic> _$UpdateProfileRequestToJson(
@@ -64,4 +67,5 @@ Map<String, dynamic> _$UpdateProfileRequestToJson(
   'age': instance.age,
   'chronicConditions': instance.chronicConditions,
   'knownAllergies': instance.knownAllergies,
+  'isPregnant': instance.isPregnant,
 };

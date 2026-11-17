@@ -262,6 +262,41 @@ class _ApiClient implements ApiClient {
   }
 
   @override
+  Future<List<MedicationCatalogItemDto>> catalogLookup(
+    String q, [
+    int limit = 10,
+  ]) async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{r'q': q, r'limit': limit};
+    final _headers = <String, dynamic>{};
+    const Map<String, dynamic>? _data = null;
+    final _options = _setStreamType<List<MedicationCatalogItemDto>>(
+      Options(method: 'GET', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            '/search/catalog-lookup',
+            queryParameters: queryParameters,
+            data: _data,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    final _result = await _dio.fetch<List<dynamic>>(_options);
+    late List<MedicationCatalogItemDto> _value;
+    try {
+      _value = _result.data!
+          .map(
+            (dynamic i) =>
+                MedicationCatalogItemDto.fromJson(i as Map<String, dynamic>),
+          )
+          .toList();
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options, response: _result);
+      rethrow;
+    }
+    return _value;
+  }
+
+  @override
   Future<ParsedMedicationResponse> parseMultimodal(
     ParseMultimodalBody body,
   ) async {
@@ -1027,9 +1062,8 @@ class _ApiClient implements ApiClient {
     String? reservationCode,
   }) async {
     final _extra = <String, dynamic>{};
-    final queryParameters = <String, dynamic>{
-      if (reservationCode != null) r'code': reservationCode,
-    };
+    final queryParameters = <String, dynamic>{r'code': reservationCode};
+    queryParameters.removeWhere((k, v) => v == null);
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
     final _options = _setStreamType<PharmacyReservationResponse>(
@@ -2289,6 +2323,75 @@ class _ApiClient implements ApiClient {
   }
 
   @override
+  Future<IdResponse> updateFamilyMedication(
+    String id,
+    FamilyMedicationRequest body,
+  ) async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{};
+    final _headers = <String, dynamic>{};
+    final _data = <String, dynamic>{};
+    _data.addAll(body.toJson());
+    final _options = _setStreamType<IdResponse>(
+      Options(method: 'PUT', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            '/family-cabinets/medications/${id}',
+            queryParameters: queryParameters,
+            data: _data,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late IdResponse _value;
+    try {
+      _value = IdResponse.fromJson(_result.data!);
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options, response: _result);
+      rethrow;
+    }
+    return _value;
+  }
+
+  @override
+  Future<void> deleteFamilyMedication(String id) async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{};
+    final _headers = <String, dynamic>{};
+    const Map<String, dynamic>? _data = null;
+    final _options = _setStreamType<void>(
+      Options(method: 'DELETE', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            '/family-cabinets/medications/${id}',
+            queryParameters: queryParameters,
+            data: _data,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    await _dio.fetch<void>(_options);
+  }
+
+  @override
+  Future<void> deleteFamilyProfile(String profileId) async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{};
+    final _headers = <String, dynamic>{};
+    const Map<String, dynamic>? _data = null;
+    final _options = _setStreamType<void>(
+      Options(method: 'DELETE', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            '/family-cabinets/${profileId}',
+            queryParameters: queryParameters,
+            data: _data,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    await _dio.fetch<void>(_options);
+  }
+
+  @override
   Future<IdResponse> refillFamilyMedication(
     String id,
     RefillFamilyMedicationRequest body,
@@ -2486,7 +2589,7 @@ final class DioProvider extends $FunctionalProvider<Dio, Dio, Dio>
   }
 }
 
-String _$dioHash() => r'e6e4429faa99cdb15528ab152e2f1cf0679bc50a';
+String _$dioHash() => r'cd29841730432f110c5f083d07540a437893e31d';
 
 @ProviderFor(apiClient)
 final apiClientProvider = ApiClientProvider._();

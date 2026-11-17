@@ -40,6 +40,7 @@ public sealed class AuthController(ISender mediator) : ControllerBase
             Age: request.Age,
             ChronicConditions: request.ChronicConditions,
             KnownAllergies: request.KnownAllergies,
+            IsPregnant: request.IsPregnant,
             HealthQuestionnaire: request.HealthQuestionnaire is null ? null : new RegisterHealthQuestionnaireDto(
                 request.HealthQuestionnaire.ChronicIllnesses ?? [],
                 request.HealthQuestionnaire.KnownAllergies ?? []),
@@ -178,6 +179,7 @@ public sealed record RegisterRequest(
     int? Age = null,
     string? ChronicConditions = null,
     string? KnownAllergies = null,
+    bool? IsPregnant = null,
     RegisterHealthDto? HealthQuestionnaire = null,
     RegisterPharmacyRequestDto? Pharmacy = null);
 

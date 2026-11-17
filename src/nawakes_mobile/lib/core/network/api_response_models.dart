@@ -831,3 +831,61 @@ class BatchReservationResult {
         isAllSucceeded: json['isAllSucceeded'] as bool? ?? false,
       );
 }
+
+class MedicationCatalogItemDto {
+  final String? registryId;
+  final String name;
+  final String? tradeName;
+  final String? commercialNameAr;
+  final String? strength;
+  final String? dosageForm;
+  final double? officialPriceEgp;
+  final String? activeIngredient;
+  final String? manufacturer;
+  final bool requiresAllergyTest;
+  final bool isContraindicatedInPregnancy;
+
+  MedicationCatalogItemDto({
+    this.registryId,
+    required this.name,
+    this.tradeName,
+    this.commercialNameAr,
+    this.strength,
+    this.dosageForm,
+    this.officialPriceEgp,
+    this.activeIngredient,
+    this.manufacturer,
+    this.requiresAllergyTest = false,
+    this.isContraindicatedInPregnancy = false,
+  });
+
+  factory MedicationCatalogItemDto.fromJson(Map<String, dynamic> json) =>
+      MedicationCatalogItemDto(
+        registryId: json['registryId']?.toString(),
+        name: json['name']?.toString() ?? '',
+        tradeName: json['tradeName']?.toString(),
+        commercialNameAr: json['commercialNameAr']?.toString(),
+        strength: json['strength']?.toString(),
+        dosageForm: json['dosageForm']?.toString(),
+        officialPriceEgp: (json['officialPriceEgp'] as num?)?.toDouble(),
+        activeIngredient: json['activeIngredient']?.toString(),
+        manufacturer: json['manufacturer']?.toString(),
+        requiresAllergyTest: json['requiresAllergyTest'] as bool? ?? false,
+        isContraindicatedInPregnancy:
+            json['isContraindicatedInPregnancy'] as bool? ?? false,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'registryId': registryId,
+        'name': name,
+        'tradeName': tradeName,
+        'commercialNameAr': commercialNameAr,
+        'strength': strength,
+        'dosageForm': dosageForm,
+        'officialPriceEgp': officialPriceEgp,
+        'activeIngredient': activeIngredient,
+        'manufacturer': manufacturer,
+        'requiresAllergyTest': requiresAllergyTest,
+        'isContraindicatedInPregnancy': isContraindicatedInPregnancy,
+      };
+}

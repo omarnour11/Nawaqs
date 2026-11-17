@@ -65,6 +65,50 @@ public sealed class FamilyCabinetsController(ISender mediator) : ControllerBase
         return Created(string.Empty, new { Id = id });
     }
 
+    [HttpPut("medications/{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateMedication(
+        Guid id, [FromBody] UpdateFamilyMedicationRequest request, CancellationToken cancellationToken)
+    {
+        var medId = await mediator.Send(new UpdateFamilyMedicationCommand(
+            id,
+            request.MedicationName,
+            request.Strength,
+            request.StripsCount,
+            request.UnitsPerStrip,
+            request.DailyDoseUnits,
+            request.AlertThresholdDays),
+            cancellationToken);
+        return Ok(new { Id = medId });
+    }
+
+    public sealed record UpdateFamilyMedicationRequest(
+        [Required, MaxLength(300)] string MedicationName,
+        [MaxLength(100)] string? Strength,
+        [Range(0, 1000)] int StripsCount,
+        [Range(1, 500)] int UnitsPerStrip,
+        [Range(0.01, 1000)] decimal DailyDoseUnits,
+        [Range(1, 60)] int AlertThresholdDays);
+
+    [HttpDelete("medications/{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DeleteMedication(Guid id, CancellationToken cancellationToken)
+    {
+        await mediator.Send(new DeleteFamilyMedicationCommand(id), cancellationToken);
+        return NoContent();
+    }
+
+    [HttpDelete("{profileId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DeleteProfile(Guid profileId, CancellationToken cancellationToken)
+    {
+        await mediator.Send(new DeleteFamilyProfileCommand(profileId), cancellationToken);
+        return NoContent();
+    }
+
     [HttpPost("medications/{id:guid}/refill")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

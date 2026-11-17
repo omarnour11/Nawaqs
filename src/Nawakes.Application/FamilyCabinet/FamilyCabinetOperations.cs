@@ -361,6 +361,98 @@ public sealed class GetFamilyCabinetQueryHandler(IApplicationDbContext context, 
             : int.MaxValue;
 }
 
+// ── UpdateFamilyMedication ─────────────────────────────────────────────
+public sealed record UpdateFamilyMedicationCommand(
+    Guid Id,
+    string MedicationName,
+    string? Strength,
+    int StripsCount,
+    int UnitsPerStrip,
+    decimal DailyDoseUnits,
+    int AlertThresholdDays) : IRequest<Guid>;
+
+public sealed class UpdateFamilyMedicationCommandValidator : AbstractValidator<UpdateFamilyMedicationCommand>
+{
+    public UpdateFamilyMedicationCommandValidator()
+    {
+        RuleFor(x => x.Id).NotEmpty();
+        RuleFor(x => x.MedicationName).NotEmpty().MaximumLength(300);
+        RuleFor(x => x.Strength).MaximumLength(100);
+        RuleFor(x => x.StripsCount).InclusiveBetween(0, 1000);
+        RuleFor(x => x.UnitsPerStrip).InclusiveBetween(1, 500);
+        RuleFor(x => x.DailyDoseUnits).GreaterThan(0);
+        RuleFor(x => x.AlertThresholdDays).InclusiveBetween(1, 60);
+    }
+}
+
+public sealed class UpdateFamilyMedicationCommandHandler(
+    IApplicationDbContext context,
+    ICurrentUserService currentUser)
+    : IRequestHandler<UpdateFamilyMedicationCommand, Guid>
+{
+    public async Task<Guid> Handle(UpdateFamilyMedicationCommand request, CancellationToken cancellationToken)
+    {
+        var med = await context.FamilyMedications
+            .FirstOrDefaultAsync(m => m.Id == request.Id && m.IsActive, cancellationToken)
+            ?? throw new NotFoundException(nameof(Domain.Entities.FamilyMedication), request.Id);
+
+        await CabinetAccess.EnsureCabinetAccessAsync(context, currentUser.UserId, med.FamilyProfileId, cancellationToken);
+
+        med.MedicationName = request.MedicationName.Trim();
+        med.Strength = request.Strength?.Trim();
+        med.StripsCount = request.StripsCount;
+        med.UnitsPerStrip = request.UnitsPerStrip;
+        med.DailyDoseUnits = request.DailyDoseUnits;
+        med.AlertThresholdDays = request.AlertThresholdDays;
+
+        await context.SaveChangesAsync(cancellationToken);
+        return med.Id;
+    }
+}
+
+// ── DeleteFamilyMedication ─────────────────────────────────────────────
+public sealed record DeleteFamilyMedicationCommand(Guid Id) : IRequest;
+
+public sealed class DeleteFamilyMedicationCommandHandler(
+    IApplicationDbContext context,
+    ICurrentUserService currentUser)
+    : IRequestHandler<DeleteFamilyMedicationCommand>
+{
+    public async Task Handle(DeleteFamilyMedicationCommand request, CancellationToken cancellationToken)
+    {
+        var med = await context.FamilyMedications
+            .FirstOrDefaultAsync(m => m.Id == request.Id && m.IsActive, cancellationToken)
+            ?? throw new NotFoundException(nameof(Domain.Entities.FamilyMedication), request.Id);
+
+        await CabinetAccess.EnsureCabinetAccessAsync(context, currentUser.UserId, med.FamilyProfileId, cancellationToken);
+
+        med.IsActive = false;
+        await context.SaveChangesAsync(cancellationToken);
+    }
+}
+
+// ── DeleteFamilyProfile ────────────────────────────────────────────────
+public sealed record DeleteFamilyProfileCommand(Guid Id) : IRequest;
+
+public sealed class DeleteFamilyProfileCommandHandler(
+    IApplicationDbContext context,
+    ICurrentUserService currentUser)
+    : IRequestHandler<DeleteFamilyProfileCommand>
+{
+    public async Task Handle(DeleteFamilyProfileCommand request, CancellationToken cancellationToken)
+    {
+        var profile = await context.FamilyProfiles
+            .FirstOrDefaultAsync(p => p.Id == request.Id && p.IsActive, cancellationToken)
+            ?? throw new NotFoundException(nameof(Domain.Entities.FamilyProfile), request.Id);
+
+        if (profile.OwnerUserId != currentUser.UserId)
+            throw new UnauthorizedAccessException("Only the owner can delete a family member profile.");
+
+        profile.IsActive = false;
+        await context.SaveChangesAsync(cancellationToken);
+    }
+}
+
 internal static class CabinetAccess
 {
     public static async Task EnsureCabinetAccessAsync(

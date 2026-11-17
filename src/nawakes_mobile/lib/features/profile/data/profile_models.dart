@@ -15,6 +15,7 @@ class ProfileResponse {
   final int? age;
   final String? chronicConditions;
   final String? knownAllergies;
+  final bool? isPregnant;
 
   ProfileResponse({
     required this.userId,
@@ -28,6 +29,7 @@ class ProfileResponse {
     this.age,
     this.chronicConditions,
     this.knownAllergies,
+    this.isPregnant,
   });
 
   factory ProfileResponse.fromJson(Map<String, dynamic> json) =>
@@ -45,6 +47,7 @@ class UpdateProfileRequest {
   final int? age;
   final String? chronicConditions;
   final String? knownAllergies;
+  final bool? isPregnant;
 
   UpdateProfileRequest({
     this.fullName,
@@ -55,6 +58,7 @@ class UpdateProfileRequest {
     this.age,
     this.chronicConditions,
     this.knownAllergies,
+    this.isPregnant,
   });
 
   factory UpdateProfileRequest.fromJson(Map<String, dynamic> json) =>

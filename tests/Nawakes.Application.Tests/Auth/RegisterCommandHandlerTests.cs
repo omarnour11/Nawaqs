@@ -46,6 +46,7 @@ public sealed class RegisterCommandHandlerTests
             null,
             null,
             null,
+            null,
             It.IsAny<CancellationToken>()))
             .ReturnsAsync((true, userId.ToString(), null));
 
@@ -107,6 +108,7 @@ public sealed class RegisterCommandHandlerTests
             28,
             "حساسية الصدر",
             "البنسلين، السلفا",
+            null,
             It.IsAny<CancellationToken>()))
             .ReturnsAsync((true, userId.ToString(), null));
 
@@ -145,6 +147,7 @@ public sealed class RegisterCommandHandlerTests
             28,
             "حساسية الصدر",
             "البنسلين، السلفا",
+            null,
             It.IsAny<CancellationToken>()), Times.Once);
     }
 }

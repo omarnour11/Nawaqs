@@ -329,7 +329,7 @@ void main() {
       // Inside the sheet: pharmacy name and distance are displayed!
       expect(find.text('صيدلية النيل المعتمدة'), findsOneWidget);
       expect(find.text('١٫٢ كم'), findsOneWidget);
-      expect(find.text('متوفر (12 علب)'), findsOneWidget);
+      expect(find.text('متوفر'), findsOneWidget);
       expect(find.text('حجز'), findsOneWidget);
 
       // Perform one-click reservation

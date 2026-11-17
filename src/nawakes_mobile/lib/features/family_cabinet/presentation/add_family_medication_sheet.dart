@@ -1,17 +1,20 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:nawakes_mobile/core/network/api_client.dart' show apiClientProvider;
+import 'package:nawakes_mobile/core/network/api_response_models.dart';
 import 'package:nawakes_mobile/features/auth/presentation/auth_controller.dart' show describeApiError;
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
 import 'package:nawakes_mobile/features/family_cabinet/data/family_cabinet_models.dart';
 
-/// Bottom sheet to add a tracked medication to a family member profile.
-/// Returns true when a medication was added.
+/// Bottom sheet to add or edit a tracked medication in a family member profile.
+/// Returns true when a medication was added or updated.
 Future<bool> showAddFamilyMedicationSheet(
   BuildContext context, {
   required String profileId,
   required String profileNickname,
+  FamilyMedicationModel? medicationToEdit,
 }) async {
   final result = await showModalBottomSheet<bool>(
     context: context,
@@ -20,6 +23,7 @@ Future<bool> showAddFamilyMedicationSheet(
     builder: (_) => _AddFamilyMedicationSheet(
       profileId: profileId,
       profileNickname: profileNickname,
+      medicationToEdit: medicationToEdit,
     ),
   );
   return result ?? false;
@@ -28,21 +32,57 @@ Future<bool> showAddFamilyMedicationSheet(
 class _AddFamilyMedicationSheet extends HookConsumerWidget {
   final String profileId;
   final String profileNickname;
+  final FamilyMedicationModel? medicationToEdit;
 
   const _AddFamilyMedicationSheet({
     required this.profileId,
     required this.profileNickname,
+    this.medicationToEdit,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final medNameCtrl = useTextEditingController();
-    final strengthCtrl = useTextEditingController();
-    final stripsCtrl = useTextEditingController(text: '2');
-    final unitsPerStripCtrl = useTextEditingController(text: '10');
-    final dailyDoseCtrl = useTextEditingController(text: '1');
-    final thresholdCtrl = useTextEditingController(text: '5');
+    final medNameCtrl = useTextEditingController(text: medicationToEdit?.medicationName ?? '');
+    final strengthCtrl = useTextEditingController(text: medicationToEdit?.strength ?? '');
+    final stripsCtrl = useTextEditingController(text: medicationToEdit?.stripsCount.toString() ?? '2');
+    final unitsPerStripCtrl = useTextEditingController(text: medicationToEdit?.unitsPerStrip.toString() ?? '10');
+    final dailyDoseCtrl = useTextEditingController(text: medicationToEdit != null ? medicationToEdit!.dailyDoseUnits.toString() : '1');
+    final thresholdCtrl = useTextEditingController(text: medicationToEdit?.alertThresholdDays.toString() ?? '5');
     final submitting = useState(false);
+
+    // Predictive suggestions from official EDA catalog
+    final suggestions = useState<List<MedicationCatalogItemDto>>([]);
+    final isSuggesting = useState(false);
+    final debounceTimer = useRef<Timer?>(null);
+
+    void onMedNameChanged(String val) {
+      final q = val.trim();
+      if (q.length < 2) {
+        suggestions.value = [];
+        isSuggesting.value = false;
+        return;
+      }
+      isSuggesting.value = true;
+      debounceTimer.value?.cancel();
+      debounceTimer.value = Timer(const Duration(milliseconds: 250), () async {
+        try {
+          final res = await ref.read(apiClientProvider).catalogLookup(q, 5);
+          suggestions.value = res;
+        } catch (_) {
+          suggestions.value = [];
+        } finally {
+          isSuggesting.value = false;
+        }
+      });
+    }
+
+    void applySuggestion(MedicationCatalogItemDto item) {
+      medNameCtrl.text = item.name;
+      if (item.strength != null && item.strength!.isNotEmpty) {
+        strengthCtrl.text = item.strength!;
+      }
+      suggestions.value = [];
+    }
 
     Future<void> submit() async {
       final name = medNameCtrl.text.trim();
@@ -61,17 +101,20 @@ class _AddFamilyMedicationSheet extends HookConsumerWidget {
         final dailyDose = num.tryParse(dailyDoseCtrl.text.trim()) ?? 1;
         final alertDays = int.tryParse(thresholdCtrl.text.trim()) ?? 5;
 
-        await ref.read(apiClientProvider).addFamilyMedication(
-              profileId,
-              FamilyMedicationRequest(
-                medicationName: name,
-                strength: strengthCtrl.text.trim().isEmpty ? null : strengthCtrl.text.trim(),
-                stripsCount: strips,
-                unitsPerStrip: units,
-                dailyDoseUnits: dailyDose,
-                alertThresholdDays: alertDays,
-              ),
-            );
+        final body = FamilyMedicationRequest(
+          medicationName: name,
+          strength: strengthCtrl.text.trim().isEmpty ? null : strengthCtrl.text.trim(),
+          stripsCount: strips,
+          unitsPerStrip: units,
+          dailyDoseUnits: dailyDose,
+          alertThresholdDays: alertDays,
+        );
+
+        if (medicationToEdit != null) {
+          await ref.read(apiClientProvider).updateFamilyMedication(medicationToEdit!.id, body);
+        } else {
+          await ref.read(apiClientProvider).addFamilyMedication(profileId, body);
+        }
 
         if (context.mounted) Navigator.of(context).pop(true);
       } catch (e) {
@@ -84,6 +127,8 @@ class _AddFamilyMedicationSheet extends HookConsumerWidget {
         submitting.value = false;
       }
     }
+
+    final isEdit = medicationToEdit != null;
 
     return Container(
       decoration: const BoxDecoration(
@@ -114,11 +159,12 @@ class _AddFamilyMedicationSheet extends HookConsumerWidget {
             const SizedBox(height: 14),
             Row(
               children: [
-                const Icon(Icons.medication_rounded, color: NawaqsColors.teal, size: 24),
+                Icon(isEdit ? Icons.edit_note_rounded : Icons.medication_rounded,
+                    color: NawaqsColors.teal, size: 24),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'إضافة دواء لـ $profileNickname',
+                    isEdit ? 'تعديل دواء ${medicationToEdit!.medicationName}' : 'إضافة دواء لـ $profileNickname',
                     style: const TextStyle(
                       fontFamily: 'Cairo',
                       fontSize: 17,
@@ -141,13 +187,75 @@ class _AddFamilyMedicationSheet extends HookConsumerWidget {
             const SizedBox(height: 16),
             TextField(
               controller: medNameCtrl,
+              onChanged: onMedNameChanged,
               decoration: InputDecoration(
                 labelText: 'اسم الدواء *',
                 hintText: 'مثال: Panadol Extra أو كونكور',
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 prefixIcon: const Icon(Icons.healing_rounded),
+                suffixIcon: isSuggesting.value
+                    ? const Padding(
+                        padding: EdgeInsets.all(12),
+                        child: SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      )
+                    : null,
               ),
             ),
+
+            // Predictive Suggestion Chips from EDA Database
+            if (suggestions.value.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0FDF4),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFBBF7D0)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.auto_awesome_rounded, size: 14, color: Color(0xFF16A34A)),
+                        SizedBox(width: 6),
+                        Text(
+                          'اقتراحات ذكية من قاعدة بيانات هيئة الدواء (EDA):',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF15803D),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: suggestions.value.map((s) {
+                        final label = s.strength != null && s.strength!.isNotEmpty
+                            ? '${s.name} (${s.strength})'
+                            : s.name;
+                        return ActionChip(
+                          avatar: const Icon(Icons.add_circle_outline, size: 14, color: Color(0xFF16A34A)),
+                          label: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                          backgroundColor: Colors.white,
+                          side: const BorderSide(color: Color(0xFF86EFAC)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          onPressed: () => applySuggestion(s),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
             const SizedBox(height: 12),
             TextField(
               controller: strengthCtrl,
@@ -223,9 +331,11 @@ class _AddFamilyMedicationSheet extends HookConsumerWidget {
                       height: 18,
                       child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                     )
-                  : const Icon(Icons.check_circle_rounded),
+                  : Icon(isEdit ? Icons.save_rounded : Icons.check_circle_rounded),
               label: Text(
-                submitting.value ? 'جاري الحفظ...' : 'حفظ الدواء في الخزانة',
+                submitting.value
+                    ? 'جاري الحفظ...'
+                    : (isEdit ? 'حفظ التعديلات' : 'حفظ الدواء في الخزانة'),
                 style: const TextStyle(
                   fontFamily: 'Cairo',
                   fontSize: 15,
@@ -245,4 +355,3 @@ class _AddFamilyMedicationSheet extends HookConsumerWidget {
     );
   }
 }
-

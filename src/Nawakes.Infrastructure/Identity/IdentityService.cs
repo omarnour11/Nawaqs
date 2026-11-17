@@ -26,6 +26,7 @@ public sealed class IdentityService(
         int? age = null,
         string? chronicConditions = null,
         string? knownAllergies = null,
+        bool? isPregnant = null,
         CancellationToken cancellationToken = default)
     {
         var existingUser = await userManager.FindByEmailAsync(email);
@@ -45,7 +46,8 @@ public sealed class IdentityService(
             Gender = string.IsNullOrWhiteSpace(gender) ? null : gender.Trim(),
             Age = age,
             ChronicConditions = string.IsNullOrWhiteSpace(chronicConditions) ? null : chronicConditions.Trim(),
-            KnownAllergies = string.IsNullOrWhiteSpace(knownAllergies) ? null : knownAllergies.Trim()
+            KnownAllergies = string.IsNullOrWhiteSpace(knownAllergies) ? null : knownAllergies.Trim(),
+            IsPregnant = isPregnant
         };
 
         var result = await userManager.CreateAsync(user, password);
@@ -112,7 +114,8 @@ public sealed class IdentityService(
             user.Gender,
             user.Age,
             user.ChronicConditions,
-            user.KnownAllergies);
+            user.KnownAllergies,
+            user.IsPregnant);
     }
 
     public async Task UpdateProfileAsync(
@@ -125,6 +128,7 @@ public sealed class IdentityService(
         int? age = null,
         string? chronicConditions = null,
         string? knownAllergies = null,
+        bool? isPregnant = null,
         CancellationToken cancellationToken = default)
     {
         var user = await userManager.FindByIdAsync(userId.ToString())
@@ -139,6 +143,7 @@ public sealed class IdentityService(
         if (age.HasValue) user.Age = age.Value;
         if (chronicConditions is not null) user.ChronicConditions = chronicConditions.Trim();
         if (knownAllergies is not null) user.KnownAllergies = knownAllergies.Trim();
+        if (isPregnant.HasValue) user.IsPregnant = isPregnant.Value;
 
         await userManager.UpdateAsync(user);
     }

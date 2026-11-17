@@ -106,18 +106,21 @@ class _ResultRow extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(item.pharmacyName,
-                        style: const TextStyle(
-                            fontSize: 14, fontWeight: FontWeight.w700),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis),
+                    Text(
+                      item.medicationName.isNotEmpty ? item.medicationName : item.pharmacyName,
+                      style: const TextStyle(
+                          fontSize: 14.5, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                     const SizedBox(height: 2),
                     Text(
-                        '${item.addressLine} · ${_timeAgo(item.lastUpdatedAt)}',
-                        style: const TextStyle(
-                            fontSize: 12, color: AppColors.textSecondary),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis),
+                      '${item.pharmacyName} · ${item.addressLine} · ${_timeAgo(item.lastUpdatedAt)}',
+                      style: const TextStyle(
+                          fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                     const SizedBox(height: 5),
                     Row(
                       mainAxisSize: MainAxisSize.min,

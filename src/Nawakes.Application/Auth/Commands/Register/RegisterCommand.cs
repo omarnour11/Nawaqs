@@ -16,6 +16,7 @@ public sealed record RegisterCommand(
     int? Age = null,
     string? ChronicConditions = null,
     string? KnownAllergies = null,
+    bool? IsPregnant = null,
     RegisterHealthQuestionnaireDto? HealthQuestionnaire = null,
     RegisterPharmacyDto? Pharmacy = null
 ) : IRequest<AuthResult>;

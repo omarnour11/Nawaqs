@@ -49,6 +49,7 @@ public sealed class RegisterCommandHandler(
             age: request.Age,
             chronicConditions: chronic,
             knownAllergies: allergies,
+            isPregnant: request.IsPregnant,
             cancellationToken: cancellationToken);
 
         if (!success || userId is null)

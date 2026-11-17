@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:nawakes_mobile/core/config.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
 import 'package:nawakes_mobile/core/network/api_client.dart';
 import 'package:nawakes_mobile/features/auth/presentation/auth_controller.dart'
@@ -470,35 +471,185 @@ class _DocRow extends StatelessWidget {
 
   const _DocRow({required this.label, this.url});
 
+  void _showFullImage(BuildContext context, String fullUrl) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(12),
+        child: Stack(
+          alignment: Alignment.topRight,
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.92),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: InteractiveViewer(
+                  panEnabled: true,
+                  minScale: 0.5,
+                  maxScale: 4.0,
+                  child: Center(
+                    child: Image.network(
+                      fullUrl,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) => const Padding(
+                        padding: EdgeInsets.all(32),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.broken_image_rounded, size: 48, color: Colors.white70),
+                            SizedBox(height: 12),
+                            Text('تعذر تحميل معاينة المستند كصورة', style: TextStyle(color: Colors.white, fontFamily: 'Cairo')),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 10,
+              right: 10,
+              child: CircleAvatar(
+                backgroundColor: Colors.black54,
+                child: IconButton(
+                  icon: const Icon(Icons.close_rounded, color: Colors.white),
+                  onPressed: () => Navigator.pop(ctx),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final hasDoc = url != null && url!.isNotEmpty;
-    return Row(
-      children: [
-        Icon(
-          hasDoc ? Icons.picture_as_pdf_rounded : Icons.hide_image_rounded,
-          size: 18,
-          color: hasDoc ? AppColors.primary : AppColors.textHint,
+    final hasDoc = url != null && url!.trim().isNotEmpty;
+    final fullUrl = hasDoc
+        ? (url!.startsWith('http')
+            ? url!
+            : '${AppConfig.apiBaseUrl.replaceAll('/api/v1', '')}$url')
+        : null;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: hasDoc ? AppColors.surface : AppColors.card,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: hasDoc ? AppColors.accentBlue.withValues(alpha: 0.3) : AppColors.hairline,
         ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Text(label,
+              Icon(
+                hasDoc ? Icons.verified_user_rounded : Icons.warning_amber_rounded,
+                size: 20,
+                color: hasDoc ? AppColors.accentBlue : AppColors.warning,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  label,
                   style: const TextStyle(
-                      fontSize: 13, fontWeight: FontWeight.w700)),
-              Text(
-                hasDoc ? url! : 'لم يتم الرفع بعد',
-                style: TextStyle(
+                    fontFamily: 'Cairo',
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: hasDoc ? AppColors.successBg : AppColors.hairline.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  hasDoc ? 'مرفوع ✓' : 'غير مرفوع',
+                  style: TextStyle(
                     fontSize: 11,
-                    color: hasDoc ? AppColors.info : AppColors.textHint),
-                overflow: TextOverflow.ellipsis,
+                    fontWeight: FontWeight.w700,
+                    color: hasDoc ? AppColors.successText : AppColors.textHint,
+                  ),
+                ),
               ),
             ],
           ),
-        ),
-      ],
+          if (hasDoc && fullUrl != null) ...[
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                GestureDetector(
+                  onTap: () => _showFullImage(context, fullUrl),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      width: 64,
+                      height: 64,
+                      color: AppColors.hairline.withValues(alpha: 0.2),
+                      child: Image.network(
+                        fullUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => const Center(
+                          child: Icon(Icons.description_outlined, size: 28, color: AppColors.primary),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: () => _showFullImage(context, fullUrl),
+                        icon: const Icon(Icons.zoom_in_rounded, size: 16),
+                        label: const Text('معاينة وتكبير المستند', style: TextStyle(fontFamily: 'Cairo', fontSize: 12)),
+                        style: OutlinedButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      TextButton.icon(
+                        onPressed: () async {
+                          final uri = Uri.parse(fullUrl);
+                          if (await canLaunchUrl(uri)) {
+                            await launchUrl(uri, mode: LaunchMode.externalApplication);
+                          }
+                        },
+                        icon: const Icon(Icons.open_in_new_rounded, size: 14),
+                        label: const Text('فتح في المتصفح / تحميل', style: TextStyle(fontFamily: 'Cairo', fontSize: 11)),
+                        style: TextButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ] else ...[
+            const SizedBox(height: 6),
+            const Text(
+              'لم يتم رفع هذا المستند من قبل الصيدلية حتى الآن.',
+              style: TextStyle(fontFamily: 'Cairo', fontSize: 11.5, color: AppColors.textHint),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

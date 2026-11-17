@@ -4,6 +4,7 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
 import 'package:nawakes_mobile/core/network/api_client.dart';
+import 'package:nawakes_mobile/core/network/api_response_models.dart';
 import 'package:nawakes_mobile/features/auth/presentation/auth_controller.dart'
     show describeApiError;
 import 'package:nawakes_mobile/features/pharmacy/presentation/pharmacy_dashboard_controller.dart';
@@ -21,8 +22,9 @@ class AddInventoryScreen extends HookConsumerWidget {
     final formKey = useMemoized(GlobalKey<FormState>.new);
     final isSubmitting = useState(false);
 
-    final suggestions = useState<List<String>>([]);
+    final suggestions = useState<List<MedicationCatalogItemDto>>([]);
     final isSuggesting = useState(false);
+    final officialPriceBadge = useState<double?>(null);
     final debounceTimer = useRef<Timer?>(null);
 
     double? parseArabicDouble(String? raw) {
@@ -46,20 +48,42 @@ class AddInventoryScreen extends HookConsumerWidget {
         return;
       }
       isSuggesting.value = true;
-      debounceTimer.value = Timer(const Duration(milliseconds: 300), () async {
+      debounceTimer.value = Timer(const Duration(milliseconds: 250), () async {
         try {
-          final res = await ref.read(apiClientProvider).suggestMedications(q);
-          suggestions.value = res;
+          final res = await ref.read(apiClientProvider).catalogLookup(q, 6);
+          if (res.isNotEmpty) {
+            suggestions.value = res;
+          } else {
+            final strList = await ref.read(apiClientProvider).suggestMedications(q);
+            suggestions.value = strList.map((s) => MedicationCatalogItemDto(name: s, tradeName: s)).toList();
+          }
         } catch (_) {
-          suggestions.value = [];
+          try {
+            final strList = await ref.read(apiClientProvider).suggestMedications(q);
+            suggestions.value = strList.map((s) => MedicationCatalogItemDto(name: s, tradeName: s)).toList();
+          } catch (_) {
+            suggestions.value = [];
+          }
         } finally {
           isSuggesting.value = false;
         }
       });
     }
 
-    void applySuggestion(String suggested) {
-      nameCtrl.text = suggested;
+    void applySuggestion(MedicationCatalogItemDto item) {
+      nameCtrl.text = item.commercialNameAr?.isNotEmpty == true
+          ? item.commercialNameAr!
+          : (item.tradeName ?? item.name);
+      if (item.strength != null && item.strength!.isNotEmpty) {
+        strengthCtrl.text = item.strength!;
+      }
+      if (item.dosageForm != null && item.dosageForm!.isNotEmpty) {
+        selectedDosageForm.value = item.dosageForm!;
+      }
+      if (item.officialPriceEgp != null && item.officialPriceEgp! > 0) {
+        priceCtrl.text = item.officialPriceEgp!.toStringAsFixed(2);
+        officialPriceBadge.value = item.officialPriceEgp;
+      }
       suggestions.value = [];
     }
 
@@ -193,14 +217,15 @@ class AddInventoryScreen extends HookConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: const [
+                      const Row(
+                        children: [
                           Icon(Icons.auto_awesome_rounded, size: 16, color: AppColors.accentBlue),
                           SizedBox(width: 6),
                           Expanded(
                             child: Text(
                               'هل تقصد من قاعدة بيانات الأدوية الرسمية؟',
                               style: TextStyle(
+                                fontFamily: 'Cairo',
                                 fontSize: 12.5,
                                 fontWeight: FontWeight.w700,
                                 color: AppColors.accentBlue,
@@ -210,19 +235,66 @@ class AddInventoryScreen extends HookConsumerWidget {
                         ],
                       ),
                       const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
-                        children: suggestions.value.take(5).map((s) {
-                          return ActionChip(
-                            avatar: const Icon(Icons.check_circle_outline, size: 14, color: AppColors.brand700),
-                            label: Text(s, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                            backgroundColor: Colors.white,
-                            side: BorderSide(color: AppColors.accentBlue.withValues(alpha: 0.3)),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                            onPressed: () => applySuggestion(s),
-                          );
-                        }).toList(),
+                      ...suggestions.value.take(5).map((item) {
+                        final displayName = (item.commercialNameAr?.isNotEmpty == true && item.commercialNameAr != item.tradeName)
+                            ? '${item.commercialNameAr!} (${item.tradeName ?? item.name})'
+                            : (item.tradeName?.isNotEmpty == true ? item.tradeName! : item.name);
+                        return InkWell(
+                          onTap: () => applySuggestion(item),
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+                            margin: const EdgeInsets.only(bottom: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: AppColors.hairline),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.medication_rounded, size: 18, color: AppColors.primary),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(displayName, style: const TextStyle(fontFamily: 'Cairo', fontSize: 12.5, fontWeight: FontWeight.w700)),
+                                      Text(
+                                        '${item.dosageForm ?? ""} ${item.strength ?? ""} · السعر: ${item.officialPriceEgp != null ? "${item.officialPriceEgp} ج.م" : "غير محدد"}',
+                                        style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const Icon(Icons.arrow_forward_ios_rounded, size: 12, color: AppColors.textHint),
+                              ],
+                            ),
+                          ),
+                        );
+                      }),
+                    ],
+                  ),
+                ),
+              ],
+
+              if (officialPriceBadge.value != null) ...[
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.successBg,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.successIcon.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.check_circle_rounded, size: 16, color: AppColors.successText),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'تم سحب السعر الرسمي (${officialPriceBadge.value!.toStringAsFixed(2)} ج.م) والتركيز والشكل الدوائي تلقائياً — يمكنك التعديل كما تشاء.',
+                          style: const TextStyle(fontFamily: 'Cairo', fontSize: 11.5, color: AppColors.successText, fontWeight: FontWeight.w600),
+                        ),
                       ),
                     ],
                   ),

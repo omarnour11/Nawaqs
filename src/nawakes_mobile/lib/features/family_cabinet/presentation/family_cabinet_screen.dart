@@ -105,16 +105,52 @@ class FamilyCabinetScreen extends HookConsumerWidget {
         elevation: 0,
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          final created = await showAddFamilyMemberSheet(context);
-          if (created == true) load();
-        },
-        backgroundColor: NawaqsColors.tealDark,
-        foregroundColor: Colors.white,
-        elevation: 3,
-        label: const Text('إضافة شخص للعائلة', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
-        icon: const Icon(Icons.person_add_alt_1),
+      floatingActionButton: Container(
+        height: 48,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          gradient: const LinearGradient(
+            colors: [Color(0xFF0D9488), Color(0xFF0F766E)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF0D9488).withValues(alpha: 0.35),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(24),
+            onTap: () async {
+              final created = await showAddFamilyMemberSheet(context);
+              if (created == true) load();
+            },
+            child: const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 22),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.person_add_alt_1_rounded, color: Colors.white, size: 20),
+                  SizedBox(width: 8),
+                  Text(
+                    'إضافة شخص للعائلة',
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
       body: RefreshIndicator(
         onRefresh: load,

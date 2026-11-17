@@ -23,11 +23,13 @@ import 'package:nawakes_mobile/core/utils/arabic_digits.dart';
 class HomeCatalogView extends ConsumerStatefulWidget {
   final VoidCallback onOpenScanner;
   final ValueChanged<String> onSearchKeyword;
+  final void Function(String pharmacyId, String pharmacyName)? onFilterByPharmacy;
 
   const HomeCatalogView({
     super.key,
     required this.onOpenScanner,
     required this.onSearchKeyword,
+    this.onFilterByPharmacy,
   });
 
   @override
@@ -1214,7 +1216,11 @@ class _HomeCatalogViewState extends ConsumerState<HomeCatalogView> {
                       ),
                       onPressed: () {
                         Navigator.of(sheetCtx).pop();
-                        widget.onSearchKeyword(pharmacy.name);
+                        if (widget.onFilterByPharmacy != null) {
+                          widget.onFilterByPharmacy!(pharmacy.id, pharmacy.name);
+                        } else {
+                          widget.onSearchKeyword(pharmacy.name);
+                        }
                       },
                       icon: const Icon(Icons.search_rounded, size: 18),
                       label: const Text(

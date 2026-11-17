@@ -41,7 +41,8 @@ public sealed class ProfileController(ISender mediator) : ControllerBase
             request.Gender,
             request.Age,
             request.ChronicConditions,
-            request.KnownAllergies), cancellationToken);
+            request.KnownAllergies,
+            request.IsPregnant), cancellationToken);
         return NoContent();
     }
 
@@ -56,7 +57,8 @@ public sealed class ProfileController(ISender mediator) : ControllerBase
         dto.Gender,
         dto.Age,
         dto.ChronicConditions,
-        dto.KnownAllergies);
+        dto.KnownAllergies,
+        dto.IsPregnant);
 
     public sealed record UpdateProfileRequest(
         string? FullName,
@@ -66,7 +68,8 @@ public sealed class ProfileController(ISender mediator) : ControllerBase
         string? Gender = null,
         int? Age = null,
         string? ChronicConditions = null,
-        string? KnownAllergies = null);
+        string? KnownAllergies = null,
+        bool? IsPregnant = null);
 }
 
 public sealed record ProfileResponse(
@@ -80,4 +83,5 @@ public sealed record ProfileResponse(
     string? Gender = null,
     int? Age = null,
     string? ChronicConditions = null,
-    string? KnownAllergies = null);
+    string? KnownAllergies = null,
+    bool? IsPregnant = null);

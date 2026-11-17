@@ -160,8 +160,38 @@ class _ProfileBody extends HookConsumerWidget {
     final newAllergyCtrl = useTextEditingController();
     final gender = useState<String>(profile.gender ?? 'ذكر');
     final ageCtrl = useTextEditingController(text: profile.age != null ? profile.age.toString() : '');
+    final isPregnant = useState<bool>(profile.isPregnant ?? false);
 
     Future<void> save() async {
+      final phoneText = phoneCtrl.text.trim();
+      if (phoneText.isNotEmpty) {
+        final egyptianPhoneRegex = RegExp(r'^(?:\+201|01)[0125][0-9]{8}$');
+        if (!egyptianPhoneRegex.hasMatch(phoneText)) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('يرجى إدخال رقم موبايل مصري صحيح مكون من 11 رقماً (مثال: 01012345678)'),
+              backgroundColor: AppColors.danger,
+            ),
+          );
+          return;
+        }
+      }
+
+      int? parsedAge;
+      final ageText = ageCtrl.text.trim();
+      if (ageText.isNotEmpty) {
+        parsedAge = int.tryParse(ageText);
+        if (parsedAge == null || parsedAge < 1 || parsedAge > 120) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('يرجى إدخال سن صحيح بين 1 و 120 سنة'),
+              backgroundColor: AppColors.danger,
+            ),
+          );
+          return;
+        }
+      }
+
       saving.value = true;
       try {
         // Compose notes = structured lists + free text (distinct and deduplicated)
@@ -191,12 +221,13 @@ class _ProfileBody extends HookConsumerWidget {
         final savedNotes = buf.toString().trim();
         await ref.read(apiClientProvider).updateProfile(UpdateProfileRequest(
               fullName: nameCtrl.text.trim().isEmpty ? null : nameCtrl.text.trim(),
-              phone: phoneCtrl.text.trim().isEmpty ? null : phoneCtrl.text.trim(),
+              phone: phoneText.isEmpty ? null : phoneText,
               medicalHistoryNotes: savedNotes,
               gender: gender.value,
-              age: int.tryParse(ageCtrl.text.trim()),
+              age: parsedAge,
               chronicConditions: distinctConditions.join('، '),
               knownAllergies: distinctAllergies.join('، '),
+              isPregnant: gender.value == 'أنثى' ? isPregnant.value : false,
             ));
         ref.invalidate(profileControllerProvider);
         editing.value = false;
@@ -397,6 +428,83 @@ class _ProfileBody extends HookConsumerWidget {
                           ),
                         ],
                       ),
+                      if (gender.value == 'أنثى') ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFDF2F8),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: const Color(0xFFFBCFE8)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.pregnant_woman_rounded, color: Color(0xFFDB2777), size: 22),
+                              const SizedBox(width: 10),
+                              const Expanded(
+                                child: Text(
+                                  'هل أنتِ حامل حالياً؟',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF9D174D),
+                                  ),
+                                ),
+                              ),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  InkWell(
+                                    onTap: () => isPregnant.value = true,
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: isPregnant.value ? const Color(0xFFDB2777) : Colors.white,
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                          color: isPregnant.value ? const Color(0xFFDB2777) : const Color(0xFFF472B6),
+                                        ),
+                                      ),
+                                      child: Text(
+                                        'نعم',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          color: isPregnant.value ? Colors.white : const Color(0xFF9D174D),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  InkWell(
+                                    onTap: () => isPregnant.value = false,
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: !isPregnant.value ? const Color(0xFFDB2777) : Colors.white,
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                          color: !isPregnant.value ? const Color(0xFFDB2777) : const Color(0xFFF472B6),
+                                        ),
+                                      ),
+                                      child: Text(
+                                        'لا',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          color: !isPregnant.value ? Colors.white : const Color(0xFF9D174D),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ] else ...[
                       Row(
                         children: [
@@ -407,6 +515,32 @@ class _ProfileBody extends HookConsumerWidget {
                             '${gender.value}${ageCtrl.text.isNotEmpty ? " · ${ageCtrl.text} سنة" : ""}',
                             style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
                           ),
+                          if (profile.gender == 'أنثى' && profile.isPregnant == true) ...[
+                            const SizedBox(width: 10),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFDF2F8),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: const Color(0xFFF472B6)),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.pregnant_woman_rounded, size: 14, color: Color(0xFFDB2777)),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    'حامل 🤰',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFFDB2777),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ],

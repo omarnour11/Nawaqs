@@ -9,7 +9,8 @@ public sealed record PatientClinicalSummaryDto(
     string? Gender = null,
     int? Age = null,
     string? ChronicConditions = null,
-    string? KnownAllergies = null);
+    string? KnownAllergies = null,
+    bool? IsPregnant = null);
 
 /// <summary>
 /// Read-only access to Identity user data for the Application layer

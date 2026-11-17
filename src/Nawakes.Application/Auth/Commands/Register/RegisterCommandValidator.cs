@@ -20,6 +20,12 @@ public sealed class RegisterCommandValidator : AbstractValidator<RegisterCommand
             .NotEmpty()
             .MaximumLength(150);
 
+        RuleFor(x => x.Age)
+            .NotNull()
+            .InclusiveBetween(1, 130)
+            .When(x => string.IsNullOrWhiteSpace(x.Role) || x.Role.Equals("Patient", StringComparison.OrdinalIgnoreCase))
+            .WithMessage("Age is mandatory for patients and must be between 1 and 130.");
+
         RuleFor(x => x.FcmToken)
             .MaximumLength(500)
             .When(x => x.FcmToken is not null);

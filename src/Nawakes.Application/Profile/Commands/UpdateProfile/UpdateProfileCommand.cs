@@ -11,7 +11,8 @@ public sealed record UpdateProfileCommand(
     string? Gender = null,
     int? Age = null,
     string? ChronicConditions = null,
-    string? KnownAllergies = null) : IRequest;
+    string? KnownAllergies = null,
+    bool? IsPregnant = null) : IRequest;
 
 public sealed class UpdateProfileCommandValidator : AbstractValidator<UpdateProfileCommand>
 {
@@ -22,9 +23,9 @@ public sealed class UpdateProfileCommandValidator : AbstractValidator<UpdateProf
             .When(x => x.FullName is not null);
 
         RuleFor(x => x.Phone)
-            .Matches(@"^\+?[0-9\s\-]{7,20}$")
+            .Matches(@"^(?:\+201|01)[0125][0-9]{8}$")
             .When(x => !string.IsNullOrWhiteSpace(x.Phone))
-            .WithMessage("Phone must be a valid phone number.");
+            .WithMessage("Phone must be a valid Egyptian phone number (e.g. 01012345678).");
 
         RuleFor(x => x.MedicalHistoryNotes)
             .MaximumLength(2000)
@@ -53,5 +54,6 @@ public sealed class UpdateProfileCommandHandler(
             request.Age,
             request.ChronicConditions,
             request.KnownAllergies,
+            request.IsPregnant,
             cancellationToken);
 }
