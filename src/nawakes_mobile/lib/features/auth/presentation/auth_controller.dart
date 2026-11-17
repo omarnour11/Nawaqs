@@ -9,7 +9,7 @@ part 'auth_controller.g.dart';
 /// Auth statuses used by the router to guard routes.
 enum AuthStatus { unknown, unauthenticated, patient, pharmacyOwner, admin }
 
-@riverpod
+@Riverpod(keepAlive: true)
 class AuthController extends _$AuthController {
   static const _tokenKey = 'jwt_token';
   static const _refreshKey = 'refresh_token';

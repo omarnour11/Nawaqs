@@ -1,4 +1,4 @@
-﻿import 'package:url_launcher/url_launcher.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:nawakes_mobile/features/pharmacy/data/top_rated_pharmacy_model.dart';
 import 'package:nawakes_mobile/features/pharmacy/presentation/top_rated_pharmacies_provider.dart';
 import 'dart:async';

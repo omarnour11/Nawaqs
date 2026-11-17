@@ -2562,7 +2562,7 @@ final class DioProvider extends $FunctionalProvider<Dio, Dio, Dio>
         argument: null,
         retry: null,
         name: r'dioProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -2589,7 +2589,7 @@ final class DioProvider extends $FunctionalProvider<Dio, Dio, Dio>
   }
 }
 
-String _$dioHash() => r'cd29841730432f110c5f083d07540a437893e31d';
+String _$dioHash() => r'1a5f9e78313aa417b41351a9d31984ae6852424a';
 
 @ProviderFor(apiClient)
 final apiClientProvider = ApiClientProvider._();
@@ -2603,7 +2603,7 @@ final class ApiClientProvider
         argument: null,
         retry: null,
         name: r'apiClientProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -2630,4 +2630,4 @@ final class ApiClientProvider
   }
 }
 
-String _$apiClientHash() => r'9b3bc7a07b061ee57fbcc7303cf25e795f9dae65';
+String _$apiClientHash() => r'b26a12867c7644b99f96843c630e9b323705435c';

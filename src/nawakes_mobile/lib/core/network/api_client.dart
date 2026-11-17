@@ -458,7 +458,7 @@ class MarkReadRequest {
   Map<String, dynamic> toJson() => _$MarkReadRequestToJson(this);
 }
 
-@riverpod
+@Riverpod(keepAlive: true)
 Dio dio(Ref ref) {
   final dio = Dio(BaseOptions(
     baseUrl: AppConfig.apiBaseUrl,
@@ -523,7 +523,9 @@ Dio dio(Ref ref) {
           await storage.delete(key: 'refresh_token');
           await storage.delete(key: 'user_role');
           await storage.delete(key: 'user_id');
-          ref.read(authControllerProvider.notifier).expireSession();
+          try {
+            ref.read(authControllerProvider.notifier).expireSession();
+          } catch (_) {}
         }
       }
       handler.next(e);
@@ -565,7 +567,7 @@ Future<bool> _executeRefreshToken(FlutterSecureStorage storage, Dio dio) async {
   }
 }
 
-@riverpod
+@Riverpod(keepAlive: true)
 ApiClient apiClient(Ref ref) {
   final dio = ref.watch(dioProvider);
   return ApiClient(dio, baseUrl: dio.options.baseUrl);
