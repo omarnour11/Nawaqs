@@ -3,6 +3,7 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:nawakes_mobile/core/location/location_service.dart';
 import 'package:nawakes_mobile/core/network/api_client.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
 import 'package:nawakes_mobile/core/ui/nawaqss_brand_widgets.dart';
@@ -72,44 +73,134 @@ class RegisterScreen extends HookConsumerWidget {
       isLocatingPharmacy.value = true;
       try {
         if (!await Geolocator.isLocationServiceEnabled()) {
-          if (showFeedback && context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('يرجى تفعيل خدمة الموقع (GPS) في الهاتف')),
+          if (context.mounted) {
+            await showDialog<bool>(
+              context: context,
+              barrierDismissible: false,
+              builder: (ctx) => AlertDialog(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                title: const Row(
+                  children: [
+                    Icon(Icons.location_off_rounded, color: AppColors.dangerIcon, size: 24),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'تفعيل الـ GPS مطلوب',
+                        style: TextStyle(fontFamily: 'Cairo', fontSize: 16, fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                  ],
+                ),
+                content: const Text(
+                  'لسحب موقع الصيدلية وتعبئة العنوان تلقائياً بدقة، يلزم تفعيل خدمة الموقع (GPS) في هاتفك.',
+                  style: TextStyle(fontFamily: 'Cairo', fontSize: 13, height: 1.5),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(false),
+                    child: const Text('إلغاء', style: TextStyle(fontFamily: 'Cairo')),
+                  ),
+                  FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: NawaqsColors.tealDark,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    onPressed: () async {
+                      Navigator.of(ctx).pop(true);
+                      await Geolocator.openLocationSettings();
+                    },
+                    icon: const Icon(Icons.settings_rounded, size: 18),
+                    label: const Text(
+                      'فتح إعدادات الموقع الآن',
+                      style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                ],
+              ),
             );
           }
           return;
         }
+
         var perm = await Geolocator.checkPermission();
         if (perm == LocationPermission.denied) {
           perm = await Geolocator.requestPermission();
         }
         if (perm == LocationPermission.deniedForever) {
-          if (showFeedback && context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('إذن الموقع مرفوض في إعدادات الهاتف')),
+          if (context.mounted) {
+            await showDialog(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                title: const Text('إذن الموقع مطلوب', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
+                content: const Text(
+                  'تم حظر إذن الموقع للتطبيق. يرجى تفعيله من إعدادات الهاتف لتحديد موقع الصيدلية بدقة.',
+                  style: TextStyle(fontFamily: 'Cairo'),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(),
+                    child: const Text('إلغاء', style: TextStyle(fontFamily: 'Cairo')),
+                  ),
+                  FilledButton(
+                    onPressed: () async {
+                      Navigator.of(ctx).pop();
+                      await Geolocator.openAppSettings();
+                    },
+                    child: const Text('فتح الإعدادات', style: TextStyle(fontFamily: 'Cairo')),
+                  ),
+                ],
+              ),
             );
           }
           return;
         }
+
         if (perm == LocationPermission.always || perm == LocationPermission.whileInUse) {
-          final last = await Geolocator.getLastKnownPosition();
-          if (last != null && pharmacyLocation.value == null) {
-            pharmacyLocation.value = last;
-          }
           final pos = await Geolocator.getCurrentPosition(
             locationSettings: const LocationSettings(
               accuracy: LocationAccuracy.high,
-              timeLimit: Duration(seconds: 8),
+              timeLimit: Duration(seconds: 10),
             ),
           );
           pharmacyLocation.value = pos;
-          if (showFeedback && context.mounted) {
+
+          // Auto reverse-geocode to populate Egyptian address and city
+          try {
+            final locService = ref.read(locationServiceProvider);
+            final detailedAddr = await locService.getDetailedEgyptianAddress(pos.latitude, pos.longitude);
+            if (detailedAddr != null && detailedAddr.trim().isNotEmpty) {
+              addressCtrl.text = detailedAddr.trim();
+              final parts = detailedAddr.split('،');
+              if (parts.length > 1 && cityCtrl.text.trim().isEmpty) {
+                cityCtrl.text = parts.last.trim();
+              }
+            }
+          } catch (_) {}
+
+          if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('تم تحديد موقع الصيدلية بنجاح')),
+              SnackBar(
+                content: Text(
+                  'تم سحب موقع الصيدلية (${pos.latitude.toStringAsFixed(4)}, ${pos.longitude.toStringAsFixed(4)}) وتعبئة العنوان بنجاح 📍',
+                ),
+              ),
             );
           }
         }
-      } catch (_) {
+      } catch (e) {
+        if (showFeedback && context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('تعذر تحديد الموقع بدقة — يرجى التأكد من تشغيل الـ GPS'),
+              action: SnackBarAction(
+                label: 'الإعدادات',
+                textColor: Colors.white,
+                onPressed: () => Geolocator.openLocationSettings(),
+              ),
+            ),
+          );
+        }
       } finally {
         isLocatingPharmacy.value = false;
       }
@@ -220,6 +311,41 @@ class RegisterScreen extends HookConsumerWidget {
 
     Future<void> submitPharmacy() async {
       if (!pharmacyFormKey.currentState!.validate()) return;
+      if (pharmacyLocation.value == null) {
+        final proceed = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Row(
+              children: [
+                Icon(Icons.warning_amber_rounded, color: AppColors.warning, size: 24),
+                SizedBox(width: 8),
+                Text('تحديد موقع الصيدلية', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 16)),
+              ],
+            ),
+            content: const Text(
+              'لم يتم سحب موقع الصيدلية بالـ GPS. يفضل التقاط الموقع بدقة الآن لضمان ظهور الصيدلية للمرضى في نطاقها الجغرافي الصحيح.',
+              style: TextStyle(fontFamily: 'Cairo', fontSize: 13),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: const Text('متابعة بدون GPS', style: TextStyle(fontFamily: 'Cairo')),
+              ),
+              FilledButton.icon(
+                style: FilledButton.styleFrom(backgroundColor: NawaqsColors.tealDark),
+                onPressed: () {
+                  Navigator.of(ctx).pop(false);
+                  fetchPharmacyLocation(showFeedback: true);
+                },
+                icon: const Icon(Icons.my_location_rounded, size: 18),
+                label: const Text('سحب الموقع الآن', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        );
+        if (proceed != true) return;
+      }
       await ref.read(authControllerProvider.notifier).register(
             email: emailCtrl.text.trim(),
             password: passwordCtrl.text,
@@ -1256,6 +1382,132 @@ class _PharmacyRegistrationForm extends StatelessWidget {
           ),
           const SizedBox(height: 14),
 
+          // ── Prominent GPS Location Capture Card ──────────────────────────
+          Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              gradient: pharmacyLocation != null
+                  ? null
+                  : const LinearGradient(
+                      colors: [Color(0xFF0D9488), Color(0xFF0F766E)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+              color: pharmacyLocation != null ? AppColors.successBg : null,
+              border: pharmacyLocation != null
+                  ? Border.all(color: AppColors.successIcon.withValues(alpha: 0.35))
+                  : null,
+              boxShadow: pharmacyLocation == null
+                  ? [
+                      BoxShadow(
+                        color: const Color(0xFF0D9488).withValues(alpha: 0.25),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(14),
+                onTap: isLocatingPharmacy ? null : onLocate,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  child: isLocatingPharmacy
+                      ? const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            ),
+                            SizedBox(width: 10),
+                            Text(
+                              'جاري التقاط موقع الصيدلية وسحب العنوان...',
+                              style: TextStyle(
+                                fontFamily: 'Cairo',
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        )
+                      : pharmacyLocation != null
+                          ? Row(
+                              children: [
+                                const Icon(Icons.check_circle_rounded, color: AppColors.successIcon, size: 22),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'تم تحديد موقع الصيدلية بنجاح 📍',
+                                        style: TextStyle(
+                                          fontFamily: 'Cairo',
+                                          fontSize: 12.5,
+                                          fontWeight: FontWeight.w800,
+                                          color: AppColors.successText,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'الإحداثيات: ${pharmacyLocation!.latitude.toStringAsFixed(4)}، ${pharmacyLocation!.longitude.toStringAsFixed(4)} (تم سحب العنوان تلقائياً)',
+                                        style: TextStyle(
+                                          fontFamily: 'Cairo',
+                                          fontSize: 11,
+                                          color: AppColors.successText.withValues(alpha: 0.85),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: AppColors.successIcon.withValues(alpha: 0.4)),
+                                  ),
+                                  child: const Text(
+                                    'تحديث الموقع',
+                                    style: TextStyle(
+                                      fontFamily: 'Cairo',
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.successText,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            )
+                          : const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.my_location_rounded, color: Colors.white, size: 20),
+                                SizedBox(width: 8),
+                                Flexible(
+                                  child: Text(
+                                    '📍 سحب موقع الصيدلية الحالي (GPS وتعبئة العنوان)',
+                                    style: TextStyle(
+                                      fontFamily: 'Cairo',
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+
           TextFormField(
             controller: pharmacyNameCtrl,
             textCapitalization: TextCapitalization.words,
@@ -1301,89 +1553,6 @@ class _PharmacyRegistrationForm extends StatelessWidget {
               hintText: 'مثال: LIC-102948',
             ),
           ),
-          const SizedBox(height: 12),
-
-          // Location badge/button
-          if (isLocatingPharmacy)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-              decoration: BoxDecoration(
-                color: AppColors.accentLight,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Row(
-                children: [
-                  SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
-                  ),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'جاري التقاط موقع الصيدلية الجغرافي من الـ GPS...',
-                      style: TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                ],
-              ),
-            )
-          else if (pharmacyLocation != null)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-              decoration: BoxDecoration(
-                color: AppColors.successBg,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.successIcon.withValues(alpha: 0.3)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.my_location_rounded, size: 16, color: AppColors.successIcon),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'تم تحديد موقع الصيدلية (${pharmacyLocation!.latitude.toStringAsFixed(4)}, ${pharmacyLocation!.longitude.toStringAsFixed(4)})',
-                      style: const TextStyle(fontSize: 11.5, color: AppColors.successText, fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                  InkWell(
-                    onTap: onLocate,
-                    child: const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                      child: Text(
-                        'تحديث',
-                        style: TextStyle(fontSize: 11.5, color: AppColors.primary, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            )
-          else
-            InkWell(
-              onTap: onLocate,
-              borderRadius: BorderRadius.circular(10),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-                decoration: BoxDecoration(
-                  color: context.isDarkMode ? const Color(0xFF142730) : const Color(0xFFF1F3F5),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppColors.hairline),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(Icons.location_searching_rounded, size: 16, color: AppColors.primary),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'اضغط هنا لتحديد موقع الصيدلية من موقعك الحالي (GPS)',
-                        style: TextStyle(fontSize: 11.5, color: AppColors.primary, fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
           const SizedBox(height: 20),
 
           FilledButton(

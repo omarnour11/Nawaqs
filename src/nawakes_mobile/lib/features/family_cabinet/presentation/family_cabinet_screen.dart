@@ -68,6 +68,110 @@ class FamilyCabinetScreen extends HookConsumerWidget {
       }
     }
 
+    Future<void> deleteMedication(FamilyMedicationModel m) async {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Row(
+            children: [
+              Icon(Icons.delete_outline_rounded, color: AppColors.dangerIcon, size: 22),
+              SizedBox(width: 8),
+              Text('حذف الدواء', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 16)),
+            ],
+          ),
+          content: Text(
+            'هل أنت متأكد من حذف دواء "${m.medicationName}" من دولاب العائلة؟',
+            style: const TextStyle(fontFamily: 'Cairo', fontSize: 13),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('إلغاء', style: TextStyle(fontFamily: 'Cairo')),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.dangerIcon,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('تأكيد الحذف', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed == true) {
+        try {
+          await ref.read(apiClientProvider).deleteFamilyMedication(m.id);
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('تم حذف "${m.medicationName}" بنجاح 🗑️')),
+            );
+          }
+          await load();
+        } catch (e) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(describeApiError(e))),
+            );
+          }
+        }
+      }
+    }
+
+    Future<void> deleteProfile(FamilyCabinetProfileModel profile) async {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Row(
+            children: [
+              Icon(Icons.person_remove_rounded, color: AppColors.dangerIcon, size: 22),
+              SizedBox(width: 8),
+              Text('حذف فرد من العائلة', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 16)),
+            ],
+          ),
+          content: Text(
+            'هل أنت متأكد من حذف "${profile.nickname}" وجميع الأدوية المتتبعة له من دولاب العائلة؟',
+            style: const TextStyle(fontFamily: 'Cairo', fontSize: 13),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('إلغاء', style: TextStyle(fontFamily: 'Cairo')),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.dangerIcon,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('حذف الشخص', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed == true) {
+        try {
+          await ref.read(apiClientProvider).deleteFamilyProfile(profile.id);
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('تم حذف "${profile.nickname}" بنجاح 🗑️')),
+            );
+          }
+          await load();
+        } catch (e) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(describeApiError(e))),
+            );
+          }
+        }
+      }
+    }
+
     useEffect(() {
       load();
       return null;
@@ -375,6 +479,14 @@ class FamilyCabinetScreen extends HookConsumerWidget {
                                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                                     ),
                                   ),
+                                  const SizedBox(width: 6),
+                                  IconButton(
+                                    onPressed: () => deleteProfile(profile),
+                                    icon: const Icon(Icons.delete_outline_rounded, size: 19, color: AppColors.dangerIcon),
+                                    tooltip: 'حذف هذا الشخص',
+                                    padding: const EdgeInsets.all(6),
+                                    constraints: const BoxConstraints(),
+                                  ),
                                 ],
                               ),
                             ),
@@ -428,6 +540,16 @@ class FamilyCabinetScreen extends HookConsumerWidget {
                                 (m) => MedicationDepletionCard(
                                   medication: m,
                                   onChanged: load,
+                                  onEdit: () async {
+                                    final updated = await showAddFamilyMedicationSheet(
+                                      context,
+                                      profileId: profile.id,
+                                      profileNickname: profile.nickname,
+                                      medicationToEdit: m,
+                                    );
+                                    if (updated == true) load();
+                                  },
+                                  onDelete: () => deleteMedication(m),
                                 ),
                               ),
                           ],

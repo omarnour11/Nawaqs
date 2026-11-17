@@ -8,7 +8,6 @@ import 'package:latlong2/latlong.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:nawakes_mobile/core/config.dart';
 import 'package:nawakes_mobile/core/map/nawaqs_map.dart';
-import 'package:nawakes_mobile/core/location/location_service.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:nawakes_mobile/core/services/image_picker_service.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
@@ -88,25 +87,118 @@ class PharmacyOnboardingScreen extends HookConsumerWidget {
       } catch (_) {}
     }
 
+    Future<bool> ensureLocationServiceEnabled() async {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        if (context.mounted) {
+          await showDialog<bool>(
+            context: context,
+            barrierDismissible: false,
+            builder: (ctx) => AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+              title: const Row(
+                children: [
+                  Icon(Icons.location_off_rounded, color: AppColors.dangerIcon, size: 24),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'تفعيل الـ GPS إجباري',
+                      style: TextStyle(fontFamily: 'Cairo', fontSize: 16, fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                ],
+              ),
+              content: const Text(
+                'لتعديل أو تحديد موقع الصيدلية، يلزم تفعيل خدمة الموقع (GPS) بهاتفك أولاً لضمان دقة إحداثيات الصيدلية على الخريطة وظهورها للمرضى في نطاقها الفعلي.',
+                style: TextStyle(fontFamily: 'Cairo', fontSize: 13, height: 1.5),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(false),
+                  child: const Text('إلغاء', style: TextStyle(fontFamily: 'Cairo')),
+                ),
+                FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: NawaqsColors.tealDark,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  onPressed: () async {
+                    Navigator.of(ctx).pop(true);
+                    await Geolocator.openLocationSettings();
+                  },
+                  icon: const Icon(Icons.settings_rounded, size: 18),
+                  label: const Text(
+                    'فتح إعدادات الموقع الآن',
+                    style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+        return false;
+      }
+
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.deniedForever) {
+        if (context.mounted) {
+          await showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+              title: const Text('إذن الموقع مطلوب', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
+              content: const Text(
+                'تم حظر إذن الوصول للموقع. يرجى تفعيله من إعدادات الهاتف لتحديد إحداثيات الصيدلية.',
+                style: TextStyle(fontFamily: 'Cairo'),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text('إلغاء', style: TextStyle(fontFamily: 'Cairo')),
+                ),
+                FilledButton(
+                  onPressed: () async {
+                    Navigator.of(ctx).pop();
+                    await Geolocator.openAppSettings();
+                  },
+                  child: const Text('فتح الإعدادات', style: TextStyle(fontFamily: 'Cairo')),
+                ),
+              ],
+            ),
+          );
+        }
+        return false;
+      }
+      return permission == LocationPermission.always || permission == LocationPermission.whileInUse;
+    }
+
     Future<void> locateCurrentPosition({bool showFeedback = false}) async {
+      final ready = await ensureLocationServiceEnabled();
+      if (!ready) return;
+
       isLocating.value = true;
       try {
-        final locService = ref.read(locationServiceProvider);
-        final pos = await locService.getCurrentLocation();
-        if (pos != null) {
-          final target = LatLng(pos.latitude, pos.longitude);
-          marker.value = target;
-          locationConfirmed.value = true;
-          try {
-            mapController.move(target, 16);
-          } catch (_) {}
-          await reverseGeocode(target);
+        final pos = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            timeLimit: Duration(seconds: 10),
+          ),
+        );
+        final target = LatLng(pos.latitude, pos.longitude);
+        marker.value = target;
+        locationConfirmed.value = true;
+        try {
+          mapController.move(target, 16);
+        } catch (_) {}
+        await reverseGeocode(target);
 
-          if (showFeedback && context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('تم تحديد موقع الصيدلية وعنوانها من موقعك الحالي بنجاح 📍')),
-            );
-          }
+        if (showFeedback && context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('تم تحديد موقع الصيدلية وعنوانها من موقعك الحالي بنجاح 📍')),
+          );
         }
       } catch (e) {
         if (showFeedback && context.mounted) {
@@ -618,8 +710,10 @@ class PharmacyOnboardingScreen extends HookConsumerWidget {
                             dense: true,
                             leading: const Icon(Icons.location_on_outlined, size: 18, color: AppColors.primary),
                             title: Text(displayName, maxLines: 2, style: const TextStyle(fontSize: 12)),
-                            onTap: () {
+                            onTap: () async {
                               if (lat != null && lon != null) {
+                                final ready = await ensureLocationServiceEnabled();
+                                if (!ready) return;
                                 final newPos = LatLng(lat, lon);
                                 marker.value = newPos;
                                 mapController.move(newPos, 16);
@@ -656,7 +750,9 @@ class PharmacyOnboardingScreen extends HookConsumerWidget {
                             controller: mapController,
                             center: marker.value ?? const LatLng(30.0444, 31.2357),
                             zoom: 15,
-                            onTap: (_, pos) {
+                            onTap: (_, pos) async {
+                              final ready = await ensureLocationServiceEnabled();
+                              if (!ready) return;
                               marker.value = pos;
                               locationConfirmed.value = true;
                               reverseGeocode(pos);

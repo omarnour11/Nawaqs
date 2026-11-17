@@ -442,6 +442,7 @@ public sealed class DeleteFamilyProfileCommandHandler(
     public async Task Handle(DeleteFamilyProfileCommand request, CancellationToken cancellationToken)
     {
         var profile = await context.FamilyProfiles
+            .Include(p => p.FamilyMedications)
             .FirstOrDefaultAsync(p => p.Id == request.Id && p.IsActive, cancellationToken)
             ?? throw new NotFoundException(nameof(Domain.Entities.FamilyProfile), request.Id);
 
@@ -449,6 +450,10 @@ public sealed class DeleteFamilyProfileCommandHandler(
             throw new UnauthorizedAccessException("Only the owner can delete a family member profile.");
 
         profile.IsActive = false;
+        foreach (var med in profile.FamilyMedications)
+        {
+            med.IsActive = false;
+        }
         await context.SaveChangesAsync(cancellationToken);
     }
 }
