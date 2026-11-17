@@ -120,13 +120,13 @@ class _NearbyPharmacyOptionsSheetState
     final targetItemId =
         opt.inventoryItemId.isNotEmpty ? opt.inventoryItemId : widget.product.id;
 
-    final allowed = await guardReservationWithSafetyCheck(
+    final decision = await guardReservationWithSafetyCheck(
       context,
       ref,
       inventoryItemId: targetItemId,
       medicationName: widget.product.commercialNameAr ?? widget.product.tradeName,
     );
-    if (!allowed || !mounted) return;
+    if (!decision.proceed || !mounted) return;
 
     final deliveryResp = await DeliveryDetailsSheet.show(
       context,
@@ -135,6 +135,7 @@ class _NearbyPharmacyOptionsSheetState
       medicationName: widget.product.commercialNameAr ?? widget.product.tradeName,
       medicationPrice: widget.product.price,
       distanceKm: opt.distanceKm,
+      isForFamilyMember: decision.isForFamilyMember,
     );
     if (deliveryResp != null && mounted) {
       Navigator.of(context).pop();
@@ -160,13 +161,13 @@ class _NearbyPharmacyOptionsSheetState
           opt.inventoryItemId.isNotEmpty ? opt.inventoryItemId : widget.product.id;
 
       // Clinical safety shield before confirming the reservation.
-      final allowed = await guardReservationWithSafetyCheck(
+      final decision = await guardReservationWithSafetyCheck(
         context,
         ref,
         inventoryItemId: targetItemId,
         medicationName: widget.product.commercialNameAr ?? widget.product.tradeName,
       );
-      if (!allowed || !mounted) {
+      if (!decision.proceed || !mounted) {
         if (mounted) setState(() => _reservingPharmacyId = null);
         return;
       }
@@ -174,6 +175,7 @@ class _NearbyPharmacyOptionsSheetState
       final req = CreateReservationRequest(
         inventoryItemId: targetItemId,
         prescriptionCropBase64: ref.read(activePrescriptionCropBase64Provider),
+        isForFamilyMember: decision.isForFamilyMember,
       );
 
       final resp = await ref.read(apiClientProvider).createReservation(req);

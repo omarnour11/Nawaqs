@@ -4,14 +4,22 @@ import 'package:nawakes_mobile/core/network/api_client.dart';
 import 'package:nawakes_mobile/core/network/api_response_models.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
 
+/// Safety decision containing permission to proceed and family member flag.
+class SafetyCheckDecision {
+  final bool proceed;
+  final bool isForFamilyMember;
+
+  const SafetyCheckDecision({required this.proceed, this.isForFamilyMember = false});
+}
+
 /// Pre-checkout clinical safety shield.
 ///
 /// Calls GET /reservations/safety-check before confirming a reservation and
 /// surfaces the result:
-/// - Critical alert  → blocking red dialog (reserve refused).
+/// - Critical alert  → blocking dialog with "الدواء ليس لي" option for pregnancy contraindication.
 /// - Warning         → amber dialog, user can proceed at their own risk.
 /// - Clean           → reserve immediately.
-Future<bool> guardReservationWithSafetyCheck(
+Future<SafetyCheckDecision> guardReservationWithSafetyCheck(
   BuildContext context,
   WidgetRef ref, {
   required String inventoryItemId,
@@ -24,24 +32,23 @@ Future<bool> guardReservationWithSafetyCheck(
         .checkReservationSafety(inventoryItemId: inventoryItemId);
   } catch (_) {
     // Safety endpoint unavailable → fail open (server re-checks on reserve).
-    return true;
+    return const SafetyCheckDecision(proceed: true);
   }
 
-  if (!context.mounted) return false;
-  if (check.alerts.isEmpty) return true;
+  if (!context.mounted) return const SafetyCheckDecision(proceed: false);
+  if (check.alerts.isEmpty) return const SafetyCheckDecision(proceed: true);
 
-  final hasCritical = check.hasCriticalAlerts;
-  final proceed = await showDialog<bool>(
+  final decision = await showDialog<SafetyCheckDecision>(
     context: context,
     barrierDismissible: false,
     builder: (dialogContext) => _SafetyShieldDialog(
       medicationName: medicationName,
       check: check!,
-      hasCritical: hasCritical,
+      hasCritical: check.hasCriticalAlerts,
     ),
   );
 
-  return proceed == true;
+  return decision ?? const SafetyCheckDecision(proceed: false);
 }
 
 class _SafetyShieldDialog extends StatelessWidget {
@@ -122,26 +129,106 @@ class _SafetyShieldDialog extends StatelessWidget {
       ),
       actions: hasCritical
           ? [
-              // Critical → the only way out is cancel; shield stays closed.
-              SizedBox(
-                width: double.maxFinite,
-                child: FilledButton.icon(
-                  onPressed: () => Navigator.of(context).pop(false),
-                  icon: const Icon(Icons.close_rounded, size: 18),
-                  label: const Text('فهمت، مش هكمل الحجز'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.dangerText,
-                    foregroundColor: Colors.white,
+              if (check.alerts.any((a) =>
+                  a.category == 'PregnancyContraindication' ||
+                  a.id == 'PREG_CONTRAINDICATION')) ...[
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: double.maxFinite,
+                      child: FilledButton.icon(
+                        onPressed: () => Navigator.of(context)
+                            .pop(const SafetyCheckDecision(proceed: false)),
+                        icon: const Icon(Icons.close_rounded, size: 18),
+                        label: const Text('فهمت، مش هكمل الحجز'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.dangerText,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.maxFinite,
+                      child: OutlinedButton.icon(
+                        onPressed: () async {
+                          final confirm = await showDialog<bool>(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              title: const Row(
+                                children: [
+                                  Icon(Icons.family_restroom_rounded,
+                                      color: Color(0xFFD97706)),
+                                  SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text('تأكيد طلب لفرد آخر بالأسرة',
+                                        style: TextStyle(
+                                            fontSize: 15.5,
+                                            fontWeight: FontWeight.w800)),
+                                  ),
+                                ],
+                              ),
+                              content: const Text(
+                                'إقرار سريري:\nهل تؤكدين أن هذا الدواء مخصص لشخص آخر في العائلة ولن يتم استخدامه من قِبلكِ كحامل؟\n\nسيتم إشعار الصيدلي بذلك في تفاصيل الطلب للتحقق عند التسليم.',
+                                style: TextStyle(fontSize: 13, height: 1.5),
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.of(ctx).pop(false),
+                                  child: const Text('تراجع'),
+                                ),
+                                FilledButton(
+                                  onPressed: () => Navigator.of(ctx).pop(true),
+                                  style: FilledButton.styleFrom(
+                                      backgroundColor: const Color(0xFFD97706)),
+                                  child: const Text('نعم، أؤكد أن الدواء ليس لي'),
+                                ),
+                              ],
+                            ),
+                          );
+                          if (confirm == true && context.mounted) {
+                            Navigator.of(context).pop(const SafetyCheckDecision(
+                                proceed: true, isForFamilyMember: true));
+                          }
+                        },
+                        icon: const Icon(Icons.family_restroom_rounded,
+                            size: 18, color: Color(0xFFD97706)),
+                        label: const Text('الدواء ليس لي (طلب لفرد آخر بالأسرة)',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFFD97706))),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(
+                              color: Color(0xFFD97706), width: 1.5),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ] else ...[
+                SizedBox(
+                  width: double.maxFinite,
+                  child: FilledButton.icon(
+                    onPressed: () => Navigator.of(context)
+                        .pop(const SafetyCheckDecision(proceed: false)),
+                    icon: const Icon(Icons.close_rounded, size: 18),
+                    label: const Text('فهمت، مش هكمل الحجز'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.dangerText,
+                      foregroundColor: Colors.white,
+                    ),
                   ),
                 ),
-              ),
+              ],
             ]
           : [
               Row(
                 children: [
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: () => Navigator.of(context).pop(false),
+                      onPressed: () => Navigator.of(context)
+                          .pop(const SafetyCheckDecision(proceed: false)),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.textSecondary,
                       ),
@@ -151,7 +238,8 @@ class _SafetyShieldDialog extends StatelessWidget {
                   const SizedBox(width: 10),
                   Expanded(
                     child: FilledButton(
-                      onPressed: () => Navigator.of(context).pop(true),
+                      onPressed: () => Navigator.of(context)
+                          .pop(const SafetyCheckDecision(proceed: true)),
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.warningText,
                         foregroundColor: Colors.white,

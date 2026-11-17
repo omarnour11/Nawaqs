@@ -100,7 +100,9 @@ public sealed class GetActiveReservationsQueryHandler(
                 r.DeliveryNotes,
                 r.DeliveryStatus?.ToString(),
                 patient?.Gender,
-                patient?.Age));
+                patient?.Age,
+                patient?.IsPregnant,
+                r.DeliveryNotes?.Contains("الدواء ليس لها") == true));
         }
 
         return result;

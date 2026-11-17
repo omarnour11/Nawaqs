@@ -210,47 +210,82 @@ class _AddFamilyMedicationSheet extends HookConsumerWidget {
             if (suggestions.value.isNotEmpty) ...[
               const SizedBox(height: 8),
               Container(
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF0FDF4),
+                  color: const Color(0xFFF8FAFC),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFBBF7D0)),
+                  border: Border.all(color: const Color(0xFFCBD5E1)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Row(
                       children: [
-                        Icon(Icons.auto_awesome_rounded, size: 14, color: Color(0xFF16A34A)),
+                        Icon(Icons.medication_rounded, size: 16, color: Color(0xFF0F766E)),
                         SizedBox(width: 6),
                         Text(
-                          'اقتراحات ذكية من قاعدة بيانات هيئة الدواء (EDA):',
+                          'أدوية مطابقة:',
                           style: TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF15803D),
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF0F766E),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 6),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: suggestions.value.map((s) {
-                        final label = s.strength != null && s.strength!.isNotEmpty
-                            ? '${s.name} (${s.strength})'
-                            : s.name;
-                        return ActionChip(
-                          avatar: const Icon(Icons.add_circle_outline, size: 14, color: Color(0xFF16A34A)),
-                          label: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                          backgroundColor: Colors.white,
-                          side: const BorderSide(color: Color(0xFF86EFAC)),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                          onPressed: () => applySuggestion(s),
-                        );
-                      }).toList(),
-                    ),
+                    const SizedBox(height: 8),
+                    ...suggestions.value.map((s) {
+                      final hasStrength = s.strength != null && s.strength!.isNotEmpty;
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: InkWell(
+                          onTap: () => applySuggestion(s),
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: const Color(0xFFE2E8F0)),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.add_circle_rounded, size: 18, color: Color(0xFF0F766E)),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    s.name,
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w800,
+                                      color: Color(0xFF0F172A),
+                                    ),
+                                  ),
+                                ),
+                                if (hasStrength) ...[
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF1F5F9),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      s.strength!,
+                                      style: const TextStyle(
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFF334155),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
                   ],
                 ),
               ),

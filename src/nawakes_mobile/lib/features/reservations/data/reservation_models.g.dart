@@ -18,6 +18,7 @@ CreateReservationRequest _$CreateReservationRequestFromJson(
   deliveryLongitude: (json['deliveryLongitude'] as num?)?.toDouble(),
   deliveryContactPhone: json['deliveryContactPhone'] as String?,
   deliveryNotes: json['deliveryNotes'] as String?,
+  isForFamilyMember: json['isForFamilyMember'] as bool? ?? false,
 );
 
 Map<String, dynamic> _$CreateReservationRequestToJson(
@@ -32,6 +33,7 @@ Map<String, dynamic> _$CreateReservationRequestToJson(
   'deliveryLongitude': instance.deliveryLongitude,
   'deliveryContactPhone': instance.deliveryContactPhone,
   'deliveryNotes': instance.deliveryNotes,
+  'isForFamilyMember': instance.isForFamilyMember,
 };
 
 ReservationResponse _$ReservationResponseFromJson(Map<String, dynamic> json) =>

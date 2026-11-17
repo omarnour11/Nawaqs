@@ -406,6 +406,51 @@ class _OrderCard extends HookWidget {
                           ),
                         ],
                       ),
+                      if (reservation.isPatientPregnant == true ||
+                          (reservation.deliveryNotes?.contains('حامل') ?? false)) ...[
+                        const SizedBox(height: 5),
+                        Builder(builder: (_) {
+                          final isForFamily = reservation.isForFamilyMember == true ||
+                              (reservation.deliveryNotes?.contains('ليس لها') ?? false);
+                          final bg = isForFamily ? const Color(0xFFFEF3C7) : const Color(0xFFFEE2E2);
+                          final border = isForFamily ? const Color(0xFFF59E0B) : const Color(0xFFEF4444);
+                          final fg = isForFamily ? const Color(0xFFB45309) : const Color(0xFFB91C1C);
+
+                          return Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: bg,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: border, width: 1),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  isForFamily ? Icons.family_restroom_rounded : Icons.pregnant_woman_rounded,
+                                  size: 13,
+                                  color: fg,
+                                ),
+                                const SizedBox(width: 4),
+                                Flexible(
+                                  child: Text(
+                                    isForFamily
+                                        ? 'مريضة حامل · أفادت: الدواء ليس لها (لفرد آخر بالأسرة)'
+                                        : '⚠️ تنبيه سريري: المريضة حامل — يرجى التأكد من سلامة الدواء',
+                                    style: TextStyle(
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.w800,
+                                      color: fg,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+                      ],
                     ],
                   ),
                 ),
@@ -1175,6 +1220,69 @@ void _showClinicalReviewSheet(BuildContext context, WidgetRef ref, dynamic reser
                   ],
                 ),
                 const SizedBox(height: 16),
+
+                // ── Pregnancy Safety Section ──────────────────────────────────
+                if (reservation.isPatientPregnant == true ||
+                    (reservation.deliveryNotes?.contains('حامل') ?? false)) ...[
+                  Builder(builder: (_) {
+                    final isForFamily = reservation.isForFamilyMember == true ||
+                        (reservation.deliveryNotes?.contains('ليس لها') ?? false);
+                    final bg = isForFamily ? const Color(0xFFFEF3C7) : AppColors.dangerBg;
+                    final border = isForFamily ? const Color(0xFFF59E0B) : AppColors.dangerIcon;
+                    final textFg = isForFamily ? const Color(0xFF92400E) : AppColors.dangerText;
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: bg,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: border, width: 1.5),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                isForFamily
+                                    ? Icons.family_restroom_rounded
+                                    : Icons.pregnant_woman_rounded,
+                                color: textFg,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  isForFamily
+                                      ? 'تنبيه سريري: الحساب لمريضة حامل (طلب لفرد بالأسرة)'
+                                      : 'تحذير سريري حرج: المريضة حامل',
+                                  style: TextStyle(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w900,
+                                    color: textFg,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            isForFamily
+                                ? 'المريضة أقرت بأن: "هذا الدواء ليس لها بل لفرد آخر في الأسرة". يرجى التحقق من المستلم والتأكيد على عدم استخدام الحامل لهذا الدواء.'
+                                : 'المريضة مسجلة كحامل. يرجى مراجعة الصنف المطلوب (${reservation.medicationName}) للتأكد التام من مأمونيته خلال فترة الحمل وتجنب صرف أي أدوية مشوهة للجنين.',
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
+                              color: textFg,
+                              height: 1.4,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                ],
 
                 // ── Allergies Section ─────────────────────────────────────────
                 Container(

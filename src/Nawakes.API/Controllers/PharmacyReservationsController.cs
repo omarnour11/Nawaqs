@@ -270,7 +270,9 @@ public sealed class PharmacyReservationsController(ISender mediator) : Controlle
         dto.DeliveryNotes,
         dto.DeliveryStatus,
         dto.PatientGender,
-        dto.PatientAge);
+        dto.PatientAge,
+        dto.IsPatientPregnant,
+        dto.IsForFamilyMember);
 }
 
 // ── API-layer response & request models ─────────────────────────────────────────
@@ -298,7 +300,9 @@ public sealed record PharmacyReservationResponse(
     string? DeliveryNotes = null,
     string? DeliveryStatus = null,
     string? PatientGender = null,
-    int? PatientAge = null);
+    int? PatientAge = null,
+    bool? IsPatientPregnant = null,
+    bool? IsForFamilyMember = null);
 
 public sealed record CancelByPharmacyRequest(string? Reason);
 

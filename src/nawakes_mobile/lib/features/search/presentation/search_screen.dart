@@ -51,8 +51,8 @@ String _timeAgo(DateTime utc) {
 (ChipTone, String) availabilityOf(PharmacySearchResultDto r) {
   if (r.status != 'InStock') return (ChipTone.danger, 'غير متاح');
   final q = r.quantity;
-  if (q <= 4) return (ChipTone.warning, 'محدود · $q وحدة');
-  return (ChipTone.success, 'متاح');
+  if (q <= 4) return (ChipTone.warning, 'كمية محدودة');
+  return (ChipTone.success, 'متوفر');
 }
 
 // ─── Main Screen ─────────────────────────────────────────────────────────────

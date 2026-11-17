@@ -85,7 +85,8 @@ public sealed class ReservationsController(ISender mediator) : ControllerBase
                 request.DeliveryLatitude,
                 request.DeliveryLongitude,
                 request.DeliveryContactPhone,
-                request.DeliveryNotes),
+                request.DeliveryNotes,
+                request.IsForFamilyMember),
             cancellationToken);
         return CreatedAtAction(nameof(Create), new { id = dto.Id }, ToResponse(dto));
     }
@@ -187,7 +188,8 @@ public sealed record CreateReservationRequest(
     double? DeliveryLatitude = null,
     double? DeliveryLongitude = null,
     string? DeliveryContactPhone = null,
-    string? DeliveryNotes = null);
+    string? DeliveryNotes = null,
+    bool IsForFamilyMember = false);
 
 public sealed record CreateBatchReservationItemRequest(
     Guid InventoryItemId,
@@ -196,7 +198,8 @@ public sealed record CreateBatchReservationItemRequest(
     double? DeliveryLatitude = null,
     double? DeliveryLongitude = null,
     string? DeliveryContactPhone = null,
-    string? DeliveryNotes = null);
+    string? DeliveryNotes = null,
+    bool IsForFamilyMember = false);
 
 public sealed record CreateBatchReservationRequest(
     IReadOnlyList<CreateBatchReservationItemRequest> Items,

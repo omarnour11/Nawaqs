@@ -65,14 +65,19 @@ public sealed class CreateReservationCommandHandler(
         }
 
         // 2.3 Pregnancy Safety Guard: teratogenic drugs contraindicated in pregnancy
+        PatientClinicalSummaryDto? patientSummary = null;
         if (userDirectory is not null)
         {
             var summaries = await userDirectory.GetClinicalSummariesAsync([currentUser.UserId], cancellationToken);
-            if (summaries.TryGetValue(currentUser.UserId, out var patientSummary) && patientSummary.IsPregnant == true)
+            summaries.TryGetValue(currentUser.UserId, out patientSummary);
+            if (patientSummary?.IsPregnant == true)
             {
                 if (ClinicalSafetyRules.IsContraindicatedInPregnancy(item.MedicationName))
                 {
-                    throw new ConflictException($"هذا الدواء ({item.MedicationName}) محظور تماماً أثناء فترة الحمل لما يسببه من تشوهات جنينية ومخاطر صحية جسيمة. يُرجى مراجعة الطبيب المعالج فوراً.");
+                    if (!request.IsForFamilyMember)
+                    {
+                        throw new ConflictException($"هذا الدواء ({item.MedicationName}) غير آمن ومحظر استخدامه أثناء الحمل لما يسببه من مخاطر صحية وتشوهات للجنين. إذا كان الدواء مخصصاً لفرد آخر في العائلة (وليس لكِ)، يرجى تحديد خيار 'الدواء ليس لي'.");
+                    }
                 }
             }
         }
@@ -103,6 +108,17 @@ public sealed class CreateReservationCommandHandler(
             cropUrl = $"data:image/jpeg;base64,{Convert.ToBase64String(cropBytes)}";
         }
 
+        var finalDeliveryNotes = request.DeliveryNotes;
+        if (patientSummary?.IsPregnant == true)
+        {
+            var pregnancyTag = request.IsForFamilyMember
+                ? "[تنبيه سريري: الحساب لمريضة حامل — وأفادت بأن 'الدواء ليس لها بل لفرد آخر بالأسرة']"
+                : "[تنبيه سريري: المريضة حامل]";
+            finalDeliveryNotes = string.IsNullOrWhiteSpace(finalDeliveryNotes)
+                ? pregnancyTag
+                : $"{pregnancyTag} - {finalDeliveryNotes}";
+        }
+
         var reservation = new Reservation
         {
             UserId                = currentUser.UserId,
@@ -118,7 +134,7 @@ public sealed class CreateReservationCommandHandler(
             DeliveryLatitude      = request.DeliveryLatitude,
             DeliveryLongitude     = request.DeliveryLongitude,
             DeliveryContactPhone  = request.DeliveryContactPhone,
-            DeliveryNotes         = request.DeliveryNotes,
+            DeliveryNotes         = finalDeliveryNotes,
             DeliveryStatus        = request.FulfillmentType == Domain.Enums.FulfillmentType.Delivery ? Domain.Enums.DeliveryStatus.Pending : null,
             PaymentStatus         = request.FulfillmentType == Domain.Enums.FulfillmentType.Delivery ? "CashOnDelivery" : "Unpaid",
             PaymentProvider       = request.FulfillmentType == Domain.Enums.FulfillmentType.Delivery ? "Cash" : null

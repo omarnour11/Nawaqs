@@ -19,6 +19,7 @@ class DeliveryDetailsSheet extends HookConsumerWidget {
   final double distanceKm;
   final double? latitude;
   final double? longitude;
+  final bool isForFamilyMember;
 
   const DeliveryDetailsSheet({
     super.key,
@@ -30,6 +31,7 @@ class DeliveryDetailsSheet extends HookConsumerWidget {
     required this.distanceKm,
     this.latitude,
     this.longitude,
+    this.isForFamilyMember = false,
   });
 
   static Future<ReservationResponse?> show(
@@ -42,6 +44,7 @@ class DeliveryDetailsSheet extends HookConsumerWidget {
     required double distanceKm,
     double? latitude,
     double? longitude,
+    bool isForFamilyMember = false,
   }) {
     return showModalBottomSheet<ReservationResponse>(
       context: context,
@@ -56,6 +59,7 @@ class DeliveryDetailsSheet extends HookConsumerWidget {
         distanceKm: distanceKm,
         latitude: latitude,
         longitude: longitude,
+        isForFamilyMember: isForFamilyMember,
       ),
     );
   }
@@ -637,6 +641,7 @@ class DeliveryDetailsSheet extends HookConsumerWidget {
                         deliveryLongitude: effectiveLng,
                         deliveryContactPhone: phoneCtrl.text.trim(),
                         deliveryNotes: notes,
+                        isForFamilyMember: isForFamilyMember,
                       );
 
                       final resp = await ref.read(apiClientProvider).createReservation(req);

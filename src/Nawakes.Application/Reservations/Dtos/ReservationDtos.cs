@@ -53,5 +53,7 @@ public sealed record PharmacyReservationDto(
     string? DeliveryNotes = null,
     string? DeliveryStatus = null,
     string? PatientGender = null,
-    int? PatientAge = null
+    int? PatientAge = null,
+    bool? IsPatientPregnant = null,
+    bool? IsForFamilyMember = null
 );

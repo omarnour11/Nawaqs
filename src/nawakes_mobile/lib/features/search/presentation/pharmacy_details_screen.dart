@@ -99,8 +99,8 @@ class PharmacyDetailsScreen extends HookConsumerWidget {
     final inStock = item.status == 'InStock';
     final (availLabel, availTone) = inStock
         ? (item.quantity <= 4
-            ? 'مخزون محدود · ${item.quantity} وحدة'
-            : 'متاح · ${item.quantity} وحدة',
+            ? 'كمية محدودة'
+            : 'متوفر',
             item.quantity <= 4 ? ChipTone.warning : ChipTone.success)
         : ('غير متاح حاليًا', ChipTone.danger);
     final trust = (item.trustScore / 100).clamp(0.0, 1.0);
@@ -164,7 +164,9 @@ class PharmacyDetailsScreen extends HookConsumerWidget {
                             Expanded(
                               child: Text(
                                 inStock
-                                    ? '${item.quantity > 0 ? item.quantity : 5}+ وحدة مُبلّغ عنها قريبًا'
+                                    ? (item.quantity <= 4
+                                        ? 'كمية محدودة مسجلة بالصيدلية'
+                                        : 'متوفر ومسجل بالصيدلية')
                                     : 'الصيدلية مبلّغة إنه غير متاح',
                                 style: const TextStyle(
                                     fontSize: 14.5, fontWeight: FontWeight.w700),
@@ -248,13 +250,13 @@ class PharmacyDetailsScreen extends HookConsumerWidget {
                       if (inStock && item.supportsDelivery) ...[
                         OutlinedButton.icon(
                           onPressed: () async {
-                            final allowed = await guardReservationWithSafetyCheck(
+                            final decision = await guardReservationWithSafetyCheck(
                               context,
                               ref,
                               inventoryItemId: item.inventoryItemId,
                               medicationName: item.medicationName,
                             );
-                            if (!allowed || !context.mounted) return;
+                            if (!decision.proceed || !context.mounted) return;
 
                             final deliveryResp = await DeliveryDetailsSheet.show(
                               context,
@@ -263,6 +265,7 @@ class PharmacyDetailsScreen extends HookConsumerWidget {
                               medicationName: item.medicationName,
                               medicationPrice: item.price > 0 ? item.price : 45.0,
                               distanceKm: item.distanceKm,
+                              isForFamilyMember: decision.isForFamilyMember,
                             );
                             if (deliveryResp != null && context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -292,18 +295,18 @@ class PharmacyDetailsScreen extends HookConsumerWidget {
                         child: FilledButton.icon(
                           onPressed: inStock && !reservationState.isLoading
                               ? () async {
-                                  final allowed =
+                                  final decision =
                                       await guardReservationWithSafetyCheck(
                                     context,
                                     ref,
                                     inventoryItemId: item.inventoryItemId,
                                     medicationName: item.medicationName,
                                   );
-                                  if (!allowed || !context.mounted) return;
+                                  if (!decision.proceed || !context.mounted) return;
                                   ref
                                       .read(reservationControllerProvider
                                           .notifier)
-                                      .reserveItem(item.inventoryItemId);
+                                      .reserveItem(item.inventoryItemId, isForFamilyMember: decision.isForFamilyMember);
                                 }
                               : null,
                           icon: reservationState.isLoading

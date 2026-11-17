@@ -24,8 +24,8 @@ String _formatDistance(double km) {
 (ChipTone, String) _availabilityOf(PharmacySearchResultDto r) {
   if (r.status != 'InStock') return (ChipTone.danger, 'غير متاح');
   final q = r.quantity;
-  if (q <= 4) return (ChipTone.warning, 'محدود · $q وحدة');
-  return (ChipTone.success, 'متاح');
+  if (q <= 4) return (ChipTone.warning, 'كمية محدودة');
+  return (ChipTone.success, 'متوفر');
 }
 
 /// كل النتايج — كامل قائمة نتائج دواء واحد بنفس ستايل الراو.

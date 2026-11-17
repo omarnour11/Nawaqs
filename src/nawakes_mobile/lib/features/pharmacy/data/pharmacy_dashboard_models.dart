@@ -41,6 +41,8 @@ class PharmacyReservationResponse {
   final String? patientGender;
   final int? patientAge;
   final String? prescriptionCropUrl;
+  final bool? isPatientPregnant;
+  final bool? isForFamilyMember;
 
   PharmacyReservationResponse({
     required this.id,
@@ -66,6 +68,8 @@ class PharmacyReservationResponse {
     this.patientGender,
     this.patientAge,
     this.prescriptionCropUrl,
+    this.isPatientPregnant,
+    this.isForFamilyMember,
   });
 
   factory PharmacyReservationResponse.fromJson(Map<String, dynamic> json) =>

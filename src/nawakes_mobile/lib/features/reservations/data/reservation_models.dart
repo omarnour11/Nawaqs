@@ -13,6 +13,7 @@ class CreateReservationRequest {
   final double? deliveryLongitude;
   final String? deliveryContactPhone;
   final String? deliveryNotes;
+  final bool isForFamilyMember;
 
   CreateReservationRequest({
     required this.inventoryItemId,
@@ -24,6 +25,7 @@ class CreateReservationRequest {
     this.deliveryLongitude,
     this.deliveryContactPhone,
     this.deliveryNotes,
+    this.isForFamilyMember = false,
   });
 
   factory CreateReservationRequest.fromJson(Map<String, dynamic> json) =>
