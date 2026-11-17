@@ -1023,10 +1023,13 @@ class _ApiClient implements ApiClient {
 
   @override
   Future<PharmacyReservationResponse> completePharmacyReservation(
-    String id,
-  ) async {
+    String id, {
+    String? reservationCode,
+  }) async {
     final _extra = <String, dynamic>{};
-    final queryParameters = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{
+      if (reservationCode != null) r'code': reservationCode,
+    };
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
     final _options = _setStreamType<PharmacyReservationResponse>(

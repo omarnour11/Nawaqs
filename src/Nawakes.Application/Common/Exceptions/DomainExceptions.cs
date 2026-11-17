@@ -6,3 +6,5 @@ public sealed class NotFoundException(string name, object key)
 public sealed class ConflictException(string message) : Exception(message);
 
 public sealed class ForbiddenException(string message) : Exception(message);
+
+public sealed class BadRequestException(string message) : Exception(message);

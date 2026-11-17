@@ -8,6 +8,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:nawakes_mobile/core/config.dart';
 import 'package:nawakes_mobile/core/network/secure_storage_provider.dart';
 import 'package:nawakes_mobile/features/auth/data/auth_models.dart';
+import 'package:nawakes_mobile/features/auth/presentation/auth_controller.dart';
 import 'package:nawakes_mobile/features/search/data/search_models.dart';
 import 'package:nawakes_mobile/features/reservations/data/reservation_models.dart';
 import 'package:nawakes_mobile/features/reports/data/report_models.dart';
@@ -168,7 +169,10 @@ abstract class ApiClient {
   Future<List<PharmacyReservationResponse>> getPharmacyReservations();
 
   @PATCH("/pharmacy/reservations/{id}/complete")
-  Future<PharmacyReservationResponse> completePharmacyReservation(@Path("id") String id);
+  Future<PharmacyReservationResponse> completePharmacyReservation(
+    @Path("id") String id, {
+    @Query("code") String? reservationCode,
+  });
 
   @PATCH("/pharmacy/reservations/{id}/ready")
   Future<PharmacyReservationResponse> markReservationReady(@Path("id") String id);
@@ -495,6 +499,13 @@ Dio dio(Ref ref) {
                 ? retryError
                 : DioException(requestOptions: opts, error: retryError));
           }
+        } else {
+          // Token refresh failed or revoked. Purge stale session tokens and transition auth state.
+          await storage.delete(key: 'jwt_token');
+          await storage.delete(key: 'refresh_token');
+          await storage.delete(key: 'user_role');
+          await storage.delete(key: 'user_id');
+          ref.read(authControllerProvider.notifier).expireSession();
         }
       }
       handler.next(e);

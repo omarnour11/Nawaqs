@@ -44,6 +44,11 @@ public sealed class ExceptionHandlingMiddleware(
             await WriteProblemAsync(context, StatusCodes.Status401Unauthorized,
                 "Unauthorized", ex.Message, logLevel: LogLevel.Warning);
         }
+        catch (BadRequestException ex)
+        {
+            await WriteProblemAsync(context, StatusCodes.Status400BadRequest,
+                "Bad Request", ex.Message, logLevel: LogLevel.Warning);
+        }
         catch (InvalidOperationException ex)
         {
             await WriteProblemAsync(context, StatusCodes.Status400BadRequest,

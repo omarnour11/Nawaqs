@@ -45,6 +45,12 @@ android {
         versionName = flutter.versionName
     }
 
+    packaging {
+        jniLibs {
+            useLegacyPackaging = false
+        }
+    }
+
     signingConfigs {
         if (hasReleaseKeystore) {
             create("release") {

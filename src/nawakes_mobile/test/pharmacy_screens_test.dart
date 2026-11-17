@@ -189,7 +189,7 @@ class FakePharmacyApiClient implements ApiClient {
   }
 
   @override
-  Future<PharmacyReservationResponse> completePharmacyReservation(String id) async {
+  Future<PharmacyReservationResponse> completePharmacyReservation(String id, {String? reservationCode}) async {
     lastCompletedReservationId = id;
     final idx = reservationsList.indexWhere((r) => r.id == id);
     if (idx != -1) {

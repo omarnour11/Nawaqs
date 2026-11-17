@@ -77,6 +77,15 @@ class AuthController extends _$AuthController {
     });
   }
 
+  Future<void> expireSession() async {
+    final storage = ref.read(secureStorageProvider);
+    await storage.delete(key: _tokenKey);
+    await storage.delete(key: _refreshKey);
+    await storage.delete(key: _userIdKey);
+    await storage.delete(key: _roleKey);
+    state = const AsyncValue.data(AuthState(status: AuthStatus.unauthenticated));
+  }
+
   Future<void> logout() async {
     final storage = ref.read(secureStorageProvider);
     final refresh = await storage.read(key: _refreshKey);

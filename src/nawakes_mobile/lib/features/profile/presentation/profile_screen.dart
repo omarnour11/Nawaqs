@@ -84,6 +84,15 @@ class ProfileScreen extends HookConsumerWidget {
                   onPressed: () => ref.invalidate(profileControllerProvider),
                   child: const Text('إعادة المحاولة'),
                 ),
+                const SizedBox(height: 8),
+                TextButton.icon(
+                  onPressed: () async {
+                    await ref.read(authControllerProvider.notifier).logout();
+                    if (context.mounted) context.go('/login');
+                  },
+                  icon: const Icon(Icons.logout_rounded, size: 18),
+                  label: const Text('تسجيل الخروج أو الدخول مجدداً'),
+                ),
               ],
             ),
           ),

@@ -1722,7 +1722,7 @@ void _showHandoverVerificationDialog(BuildContext context, WidgetRef ref, dynami
               try {
                 await ref
                     .read(pharmacyReservationsControllerProvider.notifier)
-                    .completeReservation(reservation.id);
+                    .completeReservation(reservation.id, reservationCode: entered);
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(

@@ -34,10 +34,20 @@ builder.Services.AddInfrastructure(builder.Configuration);
 
 // ── CORS ───────────────────────────────────────────────────────────────
 builder.Services.AddCors(opts =>
+{
     opts.AddPolicy("AllowAll", p =>
         p.AllowAnyOrigin()
          .AllowAnyHeader()
-         .AllowAnyMethod()));
+         .AllowAnyMethod());
+
+    opts.AddPolicy("ProductionCors", p =>
+        p.WithOrigins(
+            builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+            ?? ["https://nawaqs.eg", "https://api.nawaqs.eg", "https://nawaqs-website.vercel.app"])
+         .AllowAnyHeader()
+         .AllowAnyMethod()
+         .AllowCredentials());
+});
 
 // ── Controllers ─────────────────────────────────────────────────────────
 builder.Services.AddControllers()
@@ -49,8 +59,18 @@ builder.Services.AddControllers()
 
 // ── JWT Authentication ──────────────────────────────────────────────────
 var jwtSettings = builder.Configuration.GetSection("Jwt");
-var key = Encoding.UTF8.GetBytes(jwtSettings["SecretKey"]
-    ?? throw new InvalidOperationException("JWT SecretKey is not configured."));
+var rawSecretKey = jwtSettings["SecretKey"]
+    ?? throw new InvalidOperationException("JWT SecretKey is not configured.");
+
+if (builder.Environment.IsProduction())
+{
+    if (string.IsNullOrWhiteSpace(rawSecretKey) || rawSecretKey.Contains("REPLACE_WITH") || rawSecretKey.Length < 32)
+    {
+        throw new InvalidOperationException("CRITICAL PRODUCTION SECURITY ERROR: A valid production JWT SecretKey (>= 32 chars) must be provided via environment variable (JWT__SECRETKEY).");
+    }
+}
+
+var key = Encoding.UTF8.GetBytes(rawSecretKey);
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(opts =>
@@ -190,8 +210,6 @@ builder.Services.AddScoped<Nawakes.Application.Common.Interfaces.ICurrentUserSer
 var app = builder.Build();
 
 // ── Middleware pipeline ──────────────────────────────────────────────────
-app.UseMiddleware<ExceptionHandlingMiddleware>();
-
 // Serilog request logging enriched with ClientIp and UserId without sensitive search PII
 app.UseSerilogRequestLogging(opts =>
 {
@@ -206,16 +224,33 @@ app.UseSerilogRequestLogging(opts =>
     };
 });
 
+app.UseMiddleware<ExceptionHandlingMiddleware>();
+
 app.UseRouting();
 
-app.UseCors("AllowAll");
-
-app.UseSwagger();
-app.UseSwaggerUI(opts =>
+if (app.Environment.IsDevelopment())
 {
-    opts.SwaggerEndpoint("/swagger/v1/swagger.json", "Nawakes API v1");
-    opts.RoutePrefix = "swagger";
-});
+    app.UseCors("AllowAll");
+    app.UseSwagger();
+    app.UseSwaggerUI(opts =>
+    {
+        opts.SwaggerEndpoint("/swagger/v1/swagger.json", "Nawakes API v1");
+        opts.RoutePrefix = "swagger";
+    });
+}
+else
+{
+    app.UseCors("ProductionCors");
+    if (app.Configuration.GetValue<bool>("Swagger:EnabledInProd"))
+    {
+        app.UseSwagger();
+        app.UseSwaggerUI(opts =>
+        {
+            opts.SwaggerEndpoint("/swagger/v1/swagger.json", "Nawakes API v1");
+            opts.RoutePrefix = "swagger";
+        });
+    }
+}
 
 if (!app.Environment.IsDevelopment())
 {

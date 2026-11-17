@@ -19,8 +19,8 @@ class AppConfig {
   AppConfig._();
 
   static const int apiPort = 5001;
-  static const int lanPort = 5000;
-  static const String lanHost = '192.168.1.4';
+  static const int lanPort = 5001;
+  static const String lanHost = '192.168.1.5';
   static const String loopbackHost = '127.0.0.1';
 
   static String currentHost = loopbackHost;

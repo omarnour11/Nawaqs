@@ -12,11 +12,11 @@ class PaymobConfig {
   final bool isSandbox;
 
   const PaymobConfig({
-    this.apiKey = 'ZXlKaGJHY2lPaUpJVXpJMU5pSjkuZXlKMGVYQWlPaUpLVjFRaUxDSmhiR2NpT2lKSVV6STFOaUo5',
-    this.cardIntegrationId = 4782011,
-    this.walletIntegrationId = 4782012,
-    this.iframeId = 892015,
-    this.hmacSecret = '4F90A5C2D90E11EFA08B0242AC120002',
+    this.apiKey = '',
+    this.cardIntegrationId = 0,
+    this.walletIntegrationId = 0,
+    this.iframeId = 0,
+    this.hmacSecret = '',
     this.isSandbox = true,
   });
 

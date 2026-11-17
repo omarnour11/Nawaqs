@@ -52,6 +52,18 @@ public sealed class CompleteReservationCommandHandler(
             throw new ConflictException("انتهت صلاحية الحجز تلقائياً ولا يمكن استلامه.");
         }
 
+        // Verify patient pickup OTP code if set on the reservation
+        if (!string.IsNullOrWhiteSpace(reservation.ReservationCode))
+        {
+            var expected = NormalizeCode(reservation.ReservationCode);
+            var actual = NormalizeCode(request.ReservationCode);
+
+            if (string.IsNullOrWhiteSpace(actual) || !string.Equals(expected, actual, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new BadRequestException("كود استلام الدواء (OTP) غير صحيح أو لم يتم إدخاله. يرجى مراجعة المريض.");
+            }
+        }
+
         reservation.Status = ReservationStatus.Completed;
         reservation.CompletedAt = DateTime.UtcNow;
 
@@ -106,6 +118,12 @@ public sealed class CompleteReservationCommandHandler(
             reservation.ExpiresAt,
             reservation.CreatedAt,
             reservation.ReservationCode);
+    }
+
+    private static string NormalizeCode(string? code)
+    {
+        if (string.IsNullOrWhiteSpace(code)) return string.Empty;
+        return code.Trim().Replace("-", "").Replace(" ", "");
     }
 }
 

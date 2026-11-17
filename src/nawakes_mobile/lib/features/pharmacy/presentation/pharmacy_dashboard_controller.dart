@@ -13,9 +13,9 @@ class PharmacyReservationsController extends _$PharmacyReservationsController {
     return await client.getPharmacyReservations();
   }
 
-  Future<void> completeReservation(String id) async {
+  Future<void> completeReservation(String id, {String? reservationCode}) async {
     final client = ref.read(apiClientProvider);
-    await client.completePharmacyReservation(id);
+    await client.completePharmacyReservation(id, reservationCode: reservationCode);
     ref.invalidateSelf();
     // Also invalidate inventory since complete changes status to OutOfStock
     ref.invalidate(pharmacyInventoryControllerProvider);

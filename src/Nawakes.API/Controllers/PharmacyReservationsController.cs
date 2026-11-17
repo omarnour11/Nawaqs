@@ -38,18 +38,22 @@ public sealed class PharmacyReservationsController(ISender mediator) : Controlle
         return Ok(dtos.Select(ToResponse).ToList());
     }
 
-    /// <summary>Mark a reservation as sold (completed). Frees inventory item as OutOfStock.</summary>
+    /// <summary>Mark a reservation as sold (completed) after verifying patient pickup code (OTP).</summary>
     [HttpPatch("{id:guid}/complete")]
     [ProducesResponseType(typeof(PharmacyReservationResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<ActionResult<PharmacyReservationResponse>> Complete(
         Guid id,
+        [FromBody] CompleteReservationRequest? request,
+        [FromQuery] string? code,
         CancellationToken cancellationToken)
     {
-        var dto = await mediator.Send(new CompleteReservationCommand(id), cancellationToken);
+        var pickupCode = request?.ReservationCode ?? code;
+        var dto = await mediator.Send(new CompleteReservationCommand(id, pickupCode), cancellationToken);
         return Ok(new PharmacyReservationResponse(
             dto.Id,
             dto.PatientDisplayName,
@@ -297,6 +301,8 @@ public sealed record PharmacyReservationResponse(
     int? PatientAge = null);
 
 public sealed record CancelByPharmacyRequest(string? Reason);
+
+public sealed record CompleteReservationRequest(string? ReservationCode);
 
 public sealed record ClinicalRejectRequest(
     string Reason,
