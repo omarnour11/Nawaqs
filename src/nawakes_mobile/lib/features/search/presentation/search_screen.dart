@@ -24,6 +24,7 @@ import 'package:nawakes_mobile/features/search/presentation/prescription_basket_
 import 'package:nawakes_mobile/features/search/presentation/batch_search_results_screen.dart';
 import 'package:nawakes_mobile/core/network/api_response_models.dart';
 import 'package:nawakes_mobile/features/search/presentation/medication_equivalents_card.dart';
+import 'package:nawakes_mobile/features/search/presentation/medication_equivalents_sheet.dart';
 import 'package:nawakes_mobile/features/search/presentation/prescription_scanner_hud_screen.dart';
 import 'package:nawakes_mobile/features/search/presentation/widgets/home_catalog_view.dart';
 import 'package:nawakes_mobile/core/ui/nawaqss_brand_widgets.dart';
@@ -731,6 +732,45 @@ class SearchScreen extends HookConsumerWidget {
                             style: TextStyle(
                                 fontSize: 16, fontWeight: FontWeight.w800),
                           ),
+                          if (results != null && results.isNotEmpty && searchCtrl.text.trim().isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            InkWell(
+                              onTap: () {
+                                MedicationEquivalentsSheet.show(
+                                  context,
+                                  medicationName: searchCtrl.text.trim(),
+                                );
+                              },
+                              borderRadius: BorderRadius.circular(10),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF0FDF4),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: const Color(0xFF86EFAC)),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.swap_horiz_rounded, size: 18, color: Color(0xFF16A34A)),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        'البحث عن بدائل ومثائل معتمدة بأسعار أوفر لـ ${searchCtrl.text.trim()}',
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                          color: Color(0xFF16A34A),
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    const Icon(Icons.arrow_forward_ios_rounded, size: 12, color: Color(0xFF16A34A)),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: 10),
                           if (searchState.isLoading) ...[
                             const SizedBox(height: 12),
@@ -1297,7 +1337,10 @@ class _EquivalentsLoader extends HookConsumerWidget {
     final response = snapshot.data!;
     if (response.availableEquivalents.isEmpty) return const SizedBox.shrink();
 
-    return MedicationEquivalentsCard(response: response);
+    return MedicationEquivalentsCard(
+      response: response,
+      medicationName: medicationName,
+    );
   }
 }
 

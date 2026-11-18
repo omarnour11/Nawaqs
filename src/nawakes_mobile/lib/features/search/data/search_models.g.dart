@@ -88,6 +88,13 @@ EquivalentPharmacyResultDto _$EquivalentPharmacyResultDtoFromJson(
   distanceKm: (json['distanceKm'] as num).toDouble(),
   inventoryItemId: json['inventoryItemId'] as String,
   priceAtPharmacy: (json['priceAtPharmacy'] as num).toDouble(),
+  strength: json['strength'] as String?,
+  dosageForm: json['dosageForm'] as String?,
+  commercialNameAr: json['commercialNameAr'] as String?,
+  isExactBioequivalent: json['isExactBioequivalent'] as bool? ?? true,
+  priceDifferenceEGP: (json['priceDifferenceEGP'] as num?)?.toDouble() ?? 0.0,
+  matchCategory: json['matchCategory'] as String?,
+  inStock: json['inStock'] as bool? ?? true,
 );
 
 Map<String, dynamic> _$EquivalentPharmacyResultDtoToJson(
@@ -102,6 +109,13 @@ Map<String, dynamic> _$EquivalentPharmacyResultDtoToJson(
   'distanceKm': instance.distanceKm,
   'inventoryItemId': instance.inventoryItemId,
   'priceAtPharmacy': instance.priceAtPharmacy,
+  'strength': instance.strength,
+  'dosageForm': instance.dosageForm,
+  'commercialNameAr': instance.commercialNameAr,
+  'isExactBioequivalent': instance.isExactBioequivalent,
+  'priceDifferenceEGP': instance.priceDifferenceEGP,
+  'matchCategory': instance.matchCategory,
+  'inStock': instance.inStock,
 };
 
 OriginalMedicationInfoDto _$OriginalMedicationInfoDtoFromJson(
@@ -113,6 +127,8 @@ OriginalMedicationInfoDto _$OriginalMedicationInfoDtoFromJson(
   dosageForm: json['dosageForm'] as String?,
   officialPriceEGP: (json['officialPriceEGP'] as num?)?.toDouble(),
   isAvailableNearby: json['isAvailableNearby'] as bool,
+  commercialNameAr: json['commercialNameAr'] as String?,
+  manufacturer: json['manufacturer'] as String?,
 );
 
 Map<String, dynamic> _$OriginalMedicationInfoDtoToJson(
@@ -124,6 +140,8 @@ Map<String, dynamic> _$OriginalMedicationInfoDtoToJson(
   'dosageForm': instance.dosageForm,
   'officialPriceEGP': instance.officialPriceEGP,
   'isAvailableNearby': instance.isAvailableNearby,
+  'commercialNameAr': instance.commercialNameAr,
+  'manufacturer': instance.manufacturer,
 };
 
 MedicationEquivalentsResponse _$MedicationEquivalentsResponseFromJson(
@@ -134,18 +152,42 @@ MedicationEquivalentsResponse _$MedicationEquivalentsResponseFromJson(
       : OriginalMedicationInfoDto.fromJson(
           json['original'] as Map<String, dynamic>,
         ),
-  availableEquivalents: (json['availableEquivalents'] as List<dynamic>)
-      .map(
+  availableEquivalents: (json['availableEquivalents'] as List<dynamic>?)
+          ?.map(
+            (e) => EquivalentPharmacyResultDto.fromJson(e as Map<String, dynamic>),
+          )
+          .toList() ??
+      [],
+  legalDisclaimer: json['legalDisclaimer'] as String? ?? '',
+  isActiveIngredientSearch: json['isActiveIngredientSearch'] as bool? ?? false,
+  activeIngredient: json['activeIngredient'] as String?,
+  activeIngredientAr: json['activeIngredientAr'] as String?,
+  totalRegisteredInEgypt: (json['totalRegisteredInEgypt'] as num?)?.toInt() ?? 0,
+  bioequivalents: (json['bioequivalents'] as List<dynamic>?)
+      ?.map(
         (e) => EquivalentPharmacyResultDto.fromJson(e as Map<String, dynamic>),
       )
       .toList(),
-  legalDisclaimer: json['legalDisclaimer'] as String,
+  therapeuticAlternatives: (json['therapeuticAlternatives'] as List<dynamic>?)
+      ?.map(
+        (e) => EquivalentPharmacyResultDto.fromJson(e as Map<String, dynamic>),
+      )
+      .toList(),
 );
 
 Map<String, dynamic> _$MedicationEquivalentsResponseToJson(
   MedicationEquivalentsResponse instance,
 ) => <String, dynamic>{
-  'original': instance.original,
-  'availableEquivalents': instance.availableEquivalents,
+  'original': instance.original?.toJson(),
+  'availableEquivalents':
+      instance.availableEquivalents.map((e) => e.toJson()).toList(),
   'legalDisclaimer': instance.legalDisclaimer,
+  'isActiveIngredientSearch': instance.isActiveIngredientSearch,
+  'activeIngredient': instance.activeIngredient,
+  'activeIngredientAr': instance.activeIngredientAr,
+  'totalRegisteredInEgypt': instance.totalRegisteredInEgypt,
+  'bioequivalents':
+      instance.bioequivalents?.map((e) => e.toJson()).toList(),
+  'therapeuticAlternatives':
+      instance.therapeuticAlternatives?.map((e) => e.toJson()).toList(),
 };

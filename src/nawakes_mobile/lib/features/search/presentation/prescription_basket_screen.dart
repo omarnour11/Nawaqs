@@ -7,6 +7,7 @@ import 'package:nawakes_mobile/core/network/api_response_models.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
 import 'package:nawakes_mobile/core/ui/nawaqss_brand_widgets.dart';
 import 'package:nawakes_mobile/features/search/presentation/batch_search_results_screen.dart';
+import 'package:nawakes_mobile/features/search/presentation/medication_equivalents_sheet.dart';
 import 'package:nawakes_mobile/core/utils/arabic_digits.dart';
 
 class PrescriptionBasketItem {
@@ -488,22 +489,55 @@ class PrescriptionBasketScreen extends HookConsumerWidget {
 
                               const Divider(height: 20, color: AppColors.hairline),
 
-                              // Bottom row: Quantity counter
+                              // Bottom row: Equivalents button & Quantity counter
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                   const Flexible(
-                                     child: Text(
-                                    'الكمية المطلوبة:',
-                                       overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.textDark,
+                                  InkWell(
+                                    onTap: () {
+                                      MedicationEquivalentsSheet.show(
+                                        context,
+                                        medicationName: item.tradeName,
+                                      );
+                                    },
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFF0FDF4),
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(color: const Color(0xFF86EFAC)),
+                                      ),
+                                      child: const Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.swap_horiz_rounded, size: 16, color: Color(0xFF16A34A)),
+                                          SizedBox(width: 4),
+                                          Text(
+                                            'البدائل والمثائل',
+                                            style: TextStyle(
+                                              fontSize: 11.5,
+                                              fontWeight: FontWeight.w700,
+                                              color: Color(0xFF16A34A),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                     ),
-                                   ),
-                                  Container(
+                                  ),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Text(
+                                        'الكمية:',
+                                        style: TextStyle(
+                                          fontSize: 12.5,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.textDark,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Container(
                                     decoration: BoxDecoration(
                                       color: Colors.grey.shade100,
                                       borderRadius: BorderRadius.circular(10),
@@ -535,6 +569,8 @@ class PrescriptionBasketScreen extends HookConsumerWidget {
                                         ),
                                       ],
                                     ),
+                                  ),
+                                    ],
                                   ),
                                 ],
                               ),

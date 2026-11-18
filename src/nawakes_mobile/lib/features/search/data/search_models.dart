@@ -83,6 +83,16 @@ class EquivalentPharmacyResultDto {
   final double distanceKm;
   final String inventoryItemId;
   final double priceAtPharmacy;
+  final String? strength;
+  final String? dosageForm;
+  final String? commercialNameAr;
+  @JsonKey(defaultValue: true)
+  final bool isExactBioequivalent;
+  @JsonKey(defaultValue: 0.0)
+  final double priceDifferenceEGP;
+  final String? matchCategory;
+  @JsonKey(defaultValue: true)
+  final bool inStock;
 
   EquivalentPharmacyResultDto({
     required this.equivalentTradeName,
@@ -94,6 +104,13 @@ class EquivalentPharmacyResultDto {
     required this.distanceKm,
     required this.inventoryItemId,
     required this.priceAtPharmacy,
+    this.strength,
+    this.dosageForm,
+    this.commercialNameAr,
+    this.isExactBioequivalent = true,
+    this.priceDifferenceEGP = 0.0,
+    this.matchCategory,
+    this.inStock = true,
   });
 
   factory EquivalentPharmacyResultDto.fromJson(Map<String, dynamic> json) =>
@@ -109,6 +126,8 @@ class OriginalMedicationInfoDto {
   final String? dosageForm;
   final double? officialPriceEGP;
   final bool isAvailableNearby;
+  final String? commercialNameAr;
+  final String? manufacturer;
 
   OriginalMedicationInfoDto({
     required this.tradeName,
@@ -117,6 +136,8 @@ class OriginalMedicationInfoDto {
     this.dosageForm,
     this.officialPriceEGP,
     required this.isAvailableNearby,
+    this.commercialNameAr,
+    this.manufacturer,
   });
 
   factory OriginalMedicationInfoDto.fromJson(Map<String, dynamic> json) =>
@@ -129,11 +150,25 @@ class MedicationEquivalentsResponse {
   final OriginalMedicationInfoDto? original;
   final List<EquivalentPharmacyResultDto> availableEquivalents;
   final String legalDisclaimer;
+  @JsonKey(defaultValue: false)
+  final bool isActiveIngredientSearch;
+  final String? activeIngredient;
+  final String? activeIngredientAr;
+  @JsonKey(defaultValue: 0)
+  final int totalRegisteredInEgypt;
+  final List<EquivalentPharmacyResultDto>? bioequivalents;
+  final List<EquivalentPharmacyResultDto>? therapeuticAlternatives;
 
   MedicationEquivalentsResponse({
     this.original,
     required this.availableEquivalents,
     required this.legalDisclaimer,
+    this.isActiveIngredientSearch = false,
+    this.activeIngredient,
+    this.activeIngredientAr,
+    this.totalRegisteredInEgypt = 0,
+    this.bioequivalents,
+    this.therapeuticAlternatives,
   });
 
   factory MedicationEquivalentsResponse.fromJson(Map<String, dynamic> json) =>

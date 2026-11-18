@@ -14,6 +14,7 @@ import 'package:nawakes_mobile/core/location/location_service.dart';
 import 'package:nawakes_mobile/features/search/presentation/nearby_products_provider.dart';
 import 'package:nawakes_mobile/features/search/presentation/widgets/nearby_pharmacy_options_sheet.dart';
 import 'package:nawakes_mobile/features/search/presentation/widgets/mandatory_location_prompt_dialog.dart';
+import 'package:nawakes_mobile/features/search/presentation/medication_equivalents_sheet.dart';
 import 'package:nawakes_mobile/core/utils/arabic_digits.dart';
 
 /// The El-Ezaby-styled Home Catalog View for Nawakes.
@@ -218,6 +219,12 @@ class _HomeCatalogViewState extends ConsumerState<HomeCatalogView> {
                 gradientColors: [const Color(0xFF0F766E), const Color(0xFF14B8A6)],
                 icon: Icons.health_and_safety_rounded,
                 mascot: const NuqousMascot.celebrating(height: 68),
+                onTap: () {
+                  MedicationEquivalentsSheet.show(
+                    context,
+                    medicationName: 'Concor 5mg',
+                  );
+                },
               ),
             ],
           ),

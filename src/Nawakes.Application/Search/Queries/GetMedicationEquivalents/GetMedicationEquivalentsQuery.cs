@@ -6,12 +6,19 @@ public sealed record GetMedicationEquivalentsQuery(
     string MedicationName,
     double Lat,
     double Lng,
-    decimal RadiusKm) : IRequest<MedicationEquivalentsResponse>;
+    decimal RadiusKm = 10,
+    bool IncludeTherapeuticAlternatives = true) : IRequest<MedicationEquivalentsResponse>;
 
 public sealed record MedicationEquivalentsResponse(
     OriginalMedicationInfo? Original,
     IReadOnlyList<EquivalentPharmacyResult> AvailableEquivalents,
-    string LegalDisclaimer);
+    string LegalDisclaimer,
+    bool IsActiveIngredientSearch = false,
+    string? ActiveIngredient = null,
+    string? ActiveIngredientAr = null,
+    int TotalRegisteredInEgypt = 0,
+    IReadOnlyList<EquivalentPharmacyResult>? Bioequivalents = null,
+    IReadOnlyList<EquivalentPharmacyResult>? TherapeuticAlternatives = null);
 
 public sealed record OriginalMedicationInfo(
     string TradeName,
@@ -19,7 +26,9 @@ public sealed record OriginalMedicationInfo(
     string? Strength,
     string? DosageForm,
     decimal? OfficialPriceEGP,
-    bool IsAvailableNearby);
+    bool IsAvailableNearby,
+    string? CommercialNameAr = null,
+    string? Manufacturer = null);
 
 public sealed record EquivalentPharmacyResult(
     string EquivalentTradeName,
@@ -30,4 +39,11 @@ public sealed record EquivalentPharmacyResult(
     string PharmacyName,
     double DistanceKm,
     Guid InventoryItemId,
-    decimal PriceAtPharmacy);
+    decimal PriceAtPharmacy,
+    string? Strength = null,
+    string? DosageForm = null,
+    string? CommercialNameAr = null,
+    bool IsExactBioequivalent = true,
+    decimal PriceDifferenceEGP = 0,
+    string? MatchCategory = "ExactBioequivalent",
+    bool InStock = true);

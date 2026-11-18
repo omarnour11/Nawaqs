@@ -39,6 +39,15 @@ public sealed class SuggestMedicationsQueryHandler(IApplicationDbContext context
 
         if (isArabic)
         {
+            // Check for Arabic active generic ingredients matching prefix (e.g. باراسيتامول, بيسوبرولول)
+            var arabicGenerics = new[]
+            {
+                "باراسيتامول", "بيسوبرولول", "أموكسيسيلين", "ديكلوفيناك", "إيبوبروفين",
+                "أوميبرازول", "إيزوميبرازول", "بانتوبرازول", "أزيثروميسين", "سيتريزين",
+                "لوراتادين", "ميتفورمين", "أتورفاستاتين", "روسوفاستاتين", "سيلدينافيل",
+                "أملوديبين", "فالسارتان"
+            }.Where(g => g.Contains(rawPrefix) || g.Contains(normPrefix)).ToList();
+
             // For Arabic queries, prioritize master EDA EgyptianDrugRegistry's CommercialNameAr (commercial_name_ar)
             var registryArabicNames = await context.EgyptianDrugRegistry
                 .AsNoTracking()
@@ -54,8 +63,10 @@ public sealed class SuggestMedicationsQueryHandler(IApplicationDbContext context
                 .Take(request.Take)
                 .ToListAsync(cancellationToken);
 
-            if (registryArabicNames.Count >= request.Take)
-                return registryArabicNames!;
+            var combinedArabic = arabicGenerics.Concat(registryArabicNames!).Distinct().Take(request.Take).ToList();
+
+            if (combinedArabic.Count >= request.Take)
+                return combinedArabic;
 
             // Also check inventory if any items were entered in Arabic
             var inventoryArabic = await context.InventoryItems
@@ -67,15 +78,26 @@ public sealed class SuggestMedicationsQueryHandler(IApplicationDbContext context
                 .ThenBy(i => i.MedicationName)
                 .Select(i => i.MedicationName)
                 .Distinct()
-                .Take(request.Take - registryArabicNames.Count)
+                .Take(request.Take - combinedArabic.Count)
                 .ToListAsync(cancellationToken);
 
-            return registryArabicNames!
+            return combinedArabic
                 .Concat(inventoryArabic)
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .Take(request.Take)
                 .ToList();
         }
+
+        // Active scientific ingredients matching prefix
+        var matchingActiveIngredients = await context.EgyptianDrugRegistry
+            .AsNoTracking()
+            .Where(d => d.ActiveIngredient != null &&
+                        d.ActiveIngredientNormalized != null &&
+                        (d.ActiveIngredientNormalized.StartsWith(prefix) || d.ActiveIngredientNormalized.Contains(prefix)))
+            .Select(d => d.ActiveIngredient!)
+            .Distinct()
+            .Take(3)
+            .ToListAsync(cancellationToken);
 
         // 1. In-stock inventory from approved pharmacies (highest immediate utility for Latin/English)
         var inventoryNames = await context.InventoryItems
@@ -109,6 +131,7 @@ public sealed class SuggestMedicationsQueryHandler(IApplicationDbContext context
 
         // Deduplicate case-insensitively preserving order
         var result = inventoryNames
+            .Concat(matchingActiveIngredients)
             .Concat(registryNames)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .Take(request.Take)
