@@ -159,7 +159,7 @@ public sealed class ReservationConfiguration : IEntityTypeConfiguration<Reservat
         builder.HasIndex(r => new { r.UserId, r.Status });
         builder.HasIndex(r => new { r.PharmacyId, r.Status });
         builder.HasIndex(r => r.ExpiresAt).HasFilter("[Status] = 0");
-        builder.HasIndex(r => r.ReservationCode).IsUnique().HasFilter("[ReservationCode] IS NOT NULL");
+        builder.HasIndex(r => r.ReservationCode).HasFilter("[ReservationCode] IS NOT NULL");
     }
 }
 

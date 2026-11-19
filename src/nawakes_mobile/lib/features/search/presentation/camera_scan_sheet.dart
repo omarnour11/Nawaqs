@@ -289,7 +289,7 @@ class CameraScanSheet extends HookConsumerWidget {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Text(
-                  '🔒 يُرسل للسيرفر جزء داخل الإطار فقط (Gemini) — باقي الصورة لا يُحفظ',
+                  '🔒 معالجة مشفرة وآمنة عبر الذكاء الاصطناعي الطبي لنواقص — باقي الصورة لا يُحفظ',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: Colors.white, fontSize: 12, height: 1.5),
                 ),

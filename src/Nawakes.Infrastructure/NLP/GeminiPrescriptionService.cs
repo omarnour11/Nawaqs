@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Nawakes.Application.Common.Interfaces;
 using Nawakes.Application.Common.Models;
+using Nawakes.Domain.Common;
 
 namespace Nawakes.Infrastructure.NLP;
 
@@ -131,7 +132,7 @@ public sealed class GeminiPrescriptionService : IGeminiPrescriptionService
         }
 
         var imagePart = new { inlineData = new { mimeType = "image/jpeg", data = jpegBase64 } };
-        return GenerateMedicationsAsync(BuildVisionPrompt(ocrHintText), imagePart, cancellationToken);
+        return ExecuteVisionEnsembleAsync(imagePart, ocrHintText, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -155,7 +156,7 @@ public sealed class GeminiPrescriptionService : IGeminiPrescriptionService
         var base64 = Convert.ToBase64String(imageBytes);
         var mime = string.IsNullOrWhiteSpace(contentType) ? "image/jpeg" : contentType;
         var imagePart = new { inlineData = new { mimeType = mime, data = base64 } };
-        return GenerateMedicationsAsync(BuildVisionPrompt(ocrHintText), imagePart, cancellationToken);
+        return ExecuteVisionEnsembleAsync(imagePart, ocrHintText, cancellationToken);
     }
 
     private static string BuildTextPrompt(string rawText) => $$"""
@@ -191,32 +192,25 @@ public sealed class GeminiPrescriptionService : IGeminiPrescriptionService
             Do not include markdown fences or any other text.
             """;
 
-    private static string BuildVisionPrompt(string? ocrHintText)
+    private static string BuildClinicalVisionPrompt(string? ocrHintText)
     {
         var hint = string.IsNullOrWhiteSpace(ocrHintText)
             ? "No on-device OCR hint."
             : ocrHintText.Trim();
         return $$"""
-            You are an expert Egyptian clinical pharmacist and medical handwriting OCR specialist operating under Egyptian Personal Data Protection Law No. 151 of 2020.
+            You are an expert Egyptian clinical pharmacologist and medical handwriting OCR specialist operating under Egyptian Personal Data Protection Law No. 151 of 2020.
             CRITICAL PRIVACY & PII REDACTION RULES:
-            - NEVER extract, transcribe, or output any patient name, doctor/prescriber name, clinic name, hospital name, syndicate number, national ID, age, phone number, address, or Egyptian city/governorate (e.g. Cairo, Alexandria, Giza, Mansoura, Tanta, Dokki, Mohandessin, Smouha, Maadi, etc.).
+            - NEVER extract, transcribe, or output any patient name, doctor/prescriber name, clinic name, hospital name, syndicate number, national ID, age, phone number, address, or Egyptian city/governorate.
             - Strictly ignore, suppress, and redact all personal identifiable information (PII / PHI).
-            - Extract ONLY the prescribed medication lines (e.g. Concor, Augmentin, Panadol, Glucophage, Cataflam, Controloc, Brufen, Sirdalud, Plavix, Otrivin, etc.).
+            - Extract ONLY the prescribed medication lines (e.g. Concor, Augmentin, Panadol, Glucophage, Cataflam, Controloc, Brufen, Sirdalud, Plavix, Otrivin, Zurcal, Epizithro, Ganaton, etc.).
 
             CRITICAL CLINICAL PHARMACOLOGY & ROUTE INVARIANTS:
-            - Accurately determine the true dosageForm:
-              * Drops (نقط/قطرة):
-                - Nasal Drops (e.g. Otrivin, Afrin, Nasivin, Rhinocort, Xylometazoline, Physiomer, Sinomarin) -> dosageForm: 'نقط للأنف' or 'بخاخ أنفي'. Route in rawSig MUST be nasal ('في الأنف' / 'نقط بالأنف' / 'في كل فتحة أنف'), NEVER oral ('في الفم') and NEVER 'قرص'!
-                - Eye Drops (e.g. Tobradex, Tobrex, Vigamox, Systane, Tears Guard, Polyfresh, Fresh Tears, Ciprocin) -> dosageForm: 'قطرة للعين'. Route in rawSig: 'في العين'.
-                - Ear Drops (e.g. Otal, Viotic, Otocalm, Waxsol) -> dosageForm: 'قطرة للأذن'. Route in rawSig: 'في الأذن'.
-                - Oral Drops (e.g. Vi-Syneral, Cebion, Iron drops) -> dosageForm: 'نقط بالفم'.
-              * Syrups & Suspensions (e.g. Megamox susp, Catafly, Augmentin syrup, Brufen syrup) -> dosageForm: 'شراب' or 'معلق'. Units in rawSig: 'ملعقة' or 'سم' / 'مل' (NEVER 'قرص'!).
-              * Inhalers & Sprays (e.g. Ventolin, Symbicort, Seretide) -> dosageForm: 'بخاخ استنشاق'. Units in rawSig: 'بخة'.
-              * Topicals (e.g. Betnovate, Fucidin, Kenacomb, Mebo, Daktarin, Voltaren Emulgel) -> dosageForm: 'مرهم' / 'كريم' / 'جل'. Route: 'دهان موضعي'.
-              * Suppositories (e.g. Dolphin, Cetal supp) -> dosageForm: 'لبوس'.
-              * Injections (e.g. Cefotax, Ceftriaxone, Voltaren amp) -> dosageForm: 'حقن / أمبول'.
-              * Tablets/Capsules (e.g. Concor tab, Panadol tab, Augmentin 1g tab, Omeprazole cap) -> dosageForm: 'أقراص' or 'كبسولات'.
-            - Put complete dosage directions reflecting the true dosage form and anatomical route in 'rawSig'.
+            - Nasal Drops (e.g. Otrivin, Afrin, Nasivin, Rhinocort, Physiomer, Sinomarin) -> dosageForm: 'نقط للأنف' or 'بخاخ أنفي'. Route in rawSig: nasal ('في الأنف' / 'نقط بالأنف'), NEVER oral ('في الفم') and NEVER 'قرص'!
+            - Eye Drops (e.g. Tobradex, Tobrex, Vigamox, Systane, Tears Guard, Polyfresh, Fresh Tears, Ciprocin) -> dosageForm: 'قطرة للعين'. Route: 'في العين'.
+            - Ear Drops (e.g. Otal, Viotic, Otocalm, Waxsol) -> dosageForm: 'قطرة للأذن'. Route: 'في الأذن'.
+            - Syrups & Suspensions (e.g. Megamox susp, Catafly, Augmentin syrup, Brufen syrup) -> dosageForm: 'شراب' or 'معلق'. Units in rawSig: 'ملعقة' or 'سم' / 'مل' (NEVER 'قرص'!).
+            - Topicals (e.g. Betnovate, Fucidin, Kenacomb, Mebo, Daktarin, Voltaren Emulgel) -> dosageForm: 'مرهم' / 'كريم' / 'جل'. Route: 'دهان موضعي'.
+            - Tablets/Capsules (e.g. Concor tab, Panadol tab, Augmentin 1g tab, Omeprazole cap) -> dosageForm: 'أقراص' or 'كبسولات'.
 
             CRITICAL LOOK-ALIKE HANDWRITING DISAMBIGUATION (EGYPTIAN PRACTICE):
             - 'Zurcal 40' / 'Zorcal 40' is Pantoprazole 40mg (stomach acid PPI). NEVER confuse with 'Zolam' (Alprazolam 0.5mg)! Zolam only exists in 0.25mg/0.5mg, so any 40mg or 20mg indication is Zurcal.
@@ -225,7 +219,12 @@ public sealed class GeminiPrescriptionService : IGeminiPrescriptionService
             - 'Xilone Forte Syp' is Prednisolone syrup.
             - 'Sedatiss Syp' is Pentoxyverine syrup.
 
-            On-device OCR hint (preliminary optical tokens — verify against image):
+            CRITICAL QUANTITY EXTRACTION RULES (STRICT CLINICAL PROTOCOL):
+            - ONLY extract a quantity > 1 if the prescription explicitly specifies a count or number of packs (e.g. 'No. 30', 'N 2', 'علبتين', 'x 2', '2 boxes', 'pack of 2').
+            - If NO specific package quantity is explicitly written by the doctor, ALWAYS return "quantity": 1.
+            - NEVER invent or guess package counts. 30 tablets taken 1/day is 1 box (quantity: 1), NOT 30 boxes.
+
+            On-device OCR hint:
             ---
             {{hint}}
             ---
@@ -246,6 +245,383 @@ public sealed class GeminiPrescriptionService : IGeminiPrescriptionService
             }
             Do not include markdown fences or any other text.
             """;
+    }
+
+    private static string BuildOpticalVisionPrompt(string? ocrHintText)
+    {
+        var hint = string.IsNullOrWhiteSpace(ocrHintText)
+            ? "No on-device OCR hint."
+            : ocrHintText.Trim();
+        return $$"""
+            You are a forensic medical handwriting transcriptionist specialized in Egyptian Arabic and English cursive prescription scripts.
+            Your task is to optically transcribe every medication line written by the physician with maximum literal accuracy without guessing.
+            Strictly ignore doctor headers, patient names, clinics, and phone numbers.
+            Focus on deciphering cursive medical abbreviations:
+            - Tab / Cap / Syp / Susp / Amp / Drop / Lot / Cream / Oint
+            - Exact brand names as written in Egyptian pharmacies (e.g. Concor, Augmentin, Controloc, Zurcal, Cataflam, Brufen, Epizithro, Ganaton).
+            - Quantities: Only transcribe explicit pack counts (e.g., #2, x2, علبتين); otherwise default strictly to 1.
+
+            On-device OCR hint:
+            ---
+            {{hint}}
+            ---
+
+            Output ONLY valid JSON matching this schema:
+            {
+              "medications": [
+                {
+                  "tradeName": "string",
+                  "genericName": "string or null",
+                  "strength": "string or null",
+                  "dosageForm": "string or null",
+                  "rawSig": "string or null",
+                  "quantity": 1,
+                  "confidence": 0.95
+                }
+              ]
+            }
+            Do not include markdown fences or any other text.
+            """;
+    }
+
+    private static string BuildQuantityAndFormVisionPrompt(string? ocrHintText)
+    {
+        var hint = string.IsNullOrWhiteSpace(ocrHintText)
+            ? "No on-device OCR hint."
+            : ocrHintText.Trim();
+        return $$"""
+            You are a clinical pharmacy auditor specialized in dosage forms, directions (Sig), and dispensing quantities in Egyptian prescriptions.
+            Verify each prescribed medication line:
+            1. Form & Route: Ensure drops (Eye/Ear/Nasal) are NEVER classified as tablets. Ensure syrups are classified as 'شراب / معلق'.
+            2. Dosage Directions (Sig): Decode instructions (e.g. 'قرص قبل الإفطار', '5 سم كل 12 ساعة', 'نقطتان في كل فتحة أنف').
+            3. STRICT DISPENSING QUANTITY:
+               - The number of packages/boxes to dispense must be 1 UNLESS the physician explicitly wrote a higher package count (e.g., '2 علبة', 'N 2', 'x 2').
+               - Daily dose instructions (e.g. '1x3' or 'لمدة شهر') indicate treatment duration, NOT number of boxes! Return quantity: 1 unless multiple boxes are explicitly demanded.
+               - Never return quantity 0 or negative. Always 1 unless explicitly specified.
+
+            On-device OCR hint:
+            ---
+            {{hint}}
+            ---
+
+            Output ONLY valid JSON matching this schema:
+            {
+              "medications": [
+                {
+                  "tradeName": "string",
+                  "genericName": "string or null",
+                  "strength": "string or null",
+                  "dosageForm": "string or null",
+                  "rawSig": "string or null",
+                  "quantity": 1,
+                  "confidence": 0.95
+                }
+              ]
+            }
+            Do not include markdown fences or any other text.
+            """;
+    }
+
+    private async Task<GeminiPrescriptionResult> ExecuteVisionEnsembleAsync(
+        object imagePart,
+        string? ocrHintText,
+        CancellationToken cancellationToken)
+    {
+        if (!IsDailyQuotaAvailable())
+        {
+            _logger.LogInformation(
+                "Nawaqss Medical AI daily quota reached or circuit breaker active ({Count}/{Limit}). Failing over to local engine.",
+                GetDailyRequestCount(), _options.DailyQuotaLimit);
+            return new GeminiPrescriptionResult(null, null, null, 0m, false, true);
+        }
+
+        var models = new List<string>();
+        if (!string.IsNullOrWhiteSpace(_options.VisionModel))
+        {
+            models.Add(_options.VisionModel);
+        }
+        if (_options.FallbackVisionModels is { Length: > 0 })
+        {
+            foreach (var fb in _options.FallbackVisionModels)
+            {
+                if (!models.Contains(fb, StringComparer.OrdinalIgnoreCase))
+                {
+                    models.Add(fb);
+                }
+            }
+        }
+        if (models.Count == 0)
+        {
+            models.Add("gemini-1.5-flash");
+        }
+
+        var model1 = models[0];
+        var model2 = models.Count > 1 ? models[1] : models[0];
+        var model3 = models.Count > 2 ? models[2] : (models.Count > 1 ? models[1] : models[0]);
+
+        var prompt1 = BuildClinicalVisionPrompt(ocrHintText);
+        var prompt2 = BuildOpticalVisionPrompt(ocrHintText);
+        var prompt3 = BuildQuantityAndFormVisionPrompt(ocrHintText);
+
+        _logger.LogInformation(
+            "Launching 3-pass parallel vision ensemble for prescription deciphering on models: [{M1}, {M2}, {M3}]",
+            model1, model2, model3);
+
+        // Execute 3 complementary vision passes in parallel
+        var pass1Task = ExecuteSingleVisionPassAsync(prompt1, imagePart, model1, 0.0, cancellationToken);
+        var pass2Task = ExecuteSingleVisionPassAsync(prompt2, imagePart, model2, 0.15, cancellationToken);
+        var pass3Task = ExecuteSingleVisionPassAsync(prompt3, imagePart, model3, 0.0, cancellationToken);
+
+        var results = await Task.WhenAll(pass1Task, pass2Task, pass3Task);
+        return MergeEnsembleConsensus(results, _logger);
+    }
+
+    private async Task<GeminiPrescriptionResult> ExecuteSingleVisionPassAsync(
+        string prompt,
+        object imagePart,
+        string model,
+        double temperature,
+        CancellationToken cancellationToken)
+    {
+        var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent";
+        object[] parts = [imagePart, new { text = prompt }];
+
+        var isThinking = model.Contains("gemini-3", StringComparison.OrdinalIgnoreCase) &&
+                         !string.IsNullOrWhiteSpace(_options.ThinkingLevel);
+
+        object genConfig = isThinking
+            ? new
+            {
+                temperature,
+                responseMimeType = "application/json",
+                thinkingConfig = new { thinkingLevel = _options.ThinkingLevel }
+            }
+            : new
+            {
+                temperature,
+                responseMimeType = "application/json"
+            };
+
+        var requestBody = new
+        {
+            contents = new[] { new { parts } },
+            generationConfig = genConfig
+        };
+
+        const int maxRetries = 1;
+        HttpResponseMessage? response = null;
+
+        for (int attempt = 0; attempt <= maxRetries; attempt++)
+        {
+            try
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Post, url)
+                {
+                    Content = JsonContent.Create(requestBody)
+                };
+                request.Headers.TryAddWithoutValidation("x-goog-api-key", _options.ApiKey);
+
+                response = await _httpClient.SendAsync(request, cancellationToken);
+
+                if (response.StatusCode is HttpStatusCode.TooManyRequests or HttpStatusCode.ServiceUnavailable)
+                {
+                    if (attempt < maxRetries)
+                    {
+                        var delay = GetRetryDelay(response, attempt);
+                        response.Dispose();
+                        response = null;
+                        await Task.Delay(delay, cancellationToken);
+                        continue;
+                    }
+                    _logger.LogWarning("Pass on model {Model} returned {Status} after retry.", model, response.StatusCode);
+                    return new GeminiPrescriptionResult(null, null, null, 0m, false, true);
+                }
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogWarning("Pass on model {Model} failed with {Status}.", model, response.StatusCode);
+                    return new GeminiPrescriptionResult(null, null, null, 0m, false, false);
+                }
+
+                var jsonDoc = await response.Content.ReadFromJsonAsync<JsonDocument>(cancellationToken: cancellationToken);
+                var root = jsonDoc?.RootElement;
+
+                if (root == null || !root.Value.TryGetProperty("candidates", out var candidates) || candidates.GetArrayLength() == 0)
+                {
+                    return new GeminiPrescriptionResult(null, null, null, 0m, false, false);
+                }
+
+                string? textResponse = null;
+                if (candidates[0].TryGetProperty("content", out var contentEl) &&
+                    contentEl.TryGetProperty("parts", out var partsEl) &&
+                    partsEl.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var part in partsEl.EnumerateArray())
+                    {
+                        if (part.TryGetProperty("text", out var textEl) && !string.IsNullOrWhiteSpace(textEl.GetString()))
+                        {
+                            textResponse = textEl.GetString();
+                            break;
+                        }
+                    }
+                }
+
+                if (string.IsNullOrWhiteSpace(textResponse))
+                {
+                    return new GeminiPrescriptionResult(null, null, null, 0m, false, false);
+                }
+
+                var items = ParseMedicationJson(textResponse);
+                if (items.Count == 0)
+                {
+                    return new GeminiPrescriptionResult(null, null, null, 0m, false, false);
+                }
+
+                IncrementDailyQuota();
+                var primary = items[0];
+                return new GeminiPrescriptionResult(
+                    primary.TradeName,
+                    primary.Strength,
+                    primary.DosageForm,
+                    primary.Confidence,
+                    true,
+                    false,
+                    items);
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogWarning("Pass on model {Model} timed out.", model);
+                return new GeminiPrescriptionResult(null, null, null, 0m, false, false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Unexpected error in pass on model {Model}.", model);
+                return new GeminiPrescriptionResult(null, null, null, 0m, false, false);
+            }
+            finally
+            {
+                response?.Dispose();
+            }
+        }
+
+        return new GeminiPrescriptionResult(null, null, null, 0m, false, false);
+    }
+
+    private static GeminiPrescriptionResult MergeEnsembleConsensus(
+        IReadOnlyList<GeminiPrescriptionResult> results,
+        ILogger logger)
+    {
+        var successful = results.Where(r => r.IsSuccess && r.Medications is { Count: > 0 }).ToList();
+        if (successful.Count == 0)
+        {
+            var fallback = results.FirstOrDefault(r => r.IsSuccess);
+            return fallback ?? new GeminiPrescriptionResult(null, null, null, 0m, false, false);
+        }
+
+        if (successful.Count == 1)
+        {
+            return successful[0];
+        }
+
+        var allItems = new List<GeminiMedicationItem>();
+        foreach (var pass in successful)
+        {
+            if (pass.Medications != null)
+            {
+                allItems.AddRange(pass.Medications);
+            }
+        }
+
+        // Group into clusters by phonetic / normalized drug name
+        var clusters = new List<List<GeminiMedicationItem>>();
+        foreach (var item in allItems)
+        {
+            var norm = DrugNameNormalizer.NormalizeName(item.TradeName);
+            var matchedCluster = clusters.FirstOrDefault(c =>
+                c.Any(existing =>
+                {
+                    var existingNorm = DrugNameNormalizer.NormalizeName(existing.TradeName);
+                    if (existingNorm == norm) return true;
+                    if (existingNorm.StartsWith(norm, StringComparison.Ordinal) || norm.StartsWith(existingNorm, StringComparison.Ordinal)) return true;
+                    var dist = DrugNameNormalizer.DamerauLevenshteinDistance(existingNorm, norm);
+                    return dist <= 2 && Math.Max(existingNorm.Length, norm.Length) >= 4;
+                }));
+
+            if (matchedCluster != null)
+            {
+                matchedCluster.Add(item);
+            }
+            else
+            {
+                clusters.Add([item]);
+            }
+        }
+
+        var consolidatedItems = new List<GeminiMedicationItem>();
+        foreach (var cluster in clusters)
+        {
+            var voteCount = cluster.Count;
+            var bestItem = cluster.OrderByDescending(i => i.Confidence).First();
+            var tradeName = bestItem.TradeName;
+            var genericName = cluster.FirstOrDefault(i => !string.IsNullOrWhiteSpace(i.GenericName))?.GenericName;
+
+            var strength = cluster
+                .Where(i => !string.IsNullOrWhiteSpace(i.Strength))
+                .GroupBy(i => i.Strength!)
+                .OrderByDescending(g => g.Count())
+                .FirstOrDefault()?.Key ?? bestItem.Strength;
+
+            var dosageForm = cluster
+                .Where(i => !string.IsNullOrWhiteSpace(i.DosageForm))
+                .GroupBy(i => i.DosageForm!)
+                .OrderByDescending(g => g.Count())
+                .FirstOrDefault()?.Key ?? bestItem.DosageForm;
+
+            var rawSig = cluster
+                .OrderByDescending(i => i.RawSig?.Length ?? 0)
+                .FirstOrDefault()?.RawSig ?? bestItem.RawSig;
+
+            var baseConf = bestItem.Confidence;
+            var consensusConfidence = voteCount >= 2
+                ? Math.Min(0.99m, Math.Max(0.95m, baseConf + 0.05m))
+                : baseConf;
+
+            // Strict quantity invariant: Quantity > 1 ONLY if multiple passes agree!
+            var qtyVotes = cluster.Select(i => i.Quantity).ToList();
+            var quantity = qtyVotes.Count(q => q > 1) >= 2
+                ? qtyVotes.Where(q => q > 1).GroupBy(q => q).OrderByDescending(g => g.Count()).First().Key
+                : 1;
+
+            (dosageForm, rawSig) = SanitizeClinicalFormAndRoute(tradeName, dosageForm, rawSig);
+
+            consolidatedItems.Add(new GeminiMedicationItem(
+                tradeName,
+                strength,
+                dosageForm,
+                consensusConfidence,
+                quantity,
+                rawSig,
+                genericName));
+        }
+
+        if (consolidatedItems.Count == 0)
+        {
+            return successful[0];
+        }
+
+        var primary = consolidatedItems[0];
+        logger.LogInformation(
+            "Multi-Pass Ensemble Consensus resolved {Count} items across {Passes} passes. Primary: {Primary} (Confidence: {Conf:P0})",
+            consolidatedItems.Count, successful.Count, primary.TradeName, primary.Confidence);
+
+        return new GeminiPrescriptionResult(
+            primary.TradeName,
+            primary.Strength,
+            primary.DosageForm,
+            primary.Confidence,
+            true,
+            false,
+            consolidatedItems);
     }
 
     private async Task<GeminiPrescriptionResult> GenerateMedicationsAsync(
@@ -576,7 +952,9 @@ public sealed class GeminiPrescriptionService : IGeminiPrescriptionService
                     var df = el.TryGetProperty("dosageForm", out var d) ? d.GetString()
                         : (el.TryGetProperty("form", out var f) ? f.GetString() : null);
                     var conf = el.TryGetProperty("confidence", out var c) && c.TryGetDecimal(out var cv) ? cv : 0.95m;
-                    var qty = el.TryGetProperty("quantity", out var q) && q.TryGetInt32(out var qv) && qv > 0 ? qv : 1;
+                    var qty = el.TryGetProperty("quantity", out var q) && q.TryGetInt32(out var qv) && qv > 0
+                        ? (qv <= 5 ? qv : 1)
+                        : 1;
                     var rawSig = el.TryGetProperty("rawSig", out var rs) ? rs.GetString() : null;
                     var generic = el.TryGetProperty("genericName", out var gn) ? gn.GetString() : null;
                     (df, rawSig) = SanitizeClinicalFormAndRoute(name, df, rawSig);

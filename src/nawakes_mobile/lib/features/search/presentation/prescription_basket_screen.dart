@@ -490,8 +490,11 @@ class PrescriptionBasketScreen extends HookConsumerWidget {
                               const Divider(height: 20, color: AppColors.hairline),
 
                               // Bottom row: Equivalents button & Quantity counter
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              Wrap(
+                                alignment: WrapAlignment.spaceBetween,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                runSpacing: 8,
+                                spacing: 8,
                                 children: [
                                   InkWell(
                                     onTap: () {
@@ -538,38 +541,39 @@ class PrescriptionBasketScreen extends HookConsumerWidget {
                                       ),
                                       const SizedBox(width: 6),
                                       Container(
-                                    decoration: BoxDecoration(
-                                      color: Colors.grey.shade100,
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        IconButton(
-                                          icon: const Icon(Icons.remove_rounded, size: 18),
-                                          onPressed: () => updateQuantity(index, -1),
-                                          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-                                          padding: EdgeInsets.zero,
+                                        decoration: BoxDecoration(
+                                          color: Colors.grey.shade100,
+                                          borderRadius: BorderRadius.circular(10),
                                         ),
-                                        Padding(
-                                          padding: const EdgeInsets.symmetric(horizontal: 10),
-                                          child: Text(
-                                            '${item.quantity}',
-                                            style: const TextStyle(
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.bold,
-                                              color: AppColors.textDark,
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            IconButton(
+                                              icon: const Icon(Icons.remove_rounded, size: 18),
+                                              onPressed: () => updateQuantity(index, -1),
+                                              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                              padding: EdgeInsets.zero,
                                             ),
-                                          ),
+                                            Padding(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                                              child: Text(
+                                                '${item.quantity}',
+                                                style: const TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: AppColors.textDark,
+                                                ),
+                                              ),
+                                            ),
+                                            IconButton(
+                                              icon: const Icon(Icons.add_rounded, size: 18, color: AppColors.primary),
+                                              onPressed: () => updateQuantity(index, 1),
+                                              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                              padding: EdgeInsets.zero,
+                                            ),
+                                          ],
                                         ),
-                                        IconButton(
-                                          icon: const Icon(Icons.add_rounded, size: 18, color: AppColors.primary),
-                                          onPressed: () => updateQuantity(index, 1),
-                                          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-                                          padding: EdgeInsets.zero,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
+                                      ),
                                     ],
                                   ),
                                 ],

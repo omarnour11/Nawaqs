@@ -131,8 +131,41 @@ public sealed class MedicationEquivalentsQueryHandlerTests
             Status = InventoryStatus.InStock
         };
 
+        var inventoryItem2 = new InventoryItem
+        {
+            Pharmacy = pharmacy,
+            PharmacyId = pharmacy.Id,
+            MedicationName = "Concor 10mg",
+            MedicationNameNormalized = "CONCOR 10MG",
+            Price = 56.0m,
+            Quantity = 5,
+            Status = InventoryStatus.InStock
+        };
+
+        var inventoryItem3 = new InventoryItem
+        {
+            Pharmacy = pharmacy,
+            PharmacyId = pharmacy.Id,
+            MedicationName = "Panadol 500mg",
+            MedicationNameNormalized = "PANADOL 500MG",
+            Price = 25.0m,
+            Quantity = 8,
+            Status = InventoryStatus.InStock
+        };
+
+        var inventoryItem4 = new InventoryItem
+        {
+            Pharmacy = pharmacy,
+            PharmacyId = pharmacy.Id,
+            MedicationName = "Cetal 500mg",
+            MedicationNameNormalized = "CETAL 500MG",
+            Price = 15.0m,
+            Quantity = 12,
+            Status = InventoryStatus.InStock
+        };
+
         _context.Pharmacies.Add(pharmacy);
-        _context.InventoryItems.Add(inventoryItem);
+        _context.InventoryItems.AddRange(inventoryItem, inventoryItem2, inventoryItem3, inventoryItem4);
         _context.SaveChanges();
     }
 

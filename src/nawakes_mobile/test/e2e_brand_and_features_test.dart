@@ -393,7 +393,7 @@ void main() {
             children: [
               Expanded(
                 child: Text(
-                  'Google Gemini Vision AI • تحليل متعدد الأدوية وفحص الروشتة الذكي',
+                  'الذكاء الاصطناعي الطبي لنواقص • فحص سريري متعدد الأدوية',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),

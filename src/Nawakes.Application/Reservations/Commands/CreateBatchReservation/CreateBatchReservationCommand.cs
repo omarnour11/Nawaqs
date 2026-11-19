@@ -1,4 +1,7 @@
+using System.Security.Cryptography;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
+using Nawakes.Application.Common.Interfaces;
 using Nawakes.Application.Reservations.Commands.CreateReservation;
 using Nawakes.Application.Reservations.Dtos;
 using Nawakes.Domain.Enums;
@@ -30,9 +33,12 @@ public sealed record BatchReservationResultDto(
 
 /// <summary>
 /// Places coordinated 2-hour holds across multiple inventory items (single pharmacy or split-basket across 2 pharmacies).
+/// Groups items by pharmacy so that medications ordered from the SAME pharmacy share ONE single unified reservation pickup code.
 /// Reuses CreateReservationCommand per item to preserve RowVersion optimistic concurrency and Hangfire expiry scheduling.
 /// </summary>
-public sealed class CreateBatchReservationCommandHandler(ISender mediator)
+public sealed class CreateBatchReservationCommandHandler(
+    ISender mediator,
+    IApplicationDbContext context)
     : IRequestHandler<CreateBatchReservationCommand, BatchReservationResultDto>
 {
     public async Task<BatchReservationResultDto> Handle(
@@ -44,31 +50,52 @@ public sealed class CreateBatchReservationCommandHandler(ISender mediator)
             .Select(g => g.First())
             .ToList();
 
+        var itemIds = distinctItems.Select(i => i.InventoryItemId).ToList();
+        var inventoryItems = await context.InventoryItems
+            .AsNoTracking()
+            .Where(i => itemIds.Contains(i.Id))
+            .Select(i => new { i.Id, i.PharmacyId })
+            .ToListAsync(cancellationToken);
+
+        var pharmacyLookup = inventoryItems.ToDictionary(i => i.Id, i => i.PharmacyId);
+
+        // Group batch items by PharmacyId so each pharmacy gets a single unified order code
+        var groupedByPharmacy = distinctItems
+            .GroupBy(i => pharmacyLookup.TryGetValue(i.InventoryItemId, out var pId) ? pId : Guid.NewGuid())
+            .ToList();
+
         var created = new List<ReservationDto>();
         var failed = new List<BatchReservationFailureDto>();
 
-        foreach (var stop in distinctItems)
+        foreach (var pharmacyGroup in groupedByPharmacy)
         {
-            try
-            {
-                var reservation = await mediator.Send(
-                    new CreateReservationCommand(
-                        stop.InventoryItemId,
-                        request.PrescriptionCropUrl,
-                        request.PrescriptionCropBytes,
-                        stop.FulfillmentType,
-                        stop.DeliveryAddress,
-                        stop.DeliveryLatitude,
-                        stop.DeliveryLongitude,
-                        stop.DeliveryContactPhone,
-                        stop.DeliveryNotes),
-                    cancellationToken);
+            // Single unified pickup code shared across all medications from this pharmacy
+            var unifiedPharmacyCode = GenerateCode();
 
-                created.Add(reservation);
-            }
-            catch (Exception ex)
+            foreach (var stop in pharmacyGroup)
             {
-                failed.Add(new BatchReservationFailureDto(stop.InventoryItemId, ex.Message));
+                try
+                {
+                    var reservation = await mediator.Send(
+                        new CreateReservationCommand(
+                            stop.InventoryItemId,
+                            request.PrescriptionCropUrl,
+                            request.PrescriptionCropBytes,
+                            stop.FulfillmentType,
+                            stop.DeliveryAddress,
+                            stop.DeliveryLatitude,
+                            stop.DeliveryLongitude,
+                            stop.DeliveryContactPhone,
+                            stop.DeliveryNotes,
+                            ReservationCode: unifiedPharmacyCode),
+                        cancellationToken);
+
+                    created.Add(reservation);
+                }
+                catch (Exception ex)
+                {
+                    failed.Add(new BatchReservationFailureDto(stop.InventoryItemId, ex.Message));
+                }
             }
         }
 
@@ -76,5 +103,12 @@ public sealed class CreateBatchReservationCommandHandler(ISender mediator)
             created,
             failed,
             failed.Count == 0 && created.Count > 0);
+    }
+
+    private static string GenerateCode()
+    {
+        Span<byte> bytes = stackalloc byte[3];
+        RandomNumberGenerator.Fill(bytes);
+        return $"NWQ-{bytes[0]:X2}{bytes[1]:X2}{bytes[2]:X2}";
     }
 }

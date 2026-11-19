@@ -468,7 +468,7 @@ class _PrescriptionScannerHudScreenState
                           ),
                         ),
                         Text(
-                          'Google Gemini Vision AI • تحليل متعدد الأدوية',
+                          'الذكاء الاصطناعي الطبي لنواقص • فحص سريري متعدد الأدوية',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(

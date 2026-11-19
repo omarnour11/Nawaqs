@@ -135,10 +135,13 @@ GoRouter appRouter(Ref ref) {
         path: '/pass-detail',
         builder: (context, state) {
           final r = state.extra;
-          if (r is! ReservationResponse) {
-            return const PassesScreen();
+          if (r is PassOrderGroup) {
+            return PassDetailScreen(orderGroup: r);
           }
-          return PassDetailScreen(reservation: r);
+          if (r is ReservationResponse) {
+            return PassDetailScreen(reservation: r);
+          }
+          return const PassesScreen();
         },
       ),
       GoRoute(

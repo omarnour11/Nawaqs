@@ -263,41 +263,6 @@ public sealed class GetMedicationEquivalentsQueryHandler(
             bioequivalents.Add(item);
         }
 
-        // 2. Add remaining registered catalog items (even if not currently in stock nearby)
-        var distinctCatalog = allWithActive
-            .GroupBy(d => d.TradeName)
-            .Select(g => g.First())
-            .ToList();
-
-        foreach (var reg in distinctCatalog)
-        {
-            // If already listed via in-stock pharmacy, skip catalog-only entry
-            if (bioequivalents.Any(b => b.EquivalentTradeName.Equals(reg.TradeName, StringComparison.OrdinalIgnoreCase)))
-            {
-                continue;
-            }
-
-            var item = new EquivalentPharmacyResult(
-                reg.TradeName,
-                reg.Manufacturer,
-                reg.OfficialPriceEGP ?? 0m,
-                0m,
-                Guid.Empty,
-                "غير متوفر بصيدلية قريبة حالياً",
-                -1,
-                Guid.Empty,
-                reg.OfficialPriceEGP ?? 0m,
-                reg.Strength,
-                reg.DosageForm,
-                reg.CommercialNameAr,
-                true,
-                0m,
-                "ExactBioequivalent",
-                false);
-
-            bioequivalents.Add(item);
-        }
-
         var allCombined = bioequivalents.Concat(alternatives).ToList();
 
         var originalInfo = new OriginalMedicationInfo(
@@ -440,63 +405,6 @@ public sealed class GetMedicationEquivalentsQueryHandler(
                 bioResults.Add(result);
             else
                 altResults.Add(result);
-        }
-
-        // Add registered bioequivalents even if not in stock locally
-        foreach (var reg in bioCandidates)
-        {
-            if (bioResults.Any(b => b.EquivalentTradeName.Equals(reg.TradeName, StringComparison.OrdinalIgnoreCase)))
-                continue;
-
-            var savingPercent = originalPrice > 0 && reg.OfficialPriceEGP < originalPrice.Value
-                ? Math.Round((originalPrice.Value - reg.OfficialPriceEGP.Value) / originalPrice.Value * 100m, 0)
-                : 0m;
-            var priceDiff = originalPrice > 0 && reg.OfficialPriceEGP < originalPrice.Value
-                ? originalPrice.Value - reg.OfficialPriceEGP.Value
-                : 0m;
-
-            bioResults.Add(new EquivalentPharmacyResult(
-                reg.TradeName,
-                reg.Manufacturer,
-                reg.OfficialPriceEGP ?? 0m,
-                savingPercent,
-                Guid.Empty,
-                "غير متوفر بصيدلية قريبة حالياً",
-                -1,
-                Guid.Empty,
-                reg.OfficialPriceEGP ?? 0m,
-                reg.Strength,
-                reg.DosageForm,
-                reg.CommercialNameAr,
-                true,
-                priceDiff,
-                "ExactBioequivalent",
-                false));
-        }
-
-        // Add registered alternatives
-        foreach (var reg in alternativeCandidates)
-        {
-            if (altResults.Any(a => a.EquivalentTradeName.Equals(reg.TradeName, StringComparison.OrdinalIgnoreCase)))
-                continue;
-
-            altResults.Add(new EquivalentPharmacyResult(
-                reg.TradeName,
-                reg.Manufacturer,
-                reg.OfficialPriceEGP ?? 0m,
-                0m,
-                Guid.Empty,
-                "غير متوفر بصيدلية قريبة حالياً",
-                -1,
-                Guid.Empty,
-                reg.OfficialPriceEGP ?? 0m,
-                reg.Strength,
-                reg.DosageForm,
-                reg.CommercialNameAr,
-                false,
-                0m,
-                "DosageAlternative",
-                false));
         }
 
         var isAvailableNearby = await context.InventoryItems

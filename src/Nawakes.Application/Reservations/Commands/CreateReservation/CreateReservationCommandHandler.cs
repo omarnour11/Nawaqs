@@ -126,7 +126,7 @@ public sealed class CreateReservationCommandHandler(
             PharmacyId            = item.PharmacyId,
             Status                = ReservationStatus.Active,
             ExpiresAt             = expiresAt,
-            ReservationCode       = GenerateCode(),
+            ReservationCode       = !string.IsNullOrWhiteSpace(request.ReservationCode) ? request.ReservationCode : GenerateCode(),
             PrescriptionCropUrl   = cropUrl,
             PrescriptionCropBytes = cropBytes,
             FulfillmentType       = request.FulfillmentType,

@@ -15,4 +15,5 @@ public sealed record CreateReservationCommand(
     double? DeliveryLongitude = null,
     string? DeliveryContactPhone = null,
     string? DeliveryNotes = null,
-    bool IsForFamilyMember = false) : IRequest<ReservationDto>;
+    bool IsForFamilyMember = false,
+    string? ReservationCode = null) : IRequest<ReservationDto>;
