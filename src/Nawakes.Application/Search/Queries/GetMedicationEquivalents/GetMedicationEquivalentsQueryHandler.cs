@@ -56,6 +56,10 @@ public sealed class GetMedicationEquivalentsQueryHandler(
         ["املوديبين"] = "AMLODIPINE",
         ["أملوديبين"] = "AMLODIPINE",
         ["فالسارتان"] = "VALSARTAN",
+        ["إيتوبريد"] = "ITOPRIDE",
+        ["ايتوبريد"] = "ITOPRIDE",
+        ["بريدنيزولون"] = "PREDNISOLONE",
+        ["بنتوكسيفيرين"] = "PENTOXYVERINE",
         ["كلوفاج"] = "METFORMIN"
     };
 
@@ -73,6 +77,9 @@ public sealed class GetMedicationEquivalentsQueryHandler(
         ["OMEPRAZOLE"] = "أوميبرازول",
         ["ESOMEPRAZOLE"] = "إيزوميبرازول",
         ["PANTOPRAZOLE"] = "بانتوبرازول",
+        ["ITOPRIDE"] = "إيتوبريد",
+        ["PREDNISOLONE"] = "بريدنيزولون",
+        ["PENTOXYVERINE"] = "بنتوكسيفيرين",
         ["AZITHROMYCIN"] = "أزيثروميسين",
         ["CETIRIZINE"] = "سيتريزين",
         ["LORATADINE"] = "لوراتادين",

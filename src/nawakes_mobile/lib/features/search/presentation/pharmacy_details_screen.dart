@@ -409,6 +409,7 @@ class PharmacyDetailsScreen extends HookConsumerWidget {
   }
 
   String _formatDistance(double km) {
+    if (km < 0) return '';
     if (km < 1) return '${(km * 1000).round().toArabicDigits()} متر';
     return '${km.toArabicDigits(formatDecimals: true)} كم';
   }

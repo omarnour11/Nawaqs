@@ -10,12 +10,14 @@ import 'package:nawakes_mobile/features/search/data/search_models.dart';
 import 'package:nawakes_mobile/features/search/presentation/pharmacy_details_screen.dart';
 
 String _formatDistance(double km) {
+  if (km < 0) return '';
   if (km < 1) return '${ArabicDigits.convert((km * 1000).round())} متر';
   return '${ArabicDigits.convert(km.toStringAsFixed(1), formatDecimals: true)} كم';
 }
 
-/// Rich interactive bottom sheet for clinical bioequivalents and therapeutic alternatives
-/// by active scientific ingredient (INN), compliant with Egyptian Drug Authority (EDA) rules.
+/// Rich, calm, and senior-friendly bottom sheet for clinical bioequivalents
+/// and therapeutic alternatives by active scientific ingredient (INN),
+/// fully compliant with Egyptian Drug Authority (EDA) standards.
 class MedicationEquivalentsSheet extends HookConsumerWidget {
   final String medicationName;
   final double? lat;
@@ -57,9 +59,10 @@ class MedicationEquivalentsSheet extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final selectedTab = useState(0); // 0: Bioequivalents, 1: Alternatives, 2: All
-    final searchLat = lat ?? 30.0444; // Cairo default or injected coordinate
-    final searchLng = lng ?? 31.2357;
+    // 0: Bioequivalents (المثائل المتطابقة), 1: Alternatives (البدائل والتركيزات), 2: All (الكل)
+    final selectedTab = useState(0);
+    final searchLat = lat ?? 30.0476;
+    final searchLng = lng ?? 31.2365;
 
     final memoFuture = useMemoized(
       () => preloadedResponse != null
@@ -76,9 +79,9 @@ class MedicationEquivalentsSheet extends HookConsumerWidget {
     final snapshot = useFuture(memoFuture);
 
     return DraggableScrollableSheet(
-      initialChildSize: 0.88,
-      minChildSize: 0.5,
-      maxChildSize: 0.95,
+      initialChildSize: 0.90,
+      minChildSize: 0.55,
+      maxChildSize: 0.96,
       builder: (ctx, scrollController) {
         return Container(
           decoration: BoxDecoration(
@@ -86,15 +89,15 @@ class MedicationEquivalentsSheet extends HookConsumerWidget {
             borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.15),
-                blurRadius: 20,
-                offset: const Offset(0, -4),
+                color: Colors.black.withValues(alpha: 0.18),
+                blurRadius: 24,
+                offset: const Offset(0, -6),
               ),
             ],
           ),
           child: Column(
             children: [
-              // Top Drag Handle & Header Bar
+              // Top Drag Handle & Calm Header
               _buildTopHeader(context),
 
               // Content Area
@@ -132,7 +135,7 @@ class MedicationEquivalentsSheet extends HookConsumerWidget {
 
   Widget _buildTopHeader(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      padding: const EdgeInsets.fromLTRB(20, 12, 16, 14),
       decoration: BoxDecoration(
         color: AppColors.isDarkMode ? const Color(0xFF142730) : Colors.white,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
@@ -143,8 +146,8 @@ class MedicationEquivalentsSheet extends HookConsumerWidget {
           // Drag pill
           Center(
             child: Container(
-              width: 44,
-              height: 4.5,
+              width: 48,
+              height: 5,
               decoration: BoxDecoration(
                 color: Colors.grey.shade400,
                 borderRadius: BorderRadius.circular(3),
@@ -155,18 +158,14 @@ class MedicationEquivalentsSheet extends HookConsumerWidget {
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(9),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF0F766E), Color(0xFF14B8A6)],
-                    begin: Alignment.topRight,
-                    end: Alignment.bottomLeft,
-                  ),
+                  color: const Color(0xFF0F766E).withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.swap_horiz_rounded, color: Colors.white, size: 22),
+                child: const Icon(Icons.swap_horiz_rounded, color: Color(0xFF0F766E), size: 24),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -174,16 +173,16 @@ class MedicationEquivalentsSheet extends HookConsumerWidget {
                     const Text(
                       'المثائل والبدائل بالاسم العلمي',
                       style: TextStyle(
-                        fontSize: 16.5,
+                        fontSize: 18,
                         fontWeight: FontWeight.w800,
                         letterSpacing: -0.2,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'بحث مطابق لقاعدة بيانات هيئة الدواء المصرية (EDA)',
+                      'أدوية معتمدة لها نفس الفعالية ومصرح بها من هيئة الدواء (EDA)',
                       style: TextStyle(
-                        fontSize: 11.5,
+                        fontSize: 12,
                         color: AppColors.textSecondary,
                         fontWeight: FontWeight.w500,
                       ),
@@ -193,7 +192,7 @@ class MedicationEquivalentsSheet extends HookConsumerWidget {
               ),
               IconButton(
                 onPressed: () => Navigator.of(context).pop(),
-                icon: const Icon(Icons.close_rounded, size: 22),
+                icon: const Icon(Icons.close_rounded, size: 24),
                 tooltip: 'إغلاق',
               ),
             ],
@@ -209,7 +208,6 @@ class MedicationEquivalentsSheet extends HookConsumerWidget {
     ValueNotifier<int> selectedTab,
     ScrollController scrollController,
   ) {
-    // Partition items
     final bioequivalents = data.bioequivalents ??
         data.availableEquivalents.where((e) => e.isExactBioequivalent).toList();
     final alternatives = data.therapeuticAlternatives ??
@@ -231,31 +229,31 @@ class MedicationEquivalentsSheet extends HookConsumerWidget {
 
     return ListView(
       controller: scrollController,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       children: [
-        // Medication Clinical Header Card
+        // Medication Summary Card
         _buildClinicalHeaderCard(data),
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
 
-        // Tabs
+        // Tabs (Clean, senior-friendly spacing and typography)
         _buildSegmentedTabBar(
           selectedTab: selectedTab,
           bioCount: bioequivalents.length,
           altCount: alternatives.length,
           allCount: allItems.length,
         ),
-        const SizedBox(height: 14),
-
-        // Tab explanation note
-        _buildTabNote(selectedTab.value),
         const SizedBox(height: 12),
 
-        // List of equivalent results
+        // Friendly reassurance note for selected tab
+        _buildTabNote(selectedTab.value),
+        const SizedBox(height: 14),
+
+        // List of equivalent drug cards
         if (displayedList.isEmpty)
           _buildEmptyTabState(selectedTab.value)
         else
           ...displayedList.map((item) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.only(bottom: 14),
                 child: _buildEquivalentCard(context, item, data),
               )),
 
@@ -273,38 +271,61 @@ class MedicationEquivalentsSheet extends HookConsumerWidget {
     final original = data.original;
     final totalEda = data.totalRegisteredInEgypt;
 
+    final displayName = data.isActiveIngredientSearch
+        ? (activeIng ?? medicationName)
+        : (original?.tradeName ?? medicationName);
+
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.isDarkMode ? const Color(0xFF142730) : const Color(0xFFF0FDF4),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF86EFAC).withValues(alpha: 0.6)),
+        border: Border.all(color: const Color(0xFF86EFAC).withValues(alpha: 0.7)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                padding: const EdgeInsets.all(6),
+                padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF16A34A).withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(8),
+                  color: const Color(0xFF16A34A).withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.biotech_rounded, color: Color(0xFF16A34A), size: 20),
+                child: const Icon(Icons.medication_rounded, color: Color(0xFF16A34A), size: 22),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 10),
               Expanded(
-                child: Text(
-                  data.isActiveIngredientSearch
-                      ? 'البحث بالمادة الفعالة: ${data.activeIngredient ?? medicationName}'
-                      : (original?.tradeName ?? medicationName),
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      displayName,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    if (activeIng != null && activeIng.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'المادة الفعالة: $activeIng',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF0F766E),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
               if (totalEda > 0)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: const Color(0xFF16A34A),
                     borderRadius: BorderRadius.circular(20),
@@ -312,7 +333,7 @@ class MedicationEquivalentsSheet extends HookConsumerWidget {
                   child: Text(
                     '${ArabicDigits.convert(totalEda)} مثيل مسجل',
                     style: const TextStyle(
-                      fontSize: 11,
+                      fontSize: 12,
                       fontWeight: FontWeight.w700,
                       color: Colors.white,
                     ),
@@ -320,51 +341,31 @@ class MedicationEquivalentsSheet extends HookConsumerWidget {
                 ),
             ],
           ),
-          if (activeIng != null && activeIng.isNotEmpty) ...[
-            const SizedBox(height: 8),
+          if (original != null && !original.isAvailableNearby) ...[
+            const SizedBox(height: 10),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.9),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppColors.hairline),
+                color: const Color(0xFFFEF3C7),
+                borderRadius: BorderRadius.circular(10),
               ),
-              child: Row(
+              child: const Row(
                 children: [
-                  const Icon(Icons.science_outlined, size: 16, color: AppColors.textSecondary),
-                  const SizedBox(width: 6),
+                  Icon(Icons.info_outline_rounded, size: 18, color: Color(0xFFD97706)),
+                  SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'المادة الفعالة (INN): $activeIng',
-                      style: const TextStyle(
+                      'الدواء المطلوب غير متوفر حالياً — البدائل أدناه لها نفس المفعول الطبي تماماً ومتاحة.',
+                      style: TextStyle(
                         fontSize: 12.5,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
+                        color: Color(0xFF92400E),
+                        height: 1.4,
                       ),
                     ),
                   ),
                 ],
               ),
-            ),
-          ],
-          if (original != null && !original.isAvailableNearby) ...[
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                const Icon(Icons.info_outline_rounded, size: 15, color: Color(0xFFD97706)),
-                const SizedBox(width: 5),
-                const Expanded(
-                  child: Text(
-                    'الدواء المطلوب غير متوفر حالياً في الصيدليات القريبة — البدائل أدناه متوفرة للاستلام الفوري.',
-                    style: TextStyle(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFFB45309),
-                      height: 1.4,
-                    ),
-                  ),
-                ),
-              ],
             ),
           ],
         ],
@@ -426,18 +427,18 @@ class MedicationEquivalentsSheet extends HookConsumerWidget {
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(12),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+        padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 4),
         decoration: BoxDecoration(
           color: isSelected ? AppColors.primary : Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(12),
           boxShadow: isSelected
               ? [
                   BoxShadow(
                     color: AppColors.primary.withValues(alpha: 0.25),
-                    blurRadius: 6,
+                    blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
                 ]
@@ -448,9 +449,9 @@ class MedicationEquivalentsSheet extends HookConsumerWidget {
             Text(
               title,
               style: TextStyle(
-                fontSize: 12,
+                fontSize: 13,
                 fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                color: isSelected ? Colors.white : AppColors.textSecondary,
+                color: isSelected ? Colors.white : AppColors.textPrimary,
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -460,7 +461,7 @@ class MedicationEquivalentsSheet extends HookConsumerWidget {
             Text(
               '(${ArabicDigits.convert(count)})',
               style: TextStyle(
-                fontSize: 10.5,
+                fontSize: 11,
                 fontWeight: FontWeight.bold,
                 color: isSelected ? Colors.white70 : AppColors.textMuted,
               ),
@@ -474,7 +475,7 @@ class MedicationEquivalentsSheet extends HookConsumerWidget {
   Widget _buildTabNote(int tab) {
     if (tab == 0) {
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: const Color(0xFFECFDF5),
           borderRadius: BorderRadius.circular(10),
@@ -482,12 +483,12 @@ class MedicationEquivalentsSheet extends HookConsumerWidget {
         ),
         child: const Row(
           children: [
-            Icon(Icons.check_circle_outline_rounded, size: 16, color: Color(0xFF059669)),
-            SizedBox(width: 6),
+            Icon(Icons.check_circle_outline_rounded, size: 18, color: Color(0xFF059669)),
+            SizedBox(width: 8),
             Expanded(
               child: Text(
                 'المثائل الحيوية: نفس المادة الفعالة بنفس التركيز والشكل الصيدلي (تطابق دوائي معتمد 100%).',
-                style: TextStyle(fontSize: 11.5, color: Color(0xFF065F46), height: 1.4),
+                style: TextStyle(fontSize: 12.5, color: Color(0xFF065F46), height: 1.4),
               ),
             ),
           ],
@@ -495,7 +496,7 @@ class MedicationEquivalentsSheet extends HookConsumerWidget {
       );
     } else if (tab == 1) {
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: const Color(0xFFEFF6FF),
           borderRadius: BorderRadius.circular(10),
@@ -503,12 +504,12 @@ class MedicationEquivalentsSheet extends HookConsumerWidget {
         ),
         child: const Row(
           children: [
-            Icon(Icons.swap_horizontal_circle_outlined, size: 16, color: Color(0xFF2563EB)),
-            SizedBox(width: 6),
+            Icon(Icons.help_outline_rounded, size: 18, color: Color(0xFF2563EB)),
+            SizedBox(width: 8),
             Expanded(
               child: Text(
                 'البدائل العلاجية: تركيزات أو أشكال صيدلية مختلفة — يرجى استشارة الصيدلي أو الطبيب قبل التبديل.',
-                style: TextStyle(fontSize: 11.5, color: Color(0xFF1E40AF), height: 1.4),
+                style: TextStyle(fontSize: 12.5, color: Color(0xFF1E40AF), height: 1.4),
               ),
             ),
           ],
@@ -524,6 +525,10 @@ class MedicationEquivalentsSheet extends HookConsumerWidget {
     MedicationEquivalentsResponse data,
   ) {
     final hasSavings = item.priceSavingPercent > 0;
+    final isActuallyInStock = item.inStock &&
+        item.distanceKm >= 0 &&
+        item.pharmacyId.isNotEmpty &&
+        item.pharmacyId != '00000000-0000-0000-0000-000000000000';
 
     return Container(
       decoration: BoxDecoration(
@@ -532,25 +537,20 @@ class MedicationEquivalentsSheet extends HookConsumerWidget {
         border: Border.all(color: AppColors.hairline),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 8,
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
             offset: const Offset(0, 3),
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Card Header
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: item.isExactBioequivalent
-                  ? const Color(0xFF059669).withValues(alpha: 0.06)
-                  : const Color(0xFF2563EB).withValues(alpha: 0.06),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-            ),
-            child: Row(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Top Row: Trade Name + Reassurance Tag
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
                   child: Column(
@@ -559,18 +559,18 @@ class MedicationEquivalentsSheet extends HookConsumerWidget {
                       Text(
                         item.equivalentTradeName,
                         style: const TextStyle(
-                          fontSize: 15,
+                          fontSize: 17.5,
                           fontWeight: FontWeight.w800,
                           color: AppColors.textPrimary,
                         ),
                       ),
                       if (item.commercialNameAr != null &&
                           item.commercialNameAr != item.equivalentTradeName) ...[
-                        const SizedBox(height: 2),
+                        const SizedBox(height: 3),
                         Text(
                           item.commercialNameAr!,
                           style: const TextStyle(
-                            fontSize: 12.5,
+                            fontSize: 14,
                             fontWeight: FontWeight.w600,
                             color: AppColors.textSecondary,
                           ),
@@ -579,9 +579,8 @@ class MedicationEquivalentsSheet extends HookConsumerWidget {
                     ],
                   ),
                 ),
-                // Category Chip
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
                     color: item.isExactBioequivalent ? const Color(0xFF059669) : const Color(0xFF2563EB),
                     borderRadius: BorderRadius.circular(20),
@@ -590,15 +589,15 @@ class MedicationEquivalentsSheet extends HookConsumerWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        item.isExactBioequivalent ? Icons.verified_rounded : Icons.sync_rounded,
+                        item.isExactBioequivalent ? Icons.verified_rounded : Icons.swap_horiz_rounded,
                         color: Colors.white,
-                        size: 13,
+                        size: 14,
                       ),
                       const SizedBox(width: 4),
                       Text(
                         item.isExactBioequivalent ? 'مثيل متطابق 100%' : 'بديل / تركيز آخر',
                         style: const TextStyle(
-                          fontSize: 11,
+                          fontSize: 11.5,
                           fontWeight: FontWeight.w700,
                           color: Colors.white,
                         ),
@@ -608,243 +607,229 @@ class MedicationEquivalentsSheet extends HookConsumerWidget {
                 ),
               ],
             ),
-          ),
+            const SizedBox(height: 10),
 
-          // Card Body
-          Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            // Form & Strength Row in plain Arabic
+            Row(
               children: [
-                // Strength & Dosage Form
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: [
-                    if (item.strength != null && item.strength!.isNotEmpty)
-                      _buildPill(item.strength!, Icons.fitness_center_rounded),
-                    if (item.dosageForm != null && item.dosageForm!.isNotEmpty)
-                      _buildPill(item.dosageForm!, Icons.medication_liquid_rounded),
-                    if (item.manufacturer != null && item.manufacturer!.isNotEmpty)
-                      _buildPill('إنتاج: ${item.manufacturer!}', Icons.apartment_rounded),
-                  ],
-                ),
-                const SizedBox(height: 12),
-
-                // Price & Savings Row
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: AppColors.fieldBg,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.hairline),
+                if (item.dosageForm != null && item.dosageForm!.isNotEmpty) ...[
+                  Text(
+                    item.dosageForm!,
+                    style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
                   ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                  const Text(' · ', style: TextStyle(color: AppColors.textMuted)),
+                ],
+                if (item.strength != null && item.strength!.isNotEmpty) ...[
+                  Text(
+                    item.strength!,
+                    style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+                  ),
+                  const Text(' · ', style: TextStyle(color: AppColors.textMuted)),
+                ],
+                if (item.manufacturer != null && item.manufacturer!.isNotEmpty)
+                  Text(
+                    'إنتاج ${item.manufacturer!}',
+                    style: const TextStyle(fontSize: 12.5, color: AppColors.textMuted),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Price & Savings Display
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppColors.fieldBg,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  const Text(
+                    'السعر:',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    item.priceAtPharmacy.toArabicPrice(),
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF059669),
+                    ),
+                  ),
+                  const Spacer(),
+                  if (hasSavings)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFECFDF5),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFF10B981)),
+                      ),
+                      child: Text(
+                        'وفر ${ArabicDigits.convert(item.priceSavingPercent.toStringAsFixed(0))}%',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF065F46),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+
+            // Pharmacy Availability & Action Button
+            if (isActuallyInStock) ...[
+              Row(
+                children: [
+                  const Icon(Icons.location_on_rounded, size: 16, color: Color(0xFF059669)),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      '${item.pharmacyName} · ${_formatDistance(item.distanceKm)}',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFECFDF5),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Text(
+                      'متوفر الآن',
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF059669)),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                height: 46,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    final pharmacyItem = PharmacySearchResultDto(
+                      pharmacyId: item.pharmacyId,
+                      pharmacyName: item.pharmacyName,
+                      addressLine: 'بالقرب منك',
+                      phone: '',
+                      trustScore: 4.8,
+                      distanceKm: item.distanceKm,
+                      inventoryItemId: item.inventoryItemId,
+                      medicationName: item.equivalentTradeName,
+                      price: item.priceAtPharmacy,
+                      status: 'InStock',
+                      quantity: 5,
+                      lastUpdatedAt: DateTime.now(),
+                      latitude: 30.0476,
+                      longitude: 31.2365,
+                      officialEdaPriceEgp: item.officialPriceEGP,
+                      priceVariancePercent: item.priceSavingPercent,
+                      isEdaPriceVerified: true,
+                      edaPriceBadgeText: 'تسعيرة جبرية EDA',
+                      supportsDelivery: true,
+                    );
+
+                    context.push(
+                      '/pharmacy-details',
+                      extra: PharmacyDetailsArgs(item: pharmacyItem),
+                    );
+                  },
+                  icon: const Icon(Icons.bookmark_add_rounded, size: 18),
+                  label: const Text(
+                    'احجز الدواء من الصيدلية',
+                    style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.bold),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    elevation: 0,
+                  ),
+                ),
+              ),
+            ] else ...[
+              // Out-of-stock / Registry-only fallback: Zero exception alert button
+              Row(
+                children: [
+                  const Icon(Icons.access_time_rounded, size: 16, color: AppColors.textMuted),
+                  const SizedBox(width: 5),
+                  const Expanded(
+                    child: Text(
+                      'غير متوفر حالياً بالصيدليات القريبة',
+                      style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                height: 46,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    // Safe notification action without invalid navigation
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Row(
                           children: [
-                            const Text(
-                              'سعر الصيدلية (تسعيرة جبرية EDA):',
-                              style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              item.priceAtPharmacy.toArabicPrice(),
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w900,
-                                color: Color(0xFF059669),
+                            const Icon(Icons.notifications_active_rounded, color: Colors.white, size: 20),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'تم تفعيل التنبيه! سنرسل لك إشعاراً فور توفر ${item.equivalentTradeName} في أقرب صيدلية.',
+                                style: const TextStyle(fontWeight: FontWeight.w600),
                               ),
                             ),
                           ],
                         ),
+                        backgroundColor: const Color(0xFF0F766E),
+                        duration: const Duration(seconds: 4),
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
-                      if (hasSavings)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFECFDF5),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: const Color(0xFF10B981)),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(
-                                'وفر ${ArabicDigits.convert(item.priceSavingPercent.toStringAsFixed(0))}%',
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w900,
-                                  color: Color(0xFF065F46),
-                                ),
-                              ),
-                              if (item.priceDifferenceEGP > 0)
-                                Text(
-                                  'أوفر بـ ${ArabicDigits.convert(item.priceDifferenceEGP.toStringAsFixed(1))} ج.م',
-                                  style: const TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF047857),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                    ],
+                    );
+                  },
+                  icon: const Icon(Icons.notifications_outlined, size: 18),
+                  label: const Text(
+                    'نبهني فور توفره في صيدلية قريبة',
+                    style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    side: const BorderSide(color: AppColors.primary),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                 ),
-                const SizedBox(height: 12),
-
-                // Pharmacy & Direct Action Button
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(Icons.local_pharmacy_rounded, color: AppColors.primary, size: 20),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            item.pharmacyName,
-                            style: const TextStyle(
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.w700,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 2),
-                          Row(
-                            children: [
-                              const Icon(Icons.near_me_rounded, size: 12, color: AppColors.textMuted),
-                              const SizedBox(width: 3),
-                              Text(
-                                _formatDistance(item.distanceKm),
-                                style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
-                              ),
-                              const SizedBox(width: 8),
-                              Container(
-                                width: 6,
-                                height: 6,
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFF10B981),
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              const Text(
-                                'متوفر حالياً',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF059669),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    ElevatedButton(
-                      onPressed: () {
-                        // Open pharmacy details or reserve screen
-                        final pharmacyItem = PharmacySearchResultDto(
-                          pharmacyId: item.pharmacyId,
-                          pharmacyName: item.pharmacyName,
-                          addressLine: 'بالقرب منك',
-                          phone: '',
-                          trustScore: 4.8,
-                          distanceKm: item.distanceKm,
-                          inventoryItemId: item.inventoryItemId,
-                          medicationName: item.equivalentTradeName,
-                          price: item.priceAtPharmacy,
-                          status: 'InStock',
-                          quantity: 5,
-                          lastUpdatedAt: DateTime.now(),
-                          latitude: 30.0444,
-                          longitude: 31.2357,
-                          officialEdaPriceEgp: item.officialPriceEGP,
-                          priceVariancePercent: item.priceSavingPercent,
-                          isEdaPriceVerified: true,
-                          edaPriceBadgeText: 'تسعيرة جبرية EDA',
-                          supportsDelivery: true,
-                        );
-
-                        context.push(
-                          '/pharmacy-details',
-                          extra: PharmacyDetailsArgs(item: pharmacyItem),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        elevation: 0,
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.bookmark_add_rounded, size: 16),
-                          SizedBox(width: 4),
-                          Text('حجز / تفاصيل', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPill(String text, IconData icon) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
-      decoration: BoxDecoration(
-        color: AppColors.fieldBg,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.hairline),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 13, color: AppColors.textSecondary),
-          const SizedBox(width: 4),
-          Text(
-            text,
-            style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
-          ),
-        ],
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildRegulatoryDisclaimer(String disclaimer) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.warningBg,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.warningIcon.withValues(alpha: 0.3)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.security_rounded, size: 20, color: AppColors.warningIcon),
+          const Icon(Icons.health_and_safety_rounded, size: 22, color: AppColors.warningIcon),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -853,18 +838,18 @@ class MedicationEquivalentsSheet extends HookConsumerWidget {
                 const Text(
                   'إقرار هيئة الدواء المصرية (EDA):',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 13,
                     fontWeight: FontWeight.bold,
                     color: AppColors.textPrimary,
                   ),
                 ),
-                const SizedBox(height: 3),
+                const SizedBox(height: 4),
                 Text(
                   disclaimer.isNotEmpty
                       ? disclaimer
-                      : 'المثائل الحيوية تحتوي على نفس المادة الفعالة وتُصرف كبدائل نظامية متطابقة، بينما البدائل العلاجية تتطلب استشارة الطبيب أو الصيدلي لاختلاف التركيز أو الشكل الصيدلي وفقاً لضوابط هيئة الدواء المصرية.',
+                      : 'المثائل الحيوية المتطابقة تحتوي على نفس المادة الفعالة والتركيز وتصرف كبديل نظامي موثوق. استشر الصيدلي أو الطبيب دائماً.',
                   style: const TextStyle(
-                    fontSize: 11,
+                    fontSize: 12,
                     height: 1.5,
                     color: AppColors.textSecondary,
                   ),
@@ -885,13 +870,13 @@ class MedicationEquivalentsSheet extends HookConsumerWidget {
           const CircularProgressIndicator(color: AppColors.primary),
           const SizedBox(height: 16),
           const Text(
-            'جاري استرجاع المثائل والبدائل بالاسم العلمي...',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+            'جاري البحث عن البدائل المعتمدة...',
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 4),
           Text(
-            'مطابقة قواعد بيانات هيئة الدواء المصرية والصيدليات القريبة',
-            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            'مطابقة قاعدة بيانات هيئة الدواء المصرية',
+            style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
           ),
         ],
       ),
@@ -939,13 +924,13 @@ class MedicationEquivalentsSheet extends HookConsumerWidget {
             const NuqousMascot.searching(height: 72),
             const SizedBox(height: 14),
             const Text(
-              'لا توجد مثائل مسجلة لهذا الاسم',
+              'لا توجد بدائل مسجلة لهذا الاسم',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 6),
             const Text(
-              'تأكد من كتابة الاسم بصورة صحيحة أو جرب البحث بالاسم التجاري الإنجليزي أو العربي.',
-              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              'تأكد من كتابة الاسم بصورة صحيحة أو جرب البحث بالاسم التجاري أو المادة الفعالة.',
+              style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
               textAlign: TextAlign.center,
             ),
           ],
@@ -961,22 +946,22 @@ class MedicationEquivalentsSheet extends HookConsumerWidget {
       child: Column(
         children: [
           Icon(
-            tab == 0 ? Icons.science_outlined : Icons.swap_horiz_rounded,
-            size: 44,
+            tab == 0 ? Icons.verified_outlined : Icons.swap_horiz_rounded,
+            size: 48,
             color: Colors.grey.shade400,
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           Text(
             tab == 0
-                ? 'لا توجد مثائل متطابقة متاحة حالياً في الصيدليات القريبة'
-                : 'لا توجد بدائل علاجية مسجلة لهذه الفئة',
-            style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                ? 'لا توجد مثائل متطابقة مسجلة لهذا الدواء'
+                : 'لا توجد بدائل أو تركيزات أخرى مسجلة',
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 4),
           const Text(
-            'تحقق من التبويبات الأخرى لعرض الخيارات المتوفرة.',
-            style: TextStyle(fontSize: 11.5, color: AppColors.textMuted),
+            'تحقق من التبويب الآخر لعرض الخيارات المتاحة.',
+            style: TextStyle(fontSize: 12, color: AppColors.textMuted),
           ),
         ],
       ),

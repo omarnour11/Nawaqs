@@ -38,7 +38,15 @@ public sealed class EgyptianDialectNormalizerService : IEgyptianDialectNormalize
         ["ماريفان"] = "Marevan",
         ["زانكسار"] = "Xarelto",
         ["الاكويس"] = "Eliquis",
-        ["جانونيا"] = "Januvia"
+        ["جانونيا"] = "Januvia",
+        ["زوركال"] = "Zurcal",
+        ["زوركل"] = "Zurcal",
+        ["بروتوجير"] = "Protoger",
+        ["جاناتون"] = "Ganaton",
+        ["ابيزيثرو"] = "Epizithro",
+        ["إبيزيثرو"] = "Epizithro",
+        ["زيلون"] = "Xilone",
+        ["سيداتس"] = "Sedatiss"
     };
 
     // Number words → numeric strength value

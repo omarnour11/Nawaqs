@@ -34,7 +34,7 @@ class AppConfig {
   static String get apiBaseUrl {
     if (_override.isNotEmpty) return _override;
     if (!kIsWeb && Platform.isAndroid) {
-      // Connects over LAN Wi-Fi to PC (192.168.1.4:5000) or loopback via adb reverse (127.0.0.1:5001)
+      // Connects over LAN Wi-Fi to PC (192.168.1.5:5001) or loopback via adb reverse (127.0.0.1:5001)
       return 'http://$currentHost:$currentPort/api/v1';
     }
     return 'http://localhost:$apiPort/api/v1';
@@ -42,10 +42,10 @@ class AppConfig {
 
   /// Returns the alternate development endpoint when one fails.
   static String get alternateApiBaseUrl {
-    if (currentHost == loopbackHost) {
-      return 'http://$lanHost:$lanPort/api/v1';
+    if (currentHost == lanHost) {
+      return 'http://$loopbackHost:$apiPort/api/v1';
     }
-    return 'http://$loopbackHost:$apiPort/api/v1';
+    return 'http://$lanHost:$lanPort/api/v1';
   }
 
   /// Sets the working active endpoint.

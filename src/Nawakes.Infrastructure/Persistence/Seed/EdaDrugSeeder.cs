@@ -146,6 +146,7 @@ public sealed class EdaDrugSeeder(
         new("Augmentin 625mg", "Amoxicillin + Clavulanic Acid", "625mg", "Tablet", 70, "GSK", false),
         new("Hibiotic 1gm", "Amoxicillin + Clavulanic Acid", "1000mg", "Tablet", 55, "Hikma", false),
         new("Zithromax 500mg", "Azithromycin", "500mg", "Tablet", 110, "Pfizer", false),
+        new("Epizithro 500mg", "Azithromycin", "500mg", "Capsule", 32.50m, "EIPICO", false),
         new("Azrolid 500mg", "Azithromycin", "500mg", "Tablet", 45, "Borg", false),
         new("Klacid 500mg", "Clarithromycin", "500mg", "Tablet", 130, "Abbott", false),
         new("Ciprofar 500mg", "Ciprofloxacin", "500mg", "Tablet", 35, "Pharco", false),
@@ -264,6 +265,7 @@ public sealed class EdaDrugSeeder(
         new("Toplexil Syrup", "Oxomemazine + Guaifenesin", null, "Syrup", 28, "Sanofi", false),
         new("Notussil Syrup", "Butamirate", null, "Syrup", 40, "EVA Pharma", false),
         new("Mucophylline Syrup", "Bromhexine + Theophylline", null, "Syrup", 20, "MUP", false),
+        new("Sedatiss Syrup", "Pentoxyverine", "7.5mg/5ml", "Syrup", 18, "Pharco", false),
         new("Mucosol 30mg", "Carbocisteine", "30mg", "Syrup", 25, "EIPICO", false),
         new("Bisolvon 8mg", "Bromhexine", "8mg", "Tablet", 20, "Boehringer", false),
 
@@ -358,6 +360,11 @@ public sealed class EdaDrugSeeder(
         new("Risek 20mg", "Omeprazole", "20mg", "Capsule", 45, "Getz", true),
         new("Pantoloc 40mg", "Pantoprazole", "40mg", "Tablet", 90, "Takeda", true),
         new("Pan 40mg", "Pantoprazole", "40mg", "Tablet", 40, "Alcobra", true),
+        new("Zurcal 40mg", "Pantoprazole", "40mg", "Tablet", 52.50m, "AUG Pharma", true),
+        new("Zurcal 20mg", "Pantoprazole", "20mg", "Tablet", 35.00m, "AUG Pharma", true),
+        new("Protoger 40mg", "Pantoprazole", "40mg", "Tablet", 45.00m, "Marcyrl", true),
+        new("Protoger 20mg", "Pantoprazole", "20mg", "Tablet", 30.00m, "Marcyrl", true),
+        new("Ganaton 50mg", "Itopride", "50mg", "Tablet", 41.00m, "Abbott", true),
         new("Pantoloc Control 20", "Pantoprazole", "20mg", "Tablet", 60, "Takeda", false),
         new("Rani 300mg", "Ranitidine", "300mg", "Tablet", 15, "Amoun", false),
         new("Zantac 300mg", "Ranitidine", "300mg", "Tablet", 20, "GSK", false),
@@ -455,6 +462,8 @@ public sealed class EdaDrugSeeder(
 
         // Hormones / Endocrine
         new("Prednisolone 5mg", "Prednisolone", "5mg", "Tablet", 10, "Amoun", false),
+        new("Xilone Forte Syrup", "Prednisolone", "15mg/5ml", "Syrup", 25, "Sanofi", false),
+        new("Xilone 5mg Syrup", "Prednisolone", "5mg/5ml", "Syrup", 18, "Sanofi", false),
         new("Betasonide 0.5mg", "Betamethasone", "0.5mg", "Tablet", 15, "Schering", false),
         new("Decadron 4mg", "Dexamethasone", "4mg", "Tablet", 18, "Merck", false),
         new("Medrol 16mg", "Methylprednisolone", "16mg", "Tablet", 65, "Pfizer", false),

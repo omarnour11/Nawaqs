@@ -224,6 +224,23 @@ public sealed class ClinicalPrescriptionMatcher : IClinicalPrescriptionMatcher
             var firstEntryToken = entry.FirstToken;
             if (firstEntryToken.Length == 0) continue;
 
+            // ── LASA Safety Guard: Prevent catastrophic confusion between Gastrointestinal PPIs
+            // (Zurcal / Zorcal / Pantoprazole) and Controlled Schedule psychotropics (Zolam / Alprazolam).
+            if ((firstQueryToken.StartsWith("zur", StringComparison.OrdinalIgnoreCase) ||
+                 firstQueryToken.StartsWith("zor", StringComparison.OrdinalIgnoreCase)) &&
+                (firstEntryToken.StartsWith("zola", StringComparison.OrdinalIgnoreCase) ||
+                 entry.ActiveIngredient?.Contains("alprazolam", StringComparison.OrdinalIgnoreCase) == true))
+            {
+                continue; // Disqualify Zolam when searching for Zurcal
+            }
+
+            // Severe dosage mismatch guard for psychotropics (Zolam only exists in 0.25/0.5mg; 20mg or 40mg is impossible)
+            if (firstEntryToken.StartsWith("zola", StringComparison.OrdinalIgnoreCase) &&
+                (targetStrength?.Contains("40") == true || targetStrength?.Contains("20") == true))
+            {
+                continue; // Disqualify Zolam on 20mg/40mg dosages
+            }
+
             var firstEntrySkeleton = entry.FirstTokenSkeleton;
             var firstEntryPhonetic = _options.EnableEgyptianPhonetics
                 ? entry.FirstTokenPhonetic

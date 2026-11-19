@@ -146,6 +146,28 @@ public sealed class DoctorPrescriptionFuzzyAccuracyTests
             },
             new EgyptianDrugRegistry
             {
+                TradeName = "Zurcal",
+                TradeNameNormalized = "ZURCAL 40MG",
+                ActiveIngredient = "Pantoprazole",
+                ActiveIngredientNormalized = "PANTOPRAZOLE",
+                Strength = "40mg",
+                DosageForm = "Tablet",
+                OfficialPriceEGP = 52.5m,
+                IsChronic = true
+            },
+            new EgyptianDrugRegistry
+            {
+                TradeName = "Zolam",
+                TradeNameNormalized = "ZOLAM 0.5MG",
+                ActiveIngredient = "Alprazolam",
+                ActiveIngredientNormalized = "ALPRAZOLAM",
+                Strength = "0.5mg",
+                DosageForm = "Tablet",
+                OfficialPriceEGP = 20.0m,
+                IsChronic = false
+            },
+            new EgyptianDrugRegistry
+            {
                 TradeName = "Clexane",
                 TradeNameNormalized = "CLEXANE 60MG",
                 ActiveIngredient = "Enoxaparin Sodium",
@@ -319,6 +341,23 @@ public sealed class DoctorPrescriptionFuzzyAccuracyTests
         result.RequiresDisambiguation.Should().BeTrue(
             "When AI quota is exhausted and running on local fallback, disambiguation card must be shown to the user");
         result.Candidates.Should().NotBeEmpty();
+    }
+
+    [Theory]
+    [InlineData("R/ Zurcal 40 Tb", "Zurcal", "40mg")]
+    [InlineData("R/ Zorcal 40 tab", "Zurcal", "40mg")]
+    [InlineData("zurcal 40", "Zurcal", "40mg")]
+    [InlineData("زوركال 40", "Zurcal", "40mg")]
+    public async Task LasaSafety_ZurcalPrescription_NeverMatchesZolam(
+        string rawPrescription, string expectedTradeName, string expectedStrength)
+    {
+        var match = await _matcher.MatchPrescriptionAsync(rawPrescription);
+
+        match.ResolvedName.Should().Be(expectedTradeName,
+            "Doctor handwritten Zurcal/Zorcal must resolve to Pantoprazole Zurcal");
+        match.Strength.Should().Be(expectedStrength);
+        match.Candidates.Should().NotContain(c => c.TradeName.Equals("Zolam", StringComparison.OrdinalIgnoreCase),
+            "LASA safety rule MUST prohibit mapping stomach PPI (Zurcal) to benzodiazepine (Zolam)");
     }
 }
 

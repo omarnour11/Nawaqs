@@ -162,7 +162,8 @@ public sealed class GeminiPrescriptionService : IGeminiPrescriptionService
             You are an Egyptian clinical pharmacist expert in deciphering messy doctor handwriting and prescription text.
             CRITICAL INSTRUCTIONS:
             - Strictly ignore doctor names (e.g. Dr., د., دكتور), clinic/hospital headers, patient names, dates, phone numbers, and addresses.
-            - Extract ONLY the prescribed medications (e.g. Concor, Augmentin, Lipitor, Glucophage, Cataflam, Controloc, Panadol, Otrivin).
+            - Extract ONLY the prescribed medications (e.g. Concor, Augmentin, Lipitor, Glucophage, Cataflam, Controloc, Panadol, Otrivin, Zurcal, Epizithro, Ganaton, Sedatiss, Xilone).
+            - Disambiguation: 'Zurcal 40' is Pantoprazole 40mg (stomach PPI), NEVER 'Zolam' (Alprazolam 0.5mg).
             - For each medication identify:
               1. tradeName: Official Egyptian brand/trade name (NEVER put a doctor or clinic name here!).
               2. strength: Dosage strength if present (e.g. 5mg, 10mg, 1000mg, 1g, 50mg, 0.1%, 0.05%).
@@ -216,6 +217,13 @@ public sealed class GeminiPrescriptionService : IGeminiPrescriptionService
               * Injections (e.g. Cefotax, Ceftriaxone, Voltaren amp) -> dosageForm: 'حقن / أمبول'.
               * Tablets/Capsules (e.g. Concor tab, Panadol tab, Augmentin 1g tab, Omeprazole cap) -> dosageForm: 'أقراص' or 'كبسولات'.
             - Put complete dosage directions reflecting the true dosage form and anatomical route in 'rawSig'.
+
+            CRITICAL LOOK-ALIKE HANDWRITING DISAMBIGUATION (EGYPTIAN PRACTICE):
+            - 'Zurcal 40' / 'Zorcal 40' is Pantoprazole 40mg (stomach acid PPI). NEVER confuse with 'Zolam' (Alprazolam 0.5mg)! Zolam only exists in 0.25mg/0.5mg, so any 40mg or 20mg indication is Zurcal.
+            - 'Epizithro 500' is Azithromycin 500mg capsules.
+            - 'Ganaton 50' is Itopride 50mg (prokinetic).
+            - 'Xilone Forte Syp' is Prednisolone syrup.
+            - 'Sedatiss Syp' is Pentoxyverine syrup.
 
             On-device OCR hint (preliminary optical tokens — verify against image):
             ---

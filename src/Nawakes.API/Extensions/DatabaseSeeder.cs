@@ -172,26 +172,35 @@ public static class DatabaseSeeder
         ("Chlorpheniramine 4mg", 9.50m, InventoryStatus.InStock),
         ("Prednisolone 5mg", 17.00m, InventoryStatus.InStock),
         ("Aspirin 81mg", 11.25m, InventoryStatus.InStock),
-        ("Vitamin C 1000mg", 28.00m, InventoryStatus.InStock)
+        ("Vitamin C 1000mg", 28.00m, InventoryStatus.InStock),
+        ("Controloc 40mg", 95.00m, InventoryStatus.InStock),
+        ("Zurcal 40mg", 52.50m, InventoryStatus.InStock),
+        ("Epizithro 500mg", 32.50m, InventoryStatus.InStock),
+        ("Ganaton 50mg", 41.00m, InventoryStatus.InStock)
     ];
 
     private static async Task SeedInventoryAsync(ApplicationDbContext context, Guid pharmacyId)
     {
-        var existingCount = await context.InventoryItems
+        var existingNames = await context.InventoryItems
             .Where(i => i.PharmacyId == pharmacyId)
-            .CountAsync();
+            .Select(i => i.MedicationNameNormalized)
+            .ToListAsync();
 
-        if (existingCount > 0) return;
+        var existingSet = existingNames.ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         foreach (var (name, price, status) in SeedCatalog)
         {
+            var norm = name.Trim().ToUpperInvariant();
+            if (existingSet.Contains(norm)) continue;
+
             context.InventoryItems.Add(new InventoryItem
             {
                 PharmacyId = pharmacyId,
                 MedicationName = name,
-                MedicationNameNormalized = name.Trim().ToUpperInvariant(),
+                MedicationNameNormalized = norm,
                 Price = price,
-                Status = status
+                Status = status,
+                Quantity = 10
             });
         }
         await context.SaveChangesAsync();

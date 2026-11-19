@@ -6,6 +6,7 @@ import 'package:nawakes_mobile/features/search/data/search_models.dart';
 import 'package:nawakes_mobile/features/search/presentation/medication_equivalents_sheet.dart';
 
 String _formatDistance(double km) {
+  if (km < 0) return '';
   if (km < 1) return '${ArabicDigits.convert((km * 1000).round())} متر';
   return '${ArabicDigits.convert(km.toStringAsFixed(1), formatDecimals: true)} كم';
 }
@@ -226,7 +227,9 @@ class _EquivalentRow extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '${e.pharmacyName} · ${_formatDistance(e.distanceKm)}',
+                  e.inStock && e.distanceKm >= 0
+                      ? '${e.pharmacyName} · ${_formatDistance(e.distanceKm)}'
+                      : 'غير متوفر بالصيدليات القريبة حالياً',
                   style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,

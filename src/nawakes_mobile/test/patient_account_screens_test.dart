@@ -1478,12 +1478,12 @@ void main() {
       ));
       await tester.pumpAndSettle();
 
-      expect(find.text('بدائل بنفس المادة الفعالة'), findsOneWidget);
+      expect(find.text('بدائل ومثائل معتمدة بالاسم العلمي'), findsOneWidget);
       expect(find.textContaining('كونكور 5 مجم غير متوفر حالياً'), findsOneWidget);
       expect(find.text('بيسور 5 مجم'), findsOneWidget);
       expect(find.text('صيدلية الحياة · ٥٠٠ متر'), findsOneWidget);
       expect(find.text('٤٥ ج.م'), findsOneWidget);
-      expect(find.text('يوفر ٤٤%'), findsOneWidget);
+      expect(find.text('وفر ٤٤%'), findsOneWidget);
       expect(find.text('تنبيه طبي: استشر الصيدلي أو الطبيب دائماً قبل الاستبدال.'), findsOneWidget);
     });
 
