@@ -51,6 +51,11 @@ public sealed class BatchSearchMedicationsQueryHandler(
         {
             foreach (var r in list)
             {
+                if (r.Quantity <= 0 || (r.Status != "InStock" && r.Status != "Available"))
+                {
+                    continue;
+                }
+
                 if (!pharmacyMap.TryGetValue(r.PharmacyId, out var entry))
                 {
                     var baseDto = new BatchPharmacyResultDto(
@@ -72,11 +77,11 @@ public sealed class BatchSearchMedicationsQueryHandler(
                     pharmacyMap[r.PharmacyId] = entry;
                 }
 
-                // Add or update item for this pharmacy
+                // Add or update item for this pharmacy (strictly verifying in-stock with positive units)
                 entry.ItemMap[item.Medication] = new BatchSearchMedicationItemDto(
                     item.Medication,
                     item.Quantity,
-                    r.Status == "InStock" || r.Status == "Available",
+                    true,
                     r.Price,
                     r.Quantity,
                     r.InventoryItemId);
@@ -99,7 +104,7 @@ public sealed class BatchSearchMedicationsQueryHandler(
                 if (entry.ItemMap.TryGetValue(req.Medication, out var found))
                 {
                     itemDetails.Add(found);
-                    if (found.InStock)
+                    if (found.InStock && found.AvailableQuantity > 0)
                     {
                         inStockCount++;
                         totalPrice += found.Price * req.Quantity;

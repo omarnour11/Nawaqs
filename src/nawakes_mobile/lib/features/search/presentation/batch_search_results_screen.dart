@@ -8,6 +8,8 @@ import 'package:nawakes_mobile/core/network/api_response_models.dart';
 import 'package:nawakes_mobile/core/theme/app_theme.dart';
 import 'package:nawakes_mobile/core/ui/nawaqss_brand_widgets.dart';
 import 'package:nawakes_mobile/core/utils/arabic_digits.dart';
+import 'package:nawakes_mobile/features/search/presentation/nearby_products_provider.dart'
+    show deliveryLocationProvider, DeliveryLocation;
 import 'package:nawakes_mobile/features/reservations/presentation/passes_screen.dart'
     show passesControllerProvider;
 import 'package:url_launcher/url_launcher.dart';
@@ -252,8 +254,15 @@ class BatchSearchResultsScreen extends HookConsumerWidget {
     final error = useState<String?>(null);
     final rawSearchData = useState<BatchSearchResponse?>(null);
     final bookedPharmacyIds = useState<Set<String>>({});
+    final searchLocationLabel = useState<String>('');
+    final searchCoordinates = useState<({double lat, double lng})>((lat: 29.9735, lng: 30.9380));
 
-    Future<void> executeBatchSearch({List<BatchSearchItemDto>? overrideItems}) async {
+    Future<void> executeBatchSearch({
+      List<BatchSearchItemDto>? overrideItems,
+      double? customLat,
+      double? customLng,
+      String? customLabel,
+    }) async {
       final itemsToSearch = overrideItems ?? currentItems.value;
       if (itemsToSearch.isEmpty) {
         isLoading.value = false;
@@ -265,16 +274,37 @@ class BatchSearchResultsScreen extends HookConsumerWidget {
       error.value = null;
 
       try {
-        double lat = 30.0444;
-        double lng = 31.2357;
+        final activeDelivery = ref.read(deliveryLocationProvider);
+        double lat = customLat ?? (activeDelivery.latitude != 0.0 ? activeDelivery.latitude : 29.9735);
+        double lng = customLng ?? (activeDelivery.longitude != 0.0 ? activeDelivery.longitude : 30.9380);
+        String label = customLabel ?? (activeDelivery.label.isNotEmpty ? activeDelivery.label : 'السادس من أكتوبر، الجيزة');
 
-        try {
-          final pos = await ref.read(locationServiceProvider).getCurrentLocation();
-          if (pos != null) {
-            lat = pos.latitude;
-            lng = pos.longitude;
-          }
-        } catch (_) {}
+        // Only query live GPS if no custom coordinates were provided
+        if (customLat == null || customLng == null) {
+          try {
+            final pos = await ref.read(locationServiceProvider).getCurrentLocation();
+            if (pos != null) {
+              lat = pos.latitude;
+              lng = pos.longitude;
+              final addr = await ref.read(locationServiceProvider).getDetailedEgyptianAddress(pos.latitude, pos.longitude);
+              if (addr != null && addr.isNotEmpty) {
+                label = addr;
+                final gov = LocationService.detectGovernorate(pos.latitude, pos.longitude);
+                ref.read(deliveryLocationProvider.notifier).setLocation(
+                  DeliveryLocation(
+                    label: addr,
+                    latitude: pos.latitude,
+                    longitude: pos.longitude,
+                    governorate: gov,
+                  ),
+                );
+              }
+            }
+          } catch (_) {}
+        }
+
+        searchLocationLabel.value = label;
+        searchCoordinates.value = (lat: lat, lng: lng);
 
         final response = await ref.read(apiClientProvider).batchSearch(
               BatchSearchRequest(
@@ -290,6 +320,116 @@ class BatchSearchResultsScreen extends HookConsumerWidget {
       } finally {
         isLoading.value = false;
       }
+    }
+
+    void showLocationPickerSheet() {
+      final places = LocationService.curatedEgyptianPlaces;
+      final searchCtrl = TextEditingController();
+
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.white,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        builder: (sheetCtx) {
+          return StatefulBuilder(
+            builder: (sheetCtx, setModalState) {
+              final query = searchCtrl.text.trim().toLowerCase();
+              final filtered = query.isEmpty
+                  ? places
+                  : places.where((p) =>
+                      p.title.toLowerCase().contains(query) ||
+                      p.subtitle.toLowerCase().contains(query) ||
+                      p.governorate.toLowerCase().contains(query)).toList();
+
+              return Padding(
+                padding: EdgeInsets.only(
+                  left: 16,
+                  right: 16,
+                  top: 16,
+                  bottom: MediaQuery.of(sheetCtx).viewInsets.bottom + 20,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.location_on_rounded, color: AppColors.primary, size: 24),
+                        const SizedBox(width: 8),
+                        const Expanded(
+                          child: Text(
+                            'تغيير موقع البحث عن الأدوية',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close_rounded),
+                          onPressed: () => Navigator.of(sheetCtx).pop(),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: searchCtrl,
+                      onChanged: (_) => setModalState(() {}),
+                      decoration: InputDecoration(
+                        hintText: 'ابحث عن منطقة أو مدينة (مثال: الدقي، أكتوبر، المعادي)...',
+                        prefixIcon: const Icon(Icons.search_rounded),
+                        isDense: true,
+                        filled: true,
+                        fillColor: const Color(0xFFF8F9FA),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxHeight: MediaQuery.of(context).size.height * 0.45,
+                      ),
+                      child: ListView.separated(
+                        shrinkWrap: true,
+                        itemCount: filtered.length,
+                        separatorBuilder: (context, index) => const Divider(height: 1),
+                        itemBuilder: (_, idx) {
+                          final place = filtered[idx];
+                          return ListTile(
+                            dense: true,
+                            leading: const Icon(Icons.place_outlined, color: AppColors.primary, size: 20),
+                            title: Text(place.title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
+                            subtitle: Text(place.subtitle, style: const TextStyle(fontSize: 11.5, color: AppColors.textMuted)),
+                            onTap: () {
+                              ref.read(deliveryLocationProvider.notifier).setLocation(
+                                DeliveryLocation(
+                                  label: place.fullLabel,
+                                  latitude: place.latitude,
+                                  longitude: place.longitude,
+                                  governorate: place.governorate,
+                                ),
+                              );
+                              Navigator.of(sheetCtx).pop();
+                              executeBatchSearch(
+                                customLat: place.latitude,
+                                customLng: place.longitude,
+                                customLabel: place.fullLabel,
+                              );
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          );
+        },
+      );
     }
 
     useEffect(() {
@@ -853,6 +993,8 @@ class BatchSearchResultsScreen extends HookConsumerWidget {
                         context,
                         greedyResult!,
                         bookedPharmacyIds.value,
+                        locationLabel: searchLocationLabel.value,
+                        onChangeLocation: showLocationPickerSheet,
                         splitPlans: rawSearchData.value?.optimalSplitPlans ?? const [],
                         onRemoveItem: removeItem,
                         onBookSingle: bookSinglePharmacy,
@@ -926,6 +1068,8 @@ class BatchSearchResultsScreen extends HookConsumerWidget {
     BuildContext context,
     GreedyGroupingResult result,
     Set<String> bookedIds, {
+    required String locationLabel,
+    required VoidCallback onChangeLocation,
     required List<SplitBasketPlan> splitPlans,
     required Function(String) onRemoveItem,
     required Function(PharmacyBasketGroup) onBookSingle,
@@ -944,6 +1088,78 @@ class BatchSearchResultsScreen extends HookConsumerWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        // Location banner showing the active location used for distance calculations
+        Container(
+          key: const ValueKey('batch_search_location_bar'),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          margin: const EdgeInsets.only(bottom: 14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.hairline),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.03),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(7),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.location_on_rounded, color: AppColors.primary, size: 20),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'موقع البحث والصيدليات الأقرب إليك',
+                      style: TextStyle(fontSize: 11, color: AppColors.textMuted, fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 1),
+                    Text(
+                      locationLabel.isNotEmpty ? locationLabel : 'موقعي الحالي',
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textDark),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              InkWell(
+                onTap: onChangeLocation,
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.edit_location_alt_rounded, size: 15, color: AppColors.primary),
+                      SizedBox(width: 4),
+                      Text(
+                        'تغيير',
+                        style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+
         if (sanitizedCropBase64 != null)
           Container(
             key: const ValueKey('batch_sanitized_rx_badge'),

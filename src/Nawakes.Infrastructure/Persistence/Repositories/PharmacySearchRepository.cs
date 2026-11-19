@@ -46,47 +46,80 @@ public sealed class PharmacySearchRepository(
         var normSearch = Nawakes.Domain.Common.DrugNameNormalizer.NormalizeName(medicationNameNormalized);
         if (string.IsNullOrWhiteSpace(normSearch)) normSearch = medicationNameNormalized.Trim().ToUpperInvariant();
 
-        // Resolve Arabic commercial name from EDA registry (e.g. بانادول -> PANADOL, كونكور -> CONCOR)
-        var firstWord = normSearch.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? normSearch;
+        // Clean noisy doctor prescription text (e.g. "R/ Concor 5mg tab" -> "Concor 5mg")
+        var cleanInput = Nawakes.Domain.Common.DrugNameNormalizer.CleanPrescriptionLine(normSearch);
+        if (string.IsNullOrWhiteSpace(cleanInput)) cleanInput = normSearch;
 
+        var (coreTradeName, queryStrength, _) =
+            Nawakes.Domain.Common.DrugNameNormalizer.DeconstructMedicationName(cleanInput, null, null);
+
+        var normCore = Nawakes.Domain.Common.DrugNameNormalizer.NormalizeName(coreTradeName);
+        if (string.IsNullOrWhiteSpace(normCore)) normCore = cleanInput;
+
+        var firstWord = normCore.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? normCore;
+
+        // Resolve Arabic commercial name from EDA registry (Arabic-First per Invariant #1)
         var matchedCatalogEntries = await context.EgyptianDrugRegistry
             .AsNoTracking()
-            .Where(d => d.TradeNameNormalized.Contains(normSearch) ||
-                        (firstWord.Length >= 3 && d.TradeNameNormalized.Contains(firstWord)) ||
+            .Where(d => d.TradeNameNormalized.StartsWith(normCore) ||
+                        d.TradeNameNormalized.StartsWith(firstWord) ||
+                        (normCore.Length >= 4 && d.TradeNameNormalized.Contains(normCore)) ||
+                        (firstWord.Length >= 4 && d.TradeNameNormalized.Contains(firstWord)) ||
                         (d.CommercialNameArNormalized != null &&
-                         (d.CommercialNameArNormalized.Contains(normSearch) ||
-                          (firstWord.Length >= 3 && d.CommercialNameArNormalized.Contains(firstWord)) ||
-                          normSearch.Contains(d.CommercialNameArNormalized))))
+                         (d.CommercialNameArNormalized.StartsWith(normCore) ||
+                          d.CommercialNameArNormalized.StartsWith(firstWord) ||
+                          (normCore.Length >= 4 && d.CommercialNameArNormalized.Contains(normCore)) ||
+                          (firstWord.Length >= 4 && d.CommercialNameArNormalized.Contains(firstWord)) ||
+                          normCore.Contains(d.CommercialNameArNormalized))))
             .Select(d => new
             {
                 d.TradeNameNormalized,
                 d.CommercialNameArNormalized,
                 d.OfficialPriceEGP
             })
-            .Take(20)
+            .Take(25)
             .ToListAsync(cancellationToken);
 
-        var brandRoots = matchedCatalogEntries
-            .Select(t => t.TradeNameNormalized.Split(' ', StringSplitOptions.RemoveEmptyEntries)[0])
-            .Where(b => b.Length >= 2)
-            .Distinct()
-            .Take(5)
-            .ToList();
+        // Gather strict candidate brand tokens (minimum 3 characters, no loose 2-letter roots)
+        var candidateBrandKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (firstWord.Length >= 3) candidateBrandKeys.Add(firstWord);
+        if (normCore.Length >= 3) candidateBrandKeys.Add(normCore);
 
-        var root1 = brandRoots.Count > 0 ? brandRoots[0] : null;
-        var root2 = brandRoots.Count > 1 ? brandRoots[1] : null;
-        var root3 = brandRoots.Count > 2 ? brandRoots[2] : null;
+        foreach (var entry in matchedCatalogEntries)
+        {
+            var entryFirst = entry.TradeNameNormalized.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+            if (!string.IsNullOrEmpty(entryFirst) && entryFirst.Length >= 3)
+            {
+                candidateBrandKeys.Add(entryFirst);
+            }
+            if (!string.IsNullOrEmpty(entry.CommercialNameArNormalized) && entry.CommercialNameArNormalized.Length >= 3)
+            {
+                candidateBrandKeys.Add(entry.CommercialNameArNormalized);
+            }
+        }
+
+        var brandList = candidateBrandKeys.Take(5).ToList();
+        var b1 = brandList.Count > 0 ? brandList[0] : firstWord;
+        var b2 = brandList.Count > 1 ? brandList[1] : b1;
+        var b3 = brandList.Count > 2 ? brandList[2] : b1;
+        var b4 = brandList.Count > 3 ? brandList[3] : b1;
 
         var rawRows = await context.InventoryItems
             .AsNoTracking()
             .Include(item => item.Pharmacy)
             .Where(item =>
-                (item.MedicationNameNormalized.Contains(normSearch) ||
-                 (root1 != null && item.MedicationNameNormalized.Contains(root1)) ||
-                 (root2 != null && item.MedicationNameNormalized.Contains(root2)) ||
-                 (root3 != null && item.MedicationNameNormalized.Contains(root3)) ||
-                 (item.Pharmacy.Name != null && item.Pharmacy.Name.ToUpper().Contains(normSearch))) &&
+                (item.MedicationNameNormalized.StartsWith(b1) ||
+                 item.MedicationNameNormalized.Contains(" " + b1) ||
+                 item.MedicationNameNormalized.StartsWith(b2) ||
+                 item.MedicationNameNormalized.Contains(" " + b2) ||
+                 item.MedicationNameNormalized.StartsWith(b3) ||
+                 item.MedicationNameNormalized.Contains(" " + b3) ||
+                 item.MedicationNameNormalized.StartsWith(b4) ||
+                 item.MedicationNameNormalized.Contains(" " + b4) ||
+                 item.MedicationNameNormalized.Contains(normCore) ||
+                 item.MedicationNameNormalized.Contains(normSearch)) &&
                 item.Status == InventoryStatus.InStock &&
+                item.Quantity > 0 &&
                 item.Pharmacy != null &&
                 item.Pharmacy.VerificationStatus == VerificationStatus.Approved &&
                 item.Pharmacy.GeoPoint != null)
@@ -107,8 +140,16 @@ public sealed class PharmacySearchRepository(
             .GroupBy(x => x.item.PharmacyId)
             .Select(g =>
             {
-                var bestItem = g.OrderBy(x => x.item.Price).First();
+                // If a specific strength was requested, prioritize items matching that strength
+                var bestItem = g
+                    .OrderByDescending(x => queryStrength != null &&
+                        x.item.MedicationNameNormalized.Contains(queryStrength.ToUpperInvariant()))
+                    .ThenBy(x => x.item.Price)
+                    .First();
+
                 var totalQty = g.Sum(x => x.item.Quantity);
+                if (totalQty <= 0) return null;
+
                 var itemNorm = bestItem.item.MedicationNameNormalized;
                 var edaMatch = matchedCatalogEntries.FirstOrDefault(d =>
                     d.TradeNameNormalized.Equals(itemNorm, StringComparison.OrdinalIgnoreCase) ||
@@ -142,6 +183,8 @@ public sealed class PharmacySearchRepository(
                     EdaPriceBadgeText    = badgeText
                 };
             })
+            .Where(r => r != null)
+            .Select(r => r!)
             .OrderBy(x => x.DistanceKm)
             .ToList();
 

@@ -9,6 +9,7 @@ import 'package:nawakes_mobile/core/ui/nawaqss_brand_widgets.dart';
 import 'package:nawakes_mobile/features/search/presentation/batch_search_results_screen.dart';
 import 'package:nawakes_mobile/features/search/presentation/medication_equivalents_sheet.dart';
 import 'package:nawakes_mobile/core/utils/arabic_digits.dart';
+import 'package:nawakes_mobile/features/search/presentation/widgets/mandatory_location_prompt_dialog.dart';
 
 class PrescriptionBasketItem {
   String tradeName;
@@ -612,7 +613,10 @@ class PrescriptionBasketScreen extends HookConsumerWidget {
               ),
               onPressed: items.value.isEmpty
                   ? null
-                  : () {
+                  : () async {
+                      await ensureLocationPermission(context, ref);
+                      if (!context.mounted) return;
+
                       final batchItems = items.value
                           .map((e) => BatchSearchItemDto(
                                 medication: e.tradeName,
